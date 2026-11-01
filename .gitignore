@@ -48,3 +48,7 @@ assets/tee/
 assets/bmc-cover*
 # scripts/pdf/render-samples.mjs output (npm run pdf:check)
 frontend/pdf-samples/
+
+# Editor and IDE settings (Android Studio, VS Code)
+.idea/
+.vscode/

@@ -53,11 +53,18 @@ cd frontend && node scripts/check-locales.mjs && node scripts/check-source-strin
 node scripts/catalogue/build.mjs --check
 node scripts/build-coach-assets.mjs --check
 node scripts/build-api-docs.mjs --check
+node scripts/catalogue/validate.mjs && node scripts/catalogue/check-media.mjs
+cd frontend && npm run test:fatigue-probe        # recovery model monotonicity probe
+node scripts/ci/test-audit.mjs frontend/src frontend/scripts api/test mcp/test   # test-file hygiene
 
 # Builds
 cd frontend && npm run build
 cd frontend && npm run build:mobile   # VITE_MOBILE build + 180 px media from catalogue/media + cap sync
 ```
+
+`build:mobile` sets `VITE_MOBILE=1` inline, so on Windows run it from Git Bash, not PowerShell/cmd.
+CI also compiles the Android shell (`./gradlew testSideloadDebugUnitTest assembleSideloadDebug` in
+`frontend/android`).
 
 There is no linter/formatter config and no TypeScript; match the existing style by hand.
 
