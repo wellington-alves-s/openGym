@@ -125,6 +125,7 @@ de backup, Health Connect, impressão, scan), `sideload` e `play` (as duas varia
 | `openapi.yaml` | Documenta toda rota; um teste compara com `routes` |
 | `durable.js` | Escrita temp-depois-rename |
 | `passkeys-store.js`, `password.js`, `recover.js`, `device-link.js`, `verify-error.js` | Autenticação (WebAuthn, senha opcional, recuperação, pareamento de celular) |
+| `trainer-routes.js`, `trainer-access.js`, `trainer-store.js`, `student-invite.js` | Modo personal (`TRAINER_MODE`, desligado por padrão): rotas de personal e alunos, permissões, registros dos alunos em `DATA_DIR/trainers/` e convites de uso único |
 | `sync-stamps.js` | Cópia manual de `lib/sync-merge.js` (há teste de paridade) |
 | `media.js` | Fotos e vídeos de exercícios próprios em `DATA_DIR/uploads` |
 | `push-messages.js`, `nudge.js`, `nudge-copy.js`, `queue.js` | Web Push e lembretes (`nudge.js` e `queue.js` espelham o front) |

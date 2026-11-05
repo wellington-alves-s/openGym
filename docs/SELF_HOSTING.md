@@ -8,7 +8,7 @@ This guide takes you from "just cloned it" to "using it from my phone over the i
 1. [Run it locally](#1-run-it-locally-5-minutes) — five minutes, nothing else needed
 2. [The passkey requirement](#2-understand-the-passkey-requirement-important) — why your phone needs HTTPS
 3. [HTTPS on your own domain](#3-expose-it-over-https-on-your-own-domain) — Cloudflare Tunnel, Caddy, Traefik, nginx, Tailscale Serve
-4. [Multiple users](#4-multiple-users) — admin dashboard, invites, language, activity log, password sign-in
+4. [Multiple users](#4-multiple-users) — admin dashboard, invites, language, activity log, password sign-in, trainer mode
 5. [Fitting into an existing stack](#5-fitting-it-into-an-existing-stack) — ports, [NAS](#on-a-nas-synology-qnap-unraid-truenas), subpaths, media uploads
 6. [Backups](#6-backups)
 7. [Notifications](#7-notifications)
@@ -468,6 +468,37 @@ that only has a password cannot sign in.
 
 The mobile app keeps pairing: someone with a password signs in to the website with it and pairs
 from Settings → Account → "Pair the mobile app", as with a passkey.
+
+### Trainer mode (optional)
+
+openGym can also serve a personal trainer and their students from one server. It is off by default,
+and while it is off nothing changes: the extra routes answer 404 and nobody has a role. Switch it on
+in `.env` and recreate the stack:
+
+```bash
+TRAINER_MODE=1             # personal trainers and their students
+```
+
+- **Who becomes a trainer.** Anyone can ask to be a personal trainer when they create their profile (with
+  `INVITE_ONLY=1` they still need the admin's invite code first). They wait as *pending* and can use the app for themselves, but cannot add students until the
+  **owner** approves them in the admin dashboard (or turns trainer mode on for an account from
+  there). A pending request nobody answers is removed after 30 days. On a brand new server, the
+  first account created as a trainer becomes the owner, an admin and an approved trainer, so there
+  is someone who can approve the rest.
+- **Students come by invite only.** A trainer adds a student and gets a link with a one-time code,
+  valid for 7 days. The trainer sends it to the student themselves, on WhatsApp for example. Nobody
+  can create a student account without that link, whatever `INVITE_ONLY` says, and the link stops
+  working after the first use. If it expires or gets lost, the trainer makes a new one. The server
+  keeps only a hash of the code.
+- **Signing in.** Trainers and students use passkeys. Signing up and signing in with an e-mail or a
+  name and a password only works if you also set `PASSWORD_LOGIN=1` (see
+  [Password sign-in](#password-sign-in-optional)); without it, passkeys are the only way in.
+- **Ending a link.** Either side can unlink at any time. The student keeps their account and data,
+  and the trainer loses access to them. Deleting or disabling a trainer unlinks all their students.
+- **Privacy.** A trainer can only see what the student agrees to share. This first stage shares
+  nothing yet: it sets up the accounts and the link, and the data sharing comes later.
+- **For developers.** The routes are in [`api/openapi.yaml`](../api/openapi.yaml) under the
+  `trainer` tag and the `admin` routes that mention trainers.
 
 ## 5. Fitting it into an existing stack
 

@@ -137,6 +137,7 @@ const TAGS = {
   push: { title: 'Push', side: 'Notifications &amp; rest timer' },
   activity: { title: 'Activity', side: 'Live presence' },
   media: { title: 'Media', side: 'Photos &amp; videos of your exercises &amp; workouts' },
+  trainer: { title: 'Trainer mode', side: 'Personal trainers &amp; students (TRAINER_MODE)' },
   // A tag missing from this map renders nowhere at all, silently, so every tag in the
   // spec needs a line here.
   coach: { title: 'AI Coach', side: 'Plans, reviews, debriefs' },
@@ -219,7 +220,7 @@ function endpointCard (pathKey, method, op) {
   }))
   // p.name may contain markup now; ptab escapes r.name, so build rows pre-escaped instead:
   const paramTab = params.length
-    ? `<p class="ep-h">Query parameters</p><div class="ptab">` + params.map(r => `
+    ? `<p class="ep-h">Parameters</p><div class="ptab">` + params.map(r => `
   <div class="prow">
     <span class="p-name">${r.name}${r.required ? '<em class="p-req" title="required">required</em>' : ''}</span>
     <span class="p-type">${r.type}</span>
@@ -296,7 +297,11 @@ const lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 
 const ops = []
 for (const [p, methods] of Object.entries(spec.paths)) {
-  for (const [m, op] of Object.entries(methods)) ops.push({ path: p, method: m, op })
+  // A path-level "parameters:" (the {id} / {code} of the path) is not an operation: it goes on each one.
+  for (const [m, op] of Object.entries(methods)) {
+    if (m === 'parameters') continue
+    ops.push({ path: p, method: m, op: methods.parameters ? { ...op, parameters: [...methods.parameters, ...(op.parameters || [])] } : op })
+  }
 }
 
 const tagSections = Object.keys(TAGS).map(tag => {

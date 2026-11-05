@@ -221,6 +221,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <a class="side-link" href="#push"><b>Push</b><span>Notifications &amp; rest timer</span></a>
   <a class="side-link" href="#activity"><b>Activity</b><span>Live presence</span></a>
   <a class="side-link" href="#media"><b>Media</b><span>Photos &amp; videos of your exercises &amp; workouts</span></a>
+  <a class="side-link" href="#trainer"><b>Trainer mode</b><span>Personal trainers &amp; students (TRAINER_MODE)</span></a>
   <a class="side-link" href="#coach"><b>AI Coach</b><span>Plans, reviews, debriefs</span></a>
   <a class="side-link" href="#admin"><b>Admin</b><span>Users, invites, audit log, Coach</span></a>
   <a class="side-link" href="#schemas"><b>Schemas</b><span>The state blob, the error shape &amp; co.</span></a>
@@ -245,7 +246,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>75 endpoints</span>
+    <span>90 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -265,7 +266,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="ov">
     <h3>Throttling</h3>
-<p>The <code>password</code> routes are counted per client address: at most 60 requests a minute across them, and wrong answers (a password, a reset code, an invite code on password signup, an e-mail address already in use) pause the address from the 21st on, for 30 s, doubling up to 15 min. Wrong passwords also pause the <i>account</i> they were tried against from the 6th on, for 1 min doubling up to 1 h (the same pause whether the account was named by its name or its e-mail), and an identifier that names no account is paused the same way, as typed. A password check counts from the moment it starts, so checks sent at once get no more tries than checks sent one by one. A paused caller gets <code>429 {&quot;error&quot;: …, &quot;code&quot;: &quot;locked&quot;, &quot;retryAfter&quot;: &lt;s&gt;}</code> with a <code>Retry-After</code> header. Passkey sign-up and sign-in and the pairing routes are not throttled (their failures reach the audit log at most ten a minute per address). The two routes that redeem a one-time device link (tag <code>passkeys</code>) share the per-address budget, and wrong codes pause the address for link redemption only, from the 21st on, the way wrong reset codes do. Adding or removing a passkey in Settings (<code>POST /api/account/passkeys/options</code>, <code>DELETE /api/account/passkeys</code>) and making a device code (<code>POST /api/account/device-link</code>) spend the per-address budget too, and a current password given there as proof counts like one given at sign-in. The address is the socket's, or with <code>TRUST_PROXY=1</code> the one a trusted proxy put in <code>CF-Connecting-IP</code> / the last <code>X-Forwarded-For</code> entry / <code>X-Real-IP</code>; IPv6 clients are counted by /64. Counters live in memory and reset on restart.</p>
+<p>The <code>password</code> routes are counted per client address: at most 60 requests a minute across them, and wrong answers (a password, a reset code, an invite code on password signup, an e-mail address already in use) pause the address from the 21st on, for 30 s, doubling up to 15 min. Wrong passwords also pause the <i>account</i> they were tried against from the 6th on, for 1 min doubling up to 1 h (the same pause whether the account was named by its name or its e-mail), and an identifier that names no account is paused the same way, as typed. A password check counts from the moment it starts, so checks sent at once get no more tries than checks sent one by one. A paused caller gets <code>429 {&quot;error&quot;: …, &quot;code&quot;: &quot;locked&quot;, &quot;retryAfter&quot;: &lt;s&gt;}</code> with a <code>Retry-After</code> header. Passkey sign-up and sign-in and the pairing routes are not throttled (their failures reach the audit log at most ten a minute per address). The two routes that redeem a one-time device link (tag <code>passkeys</code>) share the per-address budget, and wrong codes pause the address for link redemption only, from the 21st on, the way wrong reset codes do. Adding or removing a passkey in Settings (<code>POST /api/account/passkeys/options</code>, <code>DELETE /api/account/passkeys</code>) and making a device code (<code>POST /api/account/device-link</code>) spend the per-address budget too, and a current password given there as proof counts like one given at sign-in. The address is the socket's, or with <code>TRUST_PROXY=1</code> the one a trusted proxy put in <code>CF-Connecting-IP</code> / the last <code>X-Forwarded-For</code> entry / <code>X-Real-IP</code>; IPv6 clients are counted by /64. Counters live in memory and reset on restart. The <code>/api/join/{code}</code> routes (tag <code>trainer</code>) count wrong invite codes and taken names against the address for joining only, and pause it the same way.</p>
   </div>
   <div class="ov">
     <h3>Sessions</h3>
@@ -277,7 +278,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="ov">
     <h3>Environment-dependent behavior</h3>
-<ul><li><code>INVITE_ONLY=1</code>: registration requires a valid invite code (minted by an admin).</li><li><code>ALLOW_GUEST=0</code>: hides the client-side &quot;continue without account&quot; mode; the server merely reports the flag via <code>GET /api/config</code> (guest mode never talks to this API at all).</li><li><code>ADMIN_UIDS=&lt;uid&gt;,&lt;uid&gt;</code>: user ids treated as admins (a <code>&quot;admin&quot;: true</code> flag on the user record in <code>db.json</code> works too). Admins get the <code>/api/admin/*</code> routes. One admin is the owner: the record with <code>&quot;owner&quot;: true</code>, else the first <code>ADMIN_UIDS</code> entry with a profile, else the oldest admin. Only the owner appoints and removes admins, deletes an admin, hands the role on and clears the audit log.</li><li><code>FIRST_USER_ADMIN</code> (default off; <code>1</code> turns it on): the first profile registered on an instance with no profiles gets that <code>&quot;admin&quot;: true</code> flag and is the owner. Decided at registration only, never applied to an instance that already has profiles.</li><li><code>AUDIT_LOG</code> (default on), <code>AUDIT_MAX</code> (default 5000 events), <code>AUDIT_DAYS</code> (default 90), <code>AUDIT_IP</code> (<code>off</code> | <code>net</code> | <code>full</code>, default off) shape the audit log served by <code>GET /api/admin/audit</code>.</li><li><code>PASSWORD_LOGIN=1</code>: adds the <code>password</code> routes and <code>password_login: true</code> in <code>GET /api/config</code>. Off by default.</li><li><code>DEFAULT_LANG</code> (e.g. <code>pt-BR</code>; unset by default): <code>default_lang</code> in <code>GET /api/config</code>, the language of the sign-in screen and of every profile that never picked one.</li><li><code>TRUST_PROXY=1</code>: the throttle reads the client address from proxy headers (set by the bundled <code>docker-compose.yml</code>, where only the web container can reach the API).</li><li><code>MEDIA_UPLOADS</code> (default on; <code>0</code> removes the <code>media</code> routes and the <code>media</code> block of <code>GET /api/config</code>), <code>MEDIA_QUOTA_MB</code> (200 per profile, <code>0</code> = no cap), <code>MEDIA_IMAGE_MAX_MB</code> (2), <code>MEDIA_GIF_MAX_MB</code> (8), <code>MEDIA_VIDEO_MAX_MB</code> (40), <code>MEDIA_VIDEO_MAX_SEC</code> (60), <code>MEDIA_GC_GRACE_DAYS</code> (14), <code>MEDIA_UPLOADS_PER_HOUR</code> (600 per profile), <code>MEDIA_MIN_FREE_MB</code> (512, <code>0</code> = no floor): photos and videos of custom exercises (tag <code>media</code>). Every MB here is 2^20 bytes.</li></ul>
+<ul><li><code>INVITE_ONLY=1</code>: registration requires a valid invite code (minted by an admin).</li><li><code>ALLOW_GUEST=0</code>: hides the client-side &quot;continue without account&quot; mode; the server merely reports the flag via <code>GET /api/config</code> (guest mode never talks to this API at all).</li><li><code>ADMIN_UIDS=&lt;uid&gt;,&lt;uid&gt;</code>: user ids treated as admins (a <code>&quot;admin&quot;: true</code> flag on the user record in <code>db.json</code> works too). Admins get the <code>/api/admin/*</code> routes. One admin is the owner: the record with <code>&quot;owner&quot;: true</code>, else the first <code>ADMIN_UIDS</code> entry with a profile, else the oldest admin. Only the owner appoints and removes admins, deletes an admin, hands the role on and clears the audit log.</li><li><code>FIRST_USER_ADMIN</code> (default off; <code>1</code> turns it on): the first profile registered on an instance with no profiles gets that <code>&quot;admin&quot;: true</code> flag and is the owner. Decided at registration only, never applied to an instance that already has profiles.</li><li><code>AUDIT_LOG</code> (default on), <code>AUDIT_MAX</code> (default 5000 events), <code>AUDIT_DAYS</code> (default 90), <code>AUDIT_IP</code> (<code>off</code> | <code>net</code> | <code>full</code>, default off) shape the audit log served by <code>GET /api/admin/audit</code>.</li><li><code>PASSWORD_LOGIN=1</code>: adds the <code>password</code> routes and <code>password_login: true</code> in <code>GET /api/config</code>. Off by default.</li><li><code>TRAINER_MODE=1</code>: adds the <code>trainer</code> routes, <code>trainer_mode: true</code> in <code>GET /api/config</code>, the <code>as: &quot;trainer&quot;</code> sign-up and the <code>role</code> fields of the signed-in user. Personal trainers wait for the owner's approval. Off by default; off, none of it exists and an account has no role.</li><li><code>DEFAULT_LANG</code> (e.g. <code>pt-BR</code>; unset by default): <code>default_lang</code> in <code>GET /api/config</code>, the language of the sign-in screen and of every profile that never picked one.</li><li><code>TRUST_PROXY=1</code>: the throttle reads the client address from proxy headers (set by the bundled <code>docker-compose.yml</code>, where only the web container can reach the API).</li><li><code>MEDIA_UPLOADS</code> (default on; <code>0</code> removes the <code>media</code> routes and the <code>media</code> block of <code>GET /api/config</code>), <code>MEDIA_QUOTA_MB</code> (200 per profile, <code>0</code> = no cap), <code>MEDIA_IMAGE_MAX_MB</code> (2), <code>MEDIA_GIF_MAX_MB</code> (8), <code>MEDIA_VIDEO_MAX_MB</code> (40), <code>MEDIA_VIDEO_MAX_SEC</code> (60), <code>MEDIA_GC_GRACE_DAYS</code> (14), <code>MEDIA_UPLOADS_PER_HOUR</code> (600 per profile), <code>MEDIA_MIN_FREE_MB</code> (512, <code>0</code> = no floor): photos and videos of custom exercises (tag <code>media</code>). Every MB here is 2^20 bytes.</li></ul>
   </div>
   <div class="ov">
     <h3>Conventions</h3>
@@ -343,7 +344,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <div class="ptab">
   <div class="prow rrow">
     <span class="r-code s2">200</span>
-    <span class="p-desc">Instance flags, plus the Coach block for a signed-in caller.<span class="r-sig">{ invite_only: boolean, allow_guest: boolean, coach: object | null, password_login: always true, default_lang: string, media: <a href="#schema-MediaConfig">MediaConfig</a> }</span></span>
+    <span class="p-desc">Instance flags, plus the Coach block for a signed-in caller.<span class="r-sig">{ invite_only: boolean, allow_guest: boolean, coach: object | null, password_login: always true, trainer_mode: always true, default_lang: string, media: <a href="#schema-MediaConfig">MediaConfig</a> }</span></span>
   </div>
     </div>
   </div>
@@ -365,6 +366,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Resolves the current session to a user. A paired phone (bearer token) whose token is past half of <code>SESSION_DAYS</code> also receives a fresh <code>token</code> to use from now on; it carries the account's current session version, so &quot;sign out everywhere&quot; revokes it like the old one. Cookie sessions never get one.</p>
+<p>With <code>TRAINER_MODE=1</code> the <code>user</code> also carries <code>role</code>, <code>trainerStatus</code> and, for a student, <code>trainer</code>, each only when it applies (see SessionUser). The same goes for every other answer that returns a <code>user</code>. Without the flag none of them appear.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 
@@ -391,6 +393,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Returns <code>PublicKeyCredentialCreationOptions</code> (from <code>@simplewebauthn/server</code>'s <code>generateRegistrationOptions</code>) plus a challenge id <code>cid</code>. The client passes <code>options</code> to <code>navigator.credentials.create()</code> (or <code>@simplewebauthn/browser</code>'s <code>startRegistration</code>) and sends the result to <code>/api/register/verify</code> together with the <code>cid</code>. Challenges are one-shot and expire after 5 minutes.</p>
+<p>On an instance with <code>TRAINER_MODE=1</code> the body may also say <code>as: &quot;trainer&quot;</code> (and a <code>phone</code>) to sign up as a personal trainer; see <code>POST /api/register/password</code>.</p>
 <p>No session required.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
@@ -405,6 +408,16 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string</span>
     <span class="p-desc">Invite code, required (and validated) only when the instance runs with INVITE_ONLY. Compared case-insensitively.</span>
   </div>
+  <div class="prow">
+    <span class="p-name">as</span>
+    <span class="p-type">&quot;trainer&quot;</span>
+    <span class="p-desc">Only with TRAINER_MODE=1 (ignored otherwise): sign up as a personal trainer, who waits for the owner's approval. Any other value is a 400 <code>bad-role</code>. A student account cannot be made here; it comes from an invite (<code>/api/join/{code}</code>).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">phone</span>
+    <span class="p-type">string <span class="p-hint">(&le; 30 chars)</span></span>
+    <span class="p-desc">With <code>as: &quot;trainer&quot;</code>: a contact number, optional, cut to 30 characters.</span>
+  </div>
 </div>
 <pre><code>{
   &quot;name&quot;: &quot;Ada&quot;,
@@ -418,7 +431,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc"><code>name</code> missing/empty.<span class="r-sig"><code>{&quot;error&quot;:&quot;name required&quot;}</code></span></span>
+    <span class="p-desc"><code>name</code> missing/empty, or <code>bad-role</code>: <code>as</code> is something other than <code>trainer</code> (TRAINER_MODE=1 only).<span class="r-sig"><code>{&quot;error&quot;:&quot;name required&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;unknown role&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
@@ -436,7 +449,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Finish passkey registration (WebAuthn ceremony, step 2)</span>
   </summary>
   <div class="ep-body">
-<p>Verifies the authenticator's attestation response against the stored challenge (<code>verifyRegistrationResponse</code>), creates the user + credential, and signs the caller in (sets the session cookie). On an invite-only instance the invite is re-checked and burned here.</p>
+<p>Verifies the authenticator's attestation response against the stored challenge (<code>verifyRegistrationResponse</code>), creates the user + credential, and signs the caller in (sets the session cookie). On an invite-only instance the invite is re-checked and burned here. A trainer sign-up started with <code>as: &quot;trainer&quot;</code> in step 1 is created here as a pending trainer.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -797,6 +810,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>For browsers that cannot make a passkey (plain http on a LAN address, some Firefox setups). Creates the profile and signs it in. The same invite rules as passkey registration apply: on an invite-only instance the code is checked first, checked again after hashing, and burned. The password must be 10–256 characters and not one of the passwords guessing scripts try first; no two profiles with a password may share a name. An optional <code>email</code> is stored as the profile's sign-in e-mail (see <code>POST /api/account/email</code>); one that is not an address is refused with <code>400 email-invalid</code>, one that is in use with <code>409 email-taken</code>. Both are asked only after the hash and the second invite check, so without a valid code it is never answered, which counts against the caller's address like a wrong invite code. <b>Not</b> CSRF-exempt.</p>
+<p>On an instance with <code>TRAINER_MODE=1</code>, <code>as: &quot;trainer&quot;</code> (with an optional <code>phone</code>) signs up a personal trainer: the account is <code>pending</code> until the owner approves it. On a server with no accounts yet, the first account instead becomes the owner, an admin and an approved trainer. <code>as</code> is ignored without the flag, and any value but <code>trainer</code> is a 400 <code>bad-role</code>. <code>/api/register/options</code> and <code>/verify</code> take the same two fields.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -820,6 +834,16 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string <span class="p-hint">(&le; 254 chars)</span></span>
     <span class="p-desc">Optional sign-in e-mail.</span>
   </div>
+  <div class="prow">
+    <span class="p-name">as</span>
+    <span class="p-type">&quot;trainer&quot;</span>
+    <span class="p-desc">Only with TRAINER_MODE=1: sign up as a personal trainer. Any other value is <code>bad-role</code>.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">phone</span>
+    <span class="p-type">string <span class="p-hint">(&le; 30 chars)</span></span>
+    <span class="p-desc">With <code>as: &quot;trainer&quot;</code>: a contact number, optional.</span>
+  </div>
 </div>
 <pre><code>{
   &quot;name&quot;: &quot;Ada&quot;,
@@ -834,7 +858,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc">The password breaks the policy with <code>too-short</code> (under 10 characters), <code>too-long</code> (over 256) or <code>too-common</code>; a field is <code>missing</code>; or <code>email-invalid</code>: the <code>email</code> given is not an e-mail address.<span class="r-sig"><code>{&quot;error&quot;:&quot;this password is too easy to guess&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;that is not an e-mail address&quot;}</code></span></span>
+    <span class="p-desc">The password breaks the policy with <code>too-short</code> (under 10 characters), <code>too-long</code> (over 256) or <code>too-common</code>; a field is <code>missing</code>; or <code>email-invalid</code>: the <code>email</code> given is not an e-mail address; or <code>bad-role</code>: <code>as</code> is something other than <code>trainer</code> (TRAINER_MODE=1 only).<span class="r-sig"><code>{&quot;error&quot;:&quot;this password is too easy to guess&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;that is not an e-mail address&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;unknown role&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
@@ -1192,7 +1216,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 <p>Refused while it is the profile's last way in: its only passkey, and no password that can sign in (a password counts only while <code>PASSWORD_LOGIN</code> is on). Otherwise the body carries the same proof adding one takes (<code>OwnerProof</code>): a session alone is never enough, since a stolen cookie could otherwise choose which of the owner's passkeys is left. Any of the profile's passkeys may confirm, the one being removed included. The 404 and 409 refusals come before the proof is checked, and the last-way-in rule is checked again after it. Audited as <code>auth.passkey.remove</code>. An unused device code of the profile is dropped too, so one made with the removed passkey cannot add another afterwards.</p>
 <p>Sessions are not tied to the passkey that opened them, so a session it already opened carries on; <code>POST /api/logout/all</code> ends those.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
+<p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">id<em class="p-req" title="required">required</em></span>
     <span class="p-type">string</span>
@@ -1636,7 +1660,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="ep-body">
 <p>Asked by the phone app in the background before a missed-day nudge or a workout-day reminder it scheduled on itself fires, so a day trained on another device is not nudged. A few bytes instead of the whole document: <code>done</code> is true when a workout is dated that day or the day carries a note; <code>nudge</code> is whether the server's copy of the nudge rule would still nudge that day (false once it is done, or when the plan has no session for it); <code>rev</code> is the profile's revision. Nothing of the workouts themselves.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
+<p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">date<em class="p-req" title="required">required</em></span>
     <span class="p-type">string <span class="p-hint">(date)</span></span>
@@ -1746,7 +1770,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="ep-body">
 <p>Whether the caller's account has a stored subscription with exactly this <code>endpoint</code>. The browser's <code>PushManager.getSubscription()</code> says nothing about the server's side: a row pruned after a dead send (404/410/403) leaves the browser subscribed to nowhere. So the client asks here before showing the notifications switch as on, and re-registers when the answer is no. A stored subscription also names the <code>deviceId</code> it is stored with, and the client re-registers when that is not its own: a row stored without one (from before device ids) sends that device's rest-timer alerts to every subscription of the account.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
+<p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">endpoint<em class="p-req" title="required">required</em></span>
     <span class="p-type">string <span class="p-hint">(uri)</span></span>
@@ -2004,7 +2028,13 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 <p>The stored file, whole, from the caller's own folder only: another profile's file answers exactly like one that was never uploaded (404). The body is the file, not JSON, with headers that keep a browser from ever treating it as a page: <code>Content-Type</code> from the sniffed type (never <code>text/*</code> or SVG), <code>X-Content-Type-Options: nosniff</code>, <code>Content-Security-Policy: default-src 'none'; sandbox</code>, <code>Cross-Origin-Resource-Policy: same-origin</code>, <code>Content-Disposition: inline</code>, <code>X-Robots-Tag: noindex</code> and <code>Cache-Control: private, no-store</code>. The app keeps its own verified copy, and an HTTP-cache copy would outlive signing out.</p>
 <p>No <code>Range</code> and no <code>ETag</code>: the app downloads a file once, checks it against its hash and keeps it. A paired phone fetches with its bearer token; <code>&lt;img src&gt;</code> cannot carry one. Not throttled.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">hash <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The SHA-256 of the file's bytes, 64 lowercase hex characters.</span>
+  </div>
+</div>
 
     <p class="ep-h">Responses</p>
     <div class="ptab">
@@ -2037,7 +2067,13 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 <p>Checked in this order: session (401), the hourly budget and at most two uploads at once per profile (429), the declared type (415), a declared length over the cap (413 before a byte is read), already stored (200), the quota (413 <code>media-quota</code>; files the profile already dropped get one hour instead of the grace to make room), free disk (507), then while and after streaming: size (413), hash (400), sniffed type (415), sniffed cap (413), video checks (415/413). No bytes for 60 s ends the upload with 408. A refused upload is read and discarded up to twice its cap, so the answer reaches the client.</p>
 <p>A new file that the profile's state does not reference yet starts its grace period at once, so a state push that never comes does not keep it forever.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
-
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">hash <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The SHA-256 of the file's bytes, 64 lowercase hex characters.</span>
+  </div>
+</div>
 
     <p class="ep-h">Responses</p>
     <div class="ptab">
@@ -2156,6 +2192,549 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">429</span>
     <span class="p-desc">More than 10 sweeps this hour (<code>locked</code>).<span class="r-sig"><code>{&quot;error&quot;:&quot;too many uploads, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+  </div>
+</section>
+
+<section class="api-sec" id="trainer">
+  <h2>Trainer mode</h2>
+  <p class="sub">Personal trainers and their students (<code>TRAINER_MODE=1</code>): the trainer's student list and invites, joining with an invite, and the student's side of the link. Every route here is a 404 while the flag is off. Someone who may not use a route gets the same 404 as for a path that does not exist, so another trainer's students cannot be told apart from students who are not there. Owner approval of trainers is under <code>admin</code>.</p>
+  <div class="eps">
+
+<details class="ep" id="op-trainerStudents">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/trainer/students</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: list my students</span>
+  </summary>
+  <div class="ep-body">
+<p>Every student record of the signed-in trainer, whatever its status (<code>invited</code>, <code>active</code> or <code>unlinked</code>). Approved trainers only: a pending trainer gets <code>403 trainer-pending</code>, and an account that is not a trainer gets the same 404 as a path that does not exist. Only the trainer's own students are ever listed.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The trainer's students.<span class="r-sig">{ students: <a href="#schema-TrainerStudent">TrainerStudent</a>[] }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerStudentAdd">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/trainer/students</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: add a student and make their invite</span>
+  </summary>
+  <div class="ep-body">
+<p>Creates the student's record (<code>invited</code>) and a single-use invite code, valid for 7 days. The code is in this answer and nowhere else: it is stored only as a hash, so the trainer sends it on (the app builds the link <code>?join=CODE</code>) or asks for a new one with <code>POST /api/trainer/students/{id}/invite</code>. The student cannot sign up without it. Approved trainers only.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc">The student's name (trimmed).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">phone</span>
+    <span class="p-type">string <span class="p-hint">(&le; 30 chars)</span></span>
+    <span class="p-desc">Optional. Cut to 30 characters.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">email</span>
+    <span class="p-type">string <span class="p-hint">(&le; 254 chars)</span></span>
+    <span class="p-desc">Optional. Kept on the record only</span>
+  </div>
+</div>
+<pre><code>{
+  &quot;name&quot;: &quot;Bia&quot;,
+  &quot;phone&quot;: &quot;+351 912 345 678&quot;
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The record and the code, shown once.<span class="r-sig">{ student: <a href="#schema-TrainerStudent">TrainerStudent</a>, code: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>bad-name</code>: the name is empty or longer than 40 characters.<span class="r-sig"><code>{&quot;error&quot;:&quot;name must be 1 to 40 characters&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerStudentRemove">
+  <summary>
+    <span class="m delete">DELETE</span>
+    <span class="ep-path"><code>/api/trainer/students/{id}</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: remove a student who never joined</span>
+  </summary>
+  <div class="ep-body">
+<p>Deletes the record of a student who never joined (<code>invited</code>, or <code>unlinked</code> without ever having been linked) together with their invite. A student who joined is history and is unlinked instead (<code>POST /api/trainer/students/{id}/unlink</code>). Approved trainers only. Another trainer's student, an unknown id and a malformed one all answer the same 404.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The student id from <code>GET /api/trainer/students</code>.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Removed.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>use-unlink</code>: the student joined, so the link has to be ended instead.<span class="r-sig"><code>{&quot;error&quot;:&quot;unlink this student instead&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerStudentInvite">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/trainer/students/{id}/invite</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: make a new invite for a student</span>
+  </summary>
+  <div class="ep-body">
+<p>A new code for a student who has not joined yet. It replaces the earlier one, which stops working. Valid for 7 days and single use. The code is in this answer only.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The student id from <code>GET /api/trainer/students</code>.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The new code, shown once.<span class="r-sig">{ code: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>not-invited</code>: the student already joined or was unlinked.<span class="r-sig"><code>{&quot;error&quot;:&quot;this student is not waiting for an invite&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerStudentUnlink">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/trainer/students/{id}/unlink</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: end the link with a student</span>
+  </summary>
+  <div class="ep-body">
+<p>The student's account stays and keeps its data but has no trainer any more, the record becomes <code>unlinked</code> and any unused invite for it goes. Unlinking a record that is already unlinked is a 200 that changes nothing.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The student id from <code>GET /api/trainer/students</code>.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Unlinked.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-joinPreview">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/join/{code}</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">See who an invite is from</span>
+  </summary>
+  <div class="ep-body">
+<p>What the student sees before signing up: the trainer's name, their own name and what the trainer can see. A wrong, used or expired code, a trainer who can no longer take students and a student who already has an account all answer the same 404, and each counts against the caller's address (see <i>Throttling</i>). No session needed.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The invite code. Dashes, spaces and case do not matter.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The invite is live.<span class="r-sig">{ trainerName: string, studentName: string, shares: (&quot;workouts&quot; | &quot;measures&quot; | &quot;photos&quot; | &quot;diet&quot;)[] }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Wrong, used or expired code, or the invite cannot be redeemed any more.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-joinPassword">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/join/{code}/password</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Join with a name and password</span>
+  </summary>
+  <div class="ep-body">
+<p>Creates the student's account with a name and password, links it to the trainer, spends the invite and signs in. Joining through an invite is the only way a student account is made. The invite is checked again after the password is hashed. On an <code>INVITE_ONLY</code> instance no admin invite code is asked for here: the trainer's invite is the invite. The route exists only with <code>PASSWORD_LOGIN=1</code> as well (a 404 without it); otherwise the student joins with a passkey. The password must be 10 to 256 characters and not one of the very common ones. <b>Not</b> CSRF-exempt.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The invite code.</span>
+  </div>
+</div>
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc">The name to sign in with. Defaults to the name the trainer gave.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">password<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">consent</span>
+    <span class="p-type"><a href="#schema-StudentConsentInput">StudentConsentInput</a></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+<pre><code>{
+  &quot;password&quot;: &quot;correct horse battery staple&quot;,
+  &quot;consent&quot;: {
+    &quot;measures&quot;: true,
+    &quot;photos&quot;: false,
+    &quot;diet&quot;: false
+  }
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Joined and signed in. The session cookie is set.<span class="r-sig">{ user: <a href="#schema-SessionUser">SessionUser</a> } &middot; sets <code>Set-Cookie</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">The new password breaks the policy (<code>too-short</code> under 10 characters, <code>too-long</code> over 256, or <code>too-common</code>), or a field is <code>missing</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;this password is too easy to guess&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Wrong, used or expired code, or the invite cannot be redeemed any more.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">Another profile already signs in with this name, or holds it with a reset code that has not been used or expired yet.<span class="r-sig"><code>{&quot;error&quot;:&quot;another profile already signs in with this name&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-joinOptions">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/join/{code}/options</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Start joining with a passkey (step 1)</span>
+  </summary>
+  <div class="ep-body">
+<p>Like <code>POST /api/register/options</code>, for a student with an invite. Returns the WebAuthn options and a one-shot challenge id (<code>cid</code>), tied to this invite. The account is not made until <code>/verify</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The invite code.</span>
+  </div>
+</div>
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span> <span class="p-hint">(optional)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc">The display name. Defaults to the name the trainer gave.</span>
+  </div>
+</div>
+<pre><code>{
+  &quot;name&quot;: &quot;Bia&quot;
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Ceremony options.<span class="r-sig">{ cid: string, options: <a href="#schema-WebAuthnRegistrationOptions">WebAuthnRegistrationOptions</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Wrong, used or expired code, or the invite cannot be redeemed any more.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">Another profile already signs in with this name, or holds it with a reset code that has not been used or expired yet.<span class="r-sig"><code>{&quot;error&quot;:&quot;another profile already signs in with this name&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-joinVerify">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/join/{code}/verify</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Finish joining with a passkey (step 2)</span>
+  </summary>
+  <div class="ep-body">
+<p>Verifies the passkey, then checks the invite and the name once more, creates the student's account, links it to the trainer, spends the invite and signs in. Anything wrong with the invite at this point is the same 404 as before.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The invite code.</span>
+  </div>
+</div>
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">cid<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The challenge id from <code>/options</code>.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">credential<em class="p-req" title="required">required</em></span>
+    <span class="p-type"><a href="#schema-WebAuthnRegistrationCredential">WebAuthnRegistrationCredential</a></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">consent</span>
+    <span class="p-type"><a href="#schema-StudentConsentInput">StudentConsentInput</a></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Joined and signed in. The session cookie is set.<span class="r-sig">{ user: <a href="#schema-SessionUser">SessionUser</a> } &middot; sets <code>Set-Cookie</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>challenge-expired</code>: the challenge is unknown, used, expired or was made for another ceremony; or the attestation did not verify.<span class="r-sig"><code>{&quot;error&quot;:&quot;challenge expired, try again&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Wrong, used or expired code, the code is not the one <code>/options</code> was asked with, or the invite cannot be redeemed any more.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc"><code>name-taken</code> (see NameTaken), or this credential id is already registered.<span class="r-sig"><code>{&quot;error&quot;:&quot;another profile already signs in with this name&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-studentTrainer">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/student/trainer</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Student: who is my trainer, and what do I share</span>
+  </summary>
+  <div class="ep-body">
+<p>For a student account. <code>trainer</code> is <code>null</code> once the link has ended or the trainer can no longer take students, and <code>since</code> with it. Any other account gets the same 404 as a path that does not exist.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The link and the consent on record.<span class="r-sig">{ trainer: object | null, since: integer | null, consent: <a href="#schema-StudentConsent">StudentConsent</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-studentConsent">
+  <summary>
+    <span class="m put">PUT</span>
+    <span class="ep-path"><code>/api/student/consent</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Student: choose what the trainer may see</span>
+  </summary>
+  <div class="ep-body">
+<p>Replaces the consent with the three answers and stamps the time. Workouts are not optional, so they are not in the body. For a student account only.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body</p><p class="p-desc"><a href="#schema-StudentConsentInput">StudentConsentInput</a></p>
+<pre><code>{
+  &quot;measures&quot;: true,
+  &quot;photos&quot;: false,
+  &quot;diet&quot;: false
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved.<span class="r-sig">{ consent: <a href="#schema-StudentConsent">StudentConsent</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>bad-consent</code>: <code>measures</code>, <code>photos</code> or <code>diet</code> is missing or not a true or false.<span class="r-sig"><code>{&quot;error&quot;:&quot;measures, photos and diet must each be true or false&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-studentUnlink">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/student/unlink</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Student: leave my trainer</span>
+  </summary>
+  <div class="ep-body">
+<p>Ends the link from the student's side, with the same effect as the trainer ending it: the account and its data stay, the trainer loses access. Always 200 for a student account, also when there is no trainer any more.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Unlinked.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
   </div>
     </div>
   </div>
@@ -2771,7 +3350,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="ep-body">
 <p>Drill-down: full workout history (newest first) and body-weight log for one user. Admin only. Anything in <code>routines</code>, <code>bodyweight</code> or <code>workouts</code> that is not an object is left out, and a list that is not an array reads as empty: PUT /api/data drops those entries now, but a state file written before it did still has them and this route has to answer for it. A workout's <code>media</code> (its photos and videos) is left out: they are the owner's own.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
+<p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">id<em class="p-req" title="required">required</em></span>
     <span class="p-type">string</span>
@@ -3107,7 +3686,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="ep-body">
 <p>The audit log (sign-ins, failed attempts, admin actions), newest first, paged by event id (<code>before</code> cursor; offset paging would repeat rows as new events land). Retention (<code>AUDIT_MAX</code> events / <code>AUDIT_DAYS</code> days) is applied on read as well as on the hourly compaction. When <code>AUDIT_LOG</code> is off the route still answers, with <code>enabled: false</code> and whatever was logged before.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
-<p class="ep-h">Query parameters</p><div class="ptab">
+<p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
     <span class="p-name">limit</span>
     <span class="p-type">integer <span class="p-hint">(1&ndash;200, default 100)</span></span>
@@ -3454,6 +4033,173 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     </div>
   </div>
 </details>
+
+<details class="ep" id="op-adminTrainers">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/admin/trainers</code><span class="ep-chip admin">admin</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">List personal trainers</span>
+  </summary>
+  <div class="ep-body">
+<p>Every account with the trainer role, pending and approved, with the number of students each has now (unlinked ones not counted). No e-mail or phone. Admin only. Exists only with <code>TRAINER_MODE=1</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The trainers.<span class="r-sig">{ trainers: object[] }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-adminTrainerApprove">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/admin/trainer/approve</code><span class="ep-chip admin">admin</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Owner: approve a pending trainer</span>
+  </summary>
+  <div class="ep-body">
+<p>Owner only (403 for any other admin). Turns a pending trainer into an approved one, who can then add students. Exists only with <code>TRAINER_MODE=1</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The user id.</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Approved.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>not-pending</code>: the account is not a pending trainer (or it is an admin).<span class="r-sig"><code>{&quot;error&quot;:&quot;not a pending trainer&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No user with that id.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such user&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-adminTrainerReject">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/admin/trainer/reject</code><span class="ep-chip admin">admin</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Owner: reject a pending trainer</span>
+  </summary>
+  <div class="ep-body">
+<p>Owner only (403 for any other admin). Deletes the pending account and everything that was theirs, the way deleting any account does. An approved trainer is not rejected from here. A pending trainer nobody answers is removed the same way after 30 days. Exists only with <code>TRAINER_MODE=1</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The user id.</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Rejected and deleted.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>not-pending</code>: the account is not a pending trainer (or it is an admin).<span class="r-sig"><code>{&quot;error&quot;:&quot;not a pending trainer&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No user with that id.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such user&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-adminUserTrainer">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/admin/user/trainer</code><span class="ep-chip admin">admin</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Owner: turn trainer mode on or off for an account</span>
+  </summary>
+  <div class="ep-body">
+<p>Owner only (403 for any other admin). On: the account, the owner's own included, becomes an approved trainer (a pending one is approved). Off: the role goes and so does the phone number, and the trainer's students lose the link, as when a trainer is deleted; their accounts and data stay. Exists only with <code>TRAINER_MODE=1</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Admin only: a signed-in session whose user is an admin (<code>ADMIN_UIDS</code> or <code>admin:true</code>), as the session cookie or a Bearer token.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The user id.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">on<em class="p-req" title="required">required</em></span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Changed.<span class="r-sig">{ ok: always true, id: string, role: &quot;trainer&quot; | null }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>on</code> is not a boolean; <code>student</code>: a student cannot be a trainer; or <code>not-trainer</code>: switching off an account that is not a trainer.<span class="r-sig"><code>{&quot;error&quot;:&quot;a student cannot be a trainer&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Signed in, but not an admin. The attempt is recorded in the audit log.<span class="r-sig"><code>{&quot;error&quot;:&quot;forbidden&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No user with that id.<span class="r-sig"><code>{&quot;error&quot;:&quot;no such user&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
   </div>
 </section>
 
@@ -3624,6 +4370,130 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-name">admin</span>
     <span class="p-type">boolean</span>
     <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">role</span>
+    <span class="p-type">&quot;trainer&quot; | &quot;student&quot;</span>
+    <span class="p-desc">Present only on an instance with <code>TRAINER_MODE=1</code>, and only for an account that has one. A personal trainer is <code>trainer</code>; a student who joined with an invite is <code>student</code>.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">trainerStatus</span>
+    <span class="p-type">&quot;pending&quot; | &quot;approved&quot;</span>
+    <span class="p-desc">Present only with <code>role: trainer</code>. A <code>pending</code> trainer waits for the owner's approval.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">trainer</span>
+    <span class="p-type">object</span>
+    <span class="p-desc">Present only with <code>role: student</code>, and only while the student has a trainer who is approved.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">trainer.name</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-TrainerStudent">
+  <summary>
+    <span class="sch-name"><code>TrainerStudent</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">One student as their trainer sees them.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The student id; it becomes the account id when the invite is redeemed.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">status</span>
+    <span class="p-type">&quot;invited&quot; | &quot;active&quot; | &quot;unlinked&quot;</span>
+    <span class="p-desc"><code>invited</code> until the student joins, <code>active</code> while linked, <code>unlinked</code> after the link ended.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">phone</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">created</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Ms since epoch.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">linkedAt</span>
+    <span class="p-type">integer | null</span>
+    <span class="p-desc">When the student joined, ms since epoch; <code>null</code> before.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-StudentConsentInput">
+  <summary>
+    <span class="sch-name"><code>StudentConsentInput</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">What a student lets the trainer see besides workouts, which are always shared.</span>
+  </summary>
+  <div class="ep-body">
+<p>Only a real <code>true</code> counts as a yes; when joining, a missing field or a missing object means no.</p>
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">measures</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc">Body measurements.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">photos</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc">Progress photos.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">diet</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc">Diet.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-StudentConsent">
+  <summary>
+    <span class="sch-name"><code>StudentConsent</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">The consent on record for a student.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">measures</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">photos</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">diet</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">at</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc">ISO timestamp of the answer; <code>null</code> if none was recorded.</span>
   </div>
 </div>
   </div>

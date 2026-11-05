@@ -128,8 +128,16 @@ written temp-then-rename (`durable.js`). Custom-exercise photos and videos live 
 `DATA_DIR/uploads` (`media.js`). Auth is WebAuthn passkeys (`@simplewebauthn/server`), an optional
 password, and a signed session cookie (HMAC with `DATA_DIR/secret`); paired phones get the same
 session as a bearer token. Optional pieces are gated by env vars: `ADMIN_UIDS`, `INVITE_ONLY`,
-`ALLOW_GUEST`, `PASSWORD_LOGIN`, `AUDIT_*`. Web Push (`web-push`, VAPID keys in `data/vapid.json`)
+`ALLOW_GUEST`, `PASSWORD_LOGIN`, `TRAINER_MODE`, `AUDIT_*`. Web Push (`web-push`, VAPID keys in `data/vapid.json`)
 drives rest-timer and reminder notifications.
+
+Trainer mode (`TRAINER_MODE`, off by default; personal trainers and their students) lives in small
+modules beside `server.js`: `trainer-routes.js` (a factory spread into `routes` only when the mode is
+on; `/api/join/*`, `/api/trainer/*`, `/api/student/*`, `/api/admin/trainer*`), `trainer-access.js` (roles and
+`canAccessStudent`, the one permission check), `trainer-store.js` (student records under
+`DATA_DIR/trainers/<trainerId>/`) and `student-invite.js` (single-use invite codes, stored hashed). Access
+that is denied answers 404, like an unknown student. New modules the image needs go in the
+`Dockerfile` COPY list (`dockerfile-copy.test.js` checks it).
 
 ### Sync
 
@@ -160,7 +168,7 @@ Stdio MCP bridge (`@modelcontextprotocol/sdk`) that reads one user's data straig
 WebAuthn passkeys are bound to an exact hostname (`RP_ID`) and need HTTPS (localhost excepted).
 Read `docs/SELF_HOSTING.md` before touching auth, session or notification code; it documents the
 env-var contract (`RP_ID`, `ORIGIN`, `PORT`, `WEB_PORT`, `NGINX_PORT`, `BACKEND`, `SESSION_DAYS`,
-`ADMIN_UIDS`, `INVITE_ONLY`, `ALLOW_GUEST`, `AUDIT_*`, `VAPID_SUBJECT`) that real deployments
+`ADMIN_UIDS`, `INVITE_ONLY`, `ALLOW_GUEST`, `TRAINER_MODE`, `AUDIT_*`, `VAPID_SUBJECT`) that real deployments
 depend on.
 
 ### Docker / deploy

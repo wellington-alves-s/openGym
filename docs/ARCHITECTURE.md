@@ -137,7 +137,7 @@ the old one (`durable.js`), so a crash never leaves half a file.
 
 Sign-in is a passkey (`@simplewebauthn/server`), optionally a password, plus a signed session
 cookie. Phones get the same signed session as a bearer token, made by pairing with a one-time code
-(`device-link.js`). Every route is listed in `api/openapi.yaml`, and `openapi-routes.test.js` fails
+(`device-link.js`). With `TRAINER_MODE=1` it also serves personal trainers and their students: trainer approval by the owner and single-use student invites (`trainer-routes.js`, `student-invite.js`). Every route is listed in `api/openapi.yaml`, and `openapi-routes.test.js` fails
 when the two disagree.
 
 ## Exercise media

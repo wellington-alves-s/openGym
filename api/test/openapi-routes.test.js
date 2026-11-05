@@ -1,7 +1,7 @@
 /* openapi.yaml says of itself: "Every route the server registers is documented here; if you add
    a route there, add it here too." Sixteen of them were not — the whole AI Coach surface, user
    and admin. Nothing was checking, so this does: the route table is one `'METHOD /path':` key per
-   handler in two files, and the spec is one `get:`/`post:` under one path key, both of which can
+   handler in three files, and the spec is one `get:`/`post:` under one path key, both of which can
    be read without a YAML parser (there is none in this package, by design).
 
    Plus the trap this test was written after: the doc generator renders the tags it knows and
@@ -39,7 +39,8 @@ function specOperations(yaml) {
 test('every route the server registers is in openapi.yaml, and nothing else is', () => {
   const routes = new Set([
     ...routeKeys(read(path.join(API, 'server.js'))),
-    ...routeKeys(read(path.join(API, 'coach', 'routes.js')))
+    ...routeKeys(read(path.join(API, 'coach', 'routes.js'))),
+    ...routeKeys(read(path.join(API, 'trainer-routes.js')))
   ]);
   const ops = new Set(specOperations(spec));
   assert.ok(routes.size > 40, `only found ${routes.size} routes — the route table moved`);
