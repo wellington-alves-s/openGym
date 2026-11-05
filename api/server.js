@@ -16,6 +16,7 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
+import { trainerRoutes, trainerStudentKey } from './trainer-routes.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -2956,6 +2957,10 @@ const routes = {
   // a cycle. Every one of them is inert while the feature is unconfigured.
   ...coachRoutes({ json, readBody, readSession, requireAdmin }),
 
+  /* ---------- trainer mode ---------- */
+  // trainer-routes.js, handed its helpers the same way. Absent while TRAINER_MODE is off.
+  ...(TRAINER_MODE ? trainerRoutes({ json, readBody, readSession, db, saveDb, audit, DATA, text }) : {}),
+
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature
   // answers, and the client already treats that as "this server does not store them".
@@ -3041,10 +3046,11 @@ const server = http.createServer(async (req, res) => {
   const sent = req.url.split('?')[0];
   if (sent.startsWith('/') && sent !== url.pathname) return json(res, 400, { error: 'bad request' });
   let key = req.method + ' ' + url.pathname;
-  // The one route with a parameter in its path. Mapped onto its template key here so the table
+  // Routes with a parameter in their path. Mapped onto their template key here so the table
   // above stays a plain lookup, and so csrfOk and the catch-all see one name for every file.
   const mm = /^\/api\/media\/([0-9a-f]{64})$/.exec(url.pathname);
   if (mm) { key = req.method + ' /api/media/{hash}'; req.mediaHash = mm[1]; }
+  else key = trainerStudentKey(req, url.pathname) || key;
   const handler = routes[key];
   if (!handler) return json(res, 404, { error: 'not found' });
   if (!csrfOk(req, key)) {
