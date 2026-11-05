@@ -18,7 +18,10 @@ const length = s => [...String(s || '')].length
 
 export default function Join({ code }) {
   const config = useStore(s => s.config)
-  const [info, setInfo] = useState(null)   // null while loading, false when the invite is no good
+  // null while loading; 'gone' when the server says the invite is no good (404); 'failed' when it
+  // could not be asked (network, 5xx...), which the person may try again.
+  const [info, setInfo] = useState(null)
+  const [attempt, setAttempt] = useState(0)
   const [name, setName] = useState('')
   const [consent, setConsent] = useState({ measures: false, photos: false, diet: false })
   // The password only where the instance takes them; the passkey first where both work.
@@ -32,12 +35,20 @@ export default function Join({ code }) {
 
   useEffect(() => {
     let live = true
-    joinInfo(code).then(i => { if (live) { setInfo(i); setName(i.studentName || '') } }).catch(() => { if (live) setInfo(false) })
+    joinInfo(code).then(i => {
+      if (!i?.trainerName) throw new Error('bad answer')
+      if (live) { setInfo(i); setName(i.studentName || '') }
+    }).catch(e => { if (live) setInfo(e?.status === 404 ? 'gone' : 'failed') })
     return () => { live = false }
-  }, [code])
+  }, [code, attempt])
 
   if (info === null) return <div style={{ ...wrap, alignItems: 'center', fontSize: 34, color: 'var(--label-3)' }}><Icon name="dumbbell" /></div>
-  if (!info) return <div className="narrow" style={{ ...wrap, textAlign: 'center' }}>
+  if (info === 'failed') return <div className="narrow" style={{ ...wrap, textAlign: 'center' }}>
+    <div className="card small muted" role="alert">{t('Could not reach the server. Check your connection and try again.')}</div>
+    <div style={{ height: 12 }} />
+    <Button onClick={() => { setInfo(null); setAttempt(a => a + 1) }}>{t('Try again')}</Button>
+  </div>
+  if (info === 'gone') return <div className="narrow" style={{ ...wrap, textAlign: 'center' }}>
     <div className="card small muted" role="alert">{t('This invite is no longer valid. Ask your trainer for a new one.')}</div>
   </div>
 
@@ -62,6 +73,8 @@ export default function Join({ code }) {
       useUI.getState().toast(t('Welcome, {0}', u.name))
     } catch (e) {
       if (e.name === 'NotAllowedError' || e.name === 'AbortError') return
+      // Spent or expired between loading and submitting: the same answer as for a dead link.
+      if (e?.status === 404) { setInfo('gone'); return }
       setErr(e?.data?.code === 'name-taken' ? t('That name is already taken. Pick another one.')
         : !passwordWay && e?.status !== 429 ? passkeyError(e, t('Registration failed')) : passwordError(e))
     } finally { setBusy(false) }

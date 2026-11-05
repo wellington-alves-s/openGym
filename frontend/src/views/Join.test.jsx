@@ -107,6 +107,48 @@ describe('Join', () => {
     expect(page.textContent).toContain('This invite is no longer valid. Ask your trainer for a new one.')
     expect(page.querySelector('form')).toBeNull()
     expect(page.querySelector('input')).toBeNull()
+    expect(page.querySelector('button')).toBeNull()   // no retry: the invite is dead
+  })
+
+  it.each([['no status', new Error('Failed to fetch')], ['a 503', fail(503, { error: 'busy' })]])(
+    'a load that failed with %s is not an invalid invite: it can be tried again', async (_, error) => {
+      mocks.joinInfo.mockRejectedValueOnce(error)
+      const page = await open()
+      expect(page.textContent).toContain('Could not reach the server. Check your connection and try again.')
+      expect(page.textContent).not.toContain('no longer valid')
+      expect(page.querySelector('form')).toBeNull()
+      act(() => [...page.querySelectorAll('button')].find(b => b.textContent === 'Try again').click())
+      await settle()
+      expect(mocks.joinInfo).toHaveBeenCalledTimes(2)
+      expect(mocks.joinInfo).toHaveBeenLastCalledWith('AAAA-BBBB-CCCC')
+      expect(page.textContent).toContain('Di will see your workouts')
+      expect(page.querySelector('form')).toBeTruthy()
+    })
+
+  it('an answer that is not an invite is a failed load too', async () => {
+    mocks.joinInfo.mockResolvedValueOnce({})
+    const page = await open()
+    expect(page.textContent).toContain('Could not reach the server')
+  })
+
+  it('a code spent between loading and submitting replaces the form with the invalid card', async () => {
+    mocks.joinWithPassword.mockRejectedValue(fail(404, { error: 'not found' }))
+    const page = await open()
+    fillPassword(page)
+    await submit(page)
+    expect(page.textContent).toContain('This invite is no longer valid. Ask your trainer for a new one.')
+    expect(page.querySelector('form')).toBeNull()
+    expect(page.textContent).not.toContain('not found')
+  })
+
+  it('the same at the passkey step', async () => {
+    mocks.webauthn = true
+    mocks.config = {}
+    mocks.joinWithPasskey.mockRejectedValue(fail(404, { error: 'not found' }))
+    const page = await open()
+    await submit(page)
+    expect(page.textContent).toContain('This invite is no longer valid')
+    expect(page.querySelector('form')).toBeNull()
   })
 
   it('a name in use is said, and the form stays with the name editable', async () => {
