@@ -154,6 +154,20 @@ test('a trainer disabled, no longer one, pending or gone: 404 and no account', a
   assert.equal(s.db().users.length, USERS.length + trainers.length);
 });
 
+test('a join that died after writing the record (active, no account yet) can be finished with the same code', async t => {
+  const left = createStudentInvite({}, 'coachAAA', 'halfway01');
+  const s = await startServer(t, { env: ON, users: USERS, seed: { studentInvites: [left.invite] } });
+  writeRecord(s, 'coachAAA', 'halfway01', 'Half');
+  const p = path.join(s.dir, 'trainers', 'coachAAA', 'students', 'halfway01.json');
+  fs.writeFileSync(p, JSON.stringify({ ...JSON.parse(fs.readFileSync(p, 'utf8')), status: 'active', linkedAt: 5 }));
+  assert.equal((await s.call(`/api/join/${left.code}`)).status, 200);
+  const r = await joinPw(s, left.code);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.user.id, 'halfway01');
+  // Once the account exists, the same record is no longer a way in.
+  assert.equal((await s.call(`/api/join/${left.code}`)).status, 404);
+});
+
 test('INVITE_ONLY does not apply: no admin code is asked for', async t => {
   const s = await startServer(t, { env: { ...ON, INVITE_ONLY: '1' }, users: USERS });
   const { code } = await addStudent(s);

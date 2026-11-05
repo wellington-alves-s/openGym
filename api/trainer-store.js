@@ -38,6 +38,16 @@ export function writeStudent(dir, trainerId, record) {
   return next;
 }
 
+// The trainer's whole folder, every record in it; only when the trainer account itself goes.
+// → true when there was one to remove.
+export function removeTrainerDir(dir, trainerId) {
+  if (!validId(trainerId)) return false;
+  const folder = path.join(dir, 'trainers', trainerId);
+  if (!fs.existsSync(folder)) return false;
+  fs.rmSync(folder, { recursive: true, force: true });
+  return true;
+}
+
 export function removeStudent(dir, trainerId, studentId) {
   if (!validId(trainerId) || !validId(studentId)) return false;
   try { fs.unlinkSync(path.join(studentsDir(dir, trainerId), studentId + '.json')); return true; }

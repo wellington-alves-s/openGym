@@ -111,20 +111,20 @@ test('a student leaves: no trainer on me, the trainer is locked out, the data st
   assert.equal(s.db().users.find(u => u.id === 'stud0002').trainerId, 'coachAAA');
 });
 
-test('deleting a trainer unlinks both students and drops their invites', async t => {
+test('deleting a trainer unlinks both students, drops their invites and removes the trainer folder', async t => {
   const s = await startServer(t, { ...ON, seed: { studentInvites: [] } });
   seed(s);
-  const rita = (await s.call('/api/trainer/students', { method: 'POST', body: { name: 'Rita' }, as: 'coachAAA' })).body.student;
+  seed(s, ['stud0003'], 'coachBBB');
+  await s.call('/api/trainer/students', { method: 'POST', body: { name: 'Rita' }, as: 'coachAAA' });
   await s.call('/api/trainer/students', { method: 'POST', body: { name: 'Other' }, as: 'coachBBB' });
   assert.equal(s.db().studentInvites.length, 2);
   const r = await s.call('/api/admin/user/delete', { method: 'POST', body: { id: 'coachAAA' }, as: 'admin001' });
   assert.equal(r.status, 200);
   const db = s.db();
-  for (const id of ['stud0001', 'stud0002']) {
-    assert.equal('trainerId' in db.users.find(u => u.id === id), false, id);
-    assert.equal(readRec(s, id).status, 'unlinked', id);
-  }
-  assert.equal(readRec(s, rita.id).status, 'unlinked');
+  for (const id of ['stud0001', 'stud0002']) assert.equal('trainerId' in db.users.find(u => u.id === id), false, id);
+  // The records (names, phones, e-mails the trainer typed) go with the trainer.
+  assert.equal(fs.existsSync(path.join(s.dir, 'trainers', 'coachAAA')), false);
+  assert.equal(readRec(s, 'stud0003', 'coachBBB').status, 'active');
   assert.deepEqual(db.studentInvites.map(i => i.trainerId), ['coachBBB']);
   assert.equal(db.users.find(u => u.id === 'stud0001').role, 'student');
 });
@@ -137,13 +137,11 @@ test('a trainer deleting their own account detaches the students too', async t =
   seed(s);
   const r = await s.call('/api/account/delete', { method: 'POST', body: { name: 'Coach Ana', current: GOOD }, as: 'coachAAA' });
   assert.equal(r.status, 200);
-  for (const id of ['stud0001', 'stud0002']) {
-    assert.equal('trainerId' in s.db().users.find(u => u.id === id), false);
-    assert.equal(readRec(s, id).status, 'unlinked');
-  }
+  for (const id of ['stud0001', 'stud0002']) assert.equal('trainerId' in s.db().users.find(u => u.id === id), false);
+  assert.equal(fs.existsSync(path.join(s.dir, 'trainers', 'coachAAA')), false);
 });
 
-test('disabling a trainer detaches the students: they see no trainer', async t => {
+test('disabling a trainer detaches the students: they see no trainer, and the records stay', async t => {
   const s = await startServer(t, ON);
   seed(s);
   assert.equal((await s.call('/api/student/trainer', { as: 'stud0001' })).body.trainer.name, 'Coach Ana');
@@ -153,6 +151,22 @@ test('disabling a trainer detaches the students: they see no trainer', async t =
   assert.equal('trainer' in (await s.call('/api/me', { as: 'stud0001' })).body.user, false);
   assert.equal(readRec(s, 'stud0001').status, 'unlinked');
   assert.equal(readRec(s, 'stud0002').status, 'unlinked');
+  // Enabling again keeps the folder (the links do not come back).
+  assert.equal((await s.call('/api/admin/user/disable', { method: 'POST', body: { id: 'coachAAA', disabled: false }, as: 'admin001' })).status, 200);
+  assert.equal(fs.readdirSync(folder(s)).length, 2);
+});
+
+test('a student deleting their own account is not stopped by a trainer record that cannot be written', async t => {
+  const GOOD = 'correct horse battery staple';
+  const pw = { h: await hashPassword(GOOD), set: new Date().toISOString() };
+  const users = USERS.map(u => (u.id === 'stud0002' ? { ...u, pw } : u));
+  const s = await startServer(t, { env: { TRAINER_MODE: '1', PASSWORD_LOGIN: '1' }, users });
+  seed(s);
+  fs.mkdirSync(recPath(s, 'stud0002') + '.tmp');   // the record reads, but its write cannot open the temp file
+  const own = await s.call('/api/account/delete', { method: 'POST', body: { name: 'Student Two', current: GOOD }, as: 'stud0002' });
+  assert.equal(own.status, 200);
+  assert.ok(!s.db().users.some(u => u.id === 'stud0002'));
+  assert.equal(readRec(s, 'stud0002').status, 'active');
 });
 
 test('deleting a student, by the admin or by themselves, marks the trainer record unlinked', async t => {
@@ -178,7 +192,7 @@ test('the effects run on a role even with TRAINER_MODE off, and leave a roleless
   assert.equal(fs.readdirSync(folder(s)).length, 2);
   assert.equal(readRec(s, 'stud0001').status, 'active');
   assert.equal((await s.call('/api/admin/user/delete', { method: 'POST', body: { id: 'coachAAA' }, as: 'admin001' })).status, 200);
-  assert.equal(readRec(s, 'stud0001').status, 'unlinked');
+  assert.equal(fs.existsSync(path.join(s.dir, 'trainers', 'coachAAA')), false);
   assert.equal('trainerId' in s.db().users.find(u => u.id === 'stud0001'), false);
   assert.equal(unlinks(s), 0);   // the effect is bookkeeping, not a trainer action
 });

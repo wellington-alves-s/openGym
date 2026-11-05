@@ -89,6 +89,7 @@ test('reject deletes the pending account and what was theirs', async t => {
     seed: { creds: [{ id: 'c1', userId: 'wait0001', publicKey: 'x' }], subs: [{ endpoint: 'https://push/w', userId: 'wait0001' }] }
   });
   fs.writeFileSync(path.join(s.dir, 'state-wait0001.json'), '{"_rev":1}');
+  seedStudent(s, 'wait0001', 'inv00001', 'invited');   // no route makes one while pending; a folder left from before
   const r = await post(s, '/api/admin/trainer/reject', { id: 'wait0001' }, 'owner001');
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { ok: true });
@@ -97,6 +98,7 @@ test('reject deletes the pending account and what was theirs', async t => {
   assert.ok(!db.creds.some(c => c.userId === 'wait0001'));
   assert.ok(!db.subs.some(x => x.userId === 'wait0001'));
   assert.ok(!fs.existsSync(path.join(s.dir, 'state-wait0001.json')));
+  assert.ok(!fs.existsSync(path.join(s.dir, 'trainers', 'wait0001')));
   assert.equal(db.users.length, USERS.length - 1);
   const log = fs.readFileSync(path.join(s.dir, 'audit.log'), 'utf8');
   assert.match(log, /"ev":"trainer\.reject"/);
@@ -188,9 +190,13 @@ test('the sweep removes pending trainers left 30 days and nothing else, only wit
     user('plainOld', 'Plain', { created: old })
   ];
   const ids = db => db.users.map(u => u.id);
-  const on = await startServer(t, { env: ON.env, users });
+  const rec = id => JSON.stringify({ id, name: id, status: 'invited', created: 1, _rev: 1 });
+  const files = { 'trainers/stale001/students/inv00001.json': rec('inv00001'), 'trainers/coachOld/students/inv00002.json': rec('inv00002') };
+  const on = await startServer(t, { env: ON.env, users, files });
   assert.deepEqual(ids(on.db()), ['owner001', 'fresh001', 'coachOld', 'studOld1', 'plainOld']);
   assert.match(fs.readFileSync(path.join(on.dir, 'audit.log'), 'utf8'), /"ev":"trainer\.reject"/);
+  assert.ok(!fs.existsSync(path.join(on.dir, 'trainers', 'stale001')));
+  assert.ok(fs.existsSync(path.join(on.dir, 'trainers', 'coachOld', 'students', 'inv00002.json')));
   const off = await startServer(t, { users });
   assert.equal(off.db().users.length, users.length);
 });

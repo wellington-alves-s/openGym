@@ -22,11 +22,16 @@ const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'http://localhost:8080';
 
 // `seed` is merged into db.json as written, for state no route can make (an expired invite).
-export async function startServer(t, { env = {}, users = [], seed = {} } = {}) {
+// `files` ({ 'relative/path': 'content' }) are on disk before the server starts (its boot sweep).
+export async function startServer(t, { env = {}, users = [], seed = {}, files = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gym-trainer-'));
   const secret = crypto.randomBytes(32).toString('hex');
   fs.writeFileSync(path.join(dir, 'secret'), secret, { mode: 0o600 });
   fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({ users, creds: [], subs: [], invites: [], ...seed }));
+  for (const [p, content] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true });
+    fs.writeFileSync(path.join(dir, p), content);
+  }
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, PORT: '0', DATA_DIR: dir, ORIGIN, RP_ID: 'localhost', TRUST_PROXY: '1', INVITE_ONLY: '', ADMIN_UIDS: '', TRAINER_MODE: '', PASSWORD_LOGIN: '', ...env }

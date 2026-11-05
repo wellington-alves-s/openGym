@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validId, readStudent, listStudents, writeStudent, removeStudent } from '../trainer-store.js';
+import { validId, readStudent, listStudents, writeStudent, removeStudent, removeTrainerDir } from '../trainer-store.js';
 
 const T = 'trainer-0001';
 const rec = (over = {}) => ({ id: 'student-0001', name: 'Ana', status: 'invited', created: 1000, ...over });
@@ -58,5 +58,17 @@ describe('trainer store', () => {
     assert.equal(removeStudent(dir, T, 'student-0001'), true);
     assert.equal(readStudent(dir, T, 'student-0001'), null);
     assert.equal(removeStudent(dir, T, 'student-0001'), false);
+  });
+
+  it('removeTrainerDir takes the whole trainer folder, and nothing for a hostile id', () => {
+    writeStudent(dir, T, rec());
+    writeStudent(dir, 'trainer-0002', rec());
+    fs.writeFileSync(path.join(dir, 'secret.json'), '{}');
+    for (const id of ['..', '../trainers', '', 'short', null, {}, 'a/b']) assert.equal(removeTrainerDir(dir, id), false, String(id));
+    assert.equal(allFiles(dir).length, 3);
+    assert.equal(removeTrainerDir(dir, T), true);
+    assert.equal(fs.existsSync(path.join(dir, 'trainers', T)), false);
+    assert.equal(readStudent(dir, 'trainer-0002', 'student-0001').name, 'Ana');
+    assert.equal(removeTrainerDir(dir, T), false);   // already gone
   });
 });

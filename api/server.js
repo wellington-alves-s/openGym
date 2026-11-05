@@ -18,6 +18,7 @@ import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
 import { trainerRoutes, trainerStudentKey, joinKey, unlinkStudent, detachTrainer } from './trainer-routes.js';
 import { isApprovedTrainer, purgeStalePendingTrainers } from './trainer-access.js';
+import { removeTrainerDir } from './trainer-store.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -1469,8 +1470,16 @@ async function removeEmail(req, res, user, body) {
 // credential and their photos and videos. The admin's delete and the account's own both end here.
 function removeAccount(u) {
   // Whatever the mode is now: an account that ever had a role leaves its trainer's side tidy.
-  if (u.role === 'student' && u.trainerId) unlinkStudent({ db, DATA, saveDb }, u.trainerId, u.id);
-  if (u.role === 'trainer') detachTrainer({ db, DATA, saveDb }, u.id);
+  // The trainer's record of a student is their bookkeeping: failing to close it never keeps the account.
+  if (u.role === 'student' && u.trainerId) {
+    try { unlinkStudent({ db, DATA, saveDb }, u.trainerId, u.id); }
+    catch (e) { console.error('trainer: could not mark the record of a deleted student unlinked:', e.code || e.message); }
+  }
+  // A deleted trainer takes their records (names, phones, e-mails they typed) with them.
+  if (u.role === 'trainer') {
+    detachTrainer({ db, DATA, saveDb }, u.id);
+    try { removeTrainerDir(DATA, u.id); } catch (e) { console.error('trainer: could not remove the folder of', u.id, e.message); }
+  }
   db.users = db.users.filter(x => x.id !== u.id);
   db.creds = (db.creds || []).filter(c => c.userId !== u.id);
   db.subs = (db.subs || []).filter(x => x.userId !== u.id);

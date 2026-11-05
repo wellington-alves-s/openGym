@@ -122,13 +122,14 @@ export function trainerRoutes({
      A wrong, used or expired code, a trainer who can no longer take students and a student who
      already has an account all look the same: one 404, one strike against the address. */
   // { inv, trainer, rec } while the code can still make this account, else null. No await inside,
-  // so a route asks it again after its own awaits and writes straight after.
+  // so a route asks it again after its own awaits and writes straight after. An `active` record
+  // with no account is a join that died between writing the record and saving the account.
   const liveJoin = code => {
     const inv = findStudentInvite(db, code);
     const trainer = inv && db.users.find(u => u.id === inv.trainerId);
     if (!isApprovedTrainer(trainer) || db.users.some(u => u.id === inv.studentId)) return null;
     const rec = readStudent(DATA, trainer.id, inv.studentId);
-    return rec && rec.status === 'invited' ? { inv, trainer, rec } : null;
+    return rec && (rec.status === 'invited' || rec.status === 'active') ? { inv, trainer, rec } : null;
   };
   const refuse = (req, res) => { strikeAddress(req, 'join'); json(res, 404, NOT_FOUND); };
   // The first look of every join route: null after a 429 or the 404.
