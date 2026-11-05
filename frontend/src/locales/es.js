@@ -62,6 +62,7 @@ export default {
   'Unlink {0}?': '¿Desvincular a {0}?',
   'Unlinked': 'Desvinculado',
   'Waiting for the owner to approve your account': 'Esperando a que el propietario apruebe tu cuenta',
+  'You are already signed in. Sign out first to accept this invite.': 'Ya has iniciado sesión. Cierra sesión primero para aceptar esta invitación.',
   'You are not linked to a trainer.': 'No estás vinculado a ningún entrenador.',
   'You can also share': 'También puedes compartir',
   'You will no longer see their workouts. They keep their own account and data.': 'Dejarás de ver sus entrenamientos. Conserva su propia cuenta y sus datos.',

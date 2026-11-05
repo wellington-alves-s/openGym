@@ -54,6 +54,39 @@ it('a signed-in user is never given the invite: it is ignored and taken off the 
   expect(window.location.search).toBe('')
 })
 
+const SIGNED_IN = 'You are already signed in. Sign out first to accept this invite.'
+let realToast
+const spyToast = () => { realToast = useUI.getState().toast; const toast = vi.fn(); useUI.setState({ toast }); return toast }
+afterEach(() => { if (realToast) useUI.setState({ toast: realToast }); realToast = null })
+
+it('a signed-in browser opening an invite says so, once', async () => {
+  const toast = spyToast()
+  state({ id: 'u2', name: 'Lee' })
+  window.history.replaceState({}, '', '/?join=AAAA-BBBB-CCCC')
+  await act(async () => root.render(<App />))
+  await act(async () => useStore.setState({ user: { id: 'u2', name: 'Lee B' } }))
+  expect(toast.mock.calls.filter(c => c[0] === SIGNED_IN)).toHaveLength(1)
+})
+
+it('a guest opening an invite is told too', async () => {
+  const toast = spyToast()
+  state(null)
+  useStore.setState({ isGuest: () => true })
+  window.history.replaceState({}, '', '/?join=AAAA-BBBB-CCCC')
+  await act(async () => root.render(<App />))
+  expect(toast.mock.calls.filter(c => c[0] === SIGNED_IN)).toHaveLength(1)
+})
+
+it('the student who just joined through the invite is not told anything', async () => {
+  const toast = spyToast()
+  state(null)
+  window.history.replaceState({}, '', '/?join=AAAA-BBBB-CCCC')
+  await act(async () => root.render(<App />))
+  expect(host.textContent).toContain('JOIN AAAA-BBBB-CCCC')
+  await act(async () => useStore.setState({ user: { id: 's1', name: 'Rita', role: 'student' } }))
+  expect(toast.mock.calls.filter(c => c[0] === SIGNED_IN)).toHaveLength(0)
+})
+
 it('without ?join= the sign-in screen is unchanged', async () => {
   state(null)
   await act(async () => root.render(<App />))

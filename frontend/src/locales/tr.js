@@ -62,6 +62,7 @@ export default {
   'Unlink {0}?': '{0} bağlantısı kaldırılsın mı?',
   'Unlinked': 'Bağlantısı kaldırıldı',
   'Waiting for the owner to approve your account': 'Hesabının sahip tarafından onaylanması bekleniyor',
+  'You are already signed in. Sign out first to accept this invite.': 'Zaten giriş yaptın. Bu daveti kabul etmek için önce çıkış yap.',
   'You are not linked to a trainer.': 'Bir antrenöre bağlı değilsin.',
   'You can also share': 'Şunları da paylaşabilirsin',
   'You will no longer see their workouts. They keep their own account and data.': 'Artık onun antrenmanlarını görmeyeceksin. Kendi hesabı ve verileri ona kalır.',

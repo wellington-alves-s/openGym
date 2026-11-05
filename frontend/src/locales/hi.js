@@ -62,6 +62,7 @@ export default {
   'Unlink {0}?': '{0} को अलग करें?',
   'Unlinked': 'अलग किया गया',
   'Waiting for the owner to approve your account': 'मालिक द्वारा आपके खाते की मंज़ूरी का इंतज़ार है',
+  'You are already signed in. Sign out first to accept this invite.': 'आप पहले से साइन इन हैं। यह आमंत्रण स्वीकार करने के लिए पहले साइन आउट करें।',
   'You are not linked to a trainer.': 'आप किसी ट्रेनर से जुड़े नहीं हैं।',
   'You can also share': 'आप ये भी शेयर कर सकते हैं',
   'You will no longer see their workouts. They keep their own account and data.': 'अब आप इनके वर्कआउट नहीं देख पाएँगे। इनका खाता और डेटा इनके पास ही रहेगा।',

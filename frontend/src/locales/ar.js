@@ -1178,6 +1178,7 @@ export default {
   'Unlink {0}?': 'هل تريد إلغاء ربط {0}؟',
   'Unlinked': 'تم إلغاء الربط',
   'Waiting for the owner to approve your account': 'في انتظار موافقة المالك على حسابك',
+  'You are already signed in. Sign out first to accept this invite.': 'أنت مسجّل الدخول بالفعل. سجّل الخروج أولًا لقبول هذه الدعوة.',
   'You are not linked to a trainer.': 'أنت غير مرتبط بمدرب.',
   'You can also share': 'يمكنك أيضًا مشاركة',
   'You will no longer see their workouts. They keep their own account and data.': 'لن ترى تمارينه بعد الآن. يحتفظ بحسابه وبياناته.',

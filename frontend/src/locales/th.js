@@ -64,6 +64,7 @@ export default {
   'Unlink {0}?': 'ยกเลิกการเชื่อมโยง {0} ใช่ไหม',
   'Unlinked': 'ยกเลิกการเชื่อมโยงแล้ว',
   'Waiting for the owner to approve your account': 'กำลังรอเจ้าของอนุมัติบัญชีของคุณ',
+  'You are already signed in. Sign out first to accept this invite.': 'คุณเข้าสู่ระบบอยู่แล้ว ออกจากระบบก่อนเพื่อตอบรับคำเชิญนี้',
   'You are not linked to a trainer.': 'คุณยังไม่ได้เชื่อมโยงกับเทรนเนอร์',
   'You can also share': 'คุณยังแชร์สิ่งเหล่านี้ได้ด้วย',
   'You will no longer see their workouts. They keep their own account and data.': 'คุณจะไม่เห็นการออกกำลังกายของเขาอีก เขายังมีบัญชีและข้อมูลของตัวเองอยู่',

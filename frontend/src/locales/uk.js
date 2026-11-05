@@ -1129,6 +1129,7 @@ export default {
   'Unlink {0}?': 'Відв’язати {0}?',
   'Unlinked': 'Відв’язано',
   'Waiting for the owner to approve your account': 'Очікування схвалення акаунта власником',
+  'You are already signed in. Sign out first to accept this invite.': 'Ти вже ввійшов в акаунт. Щоб прийняти це запрошення, спочатку вийди.',
   'You are not linked to a trainer.': 'Ти не прив’язаний до тренера.',
   'You can also share': 'Ще можна поділитися',
   'You will no longer see their workouts. They keep their own account and data.': 'Ти більше не бачитимеш його тренувань. Його акаунт і дані залишаються в нього.',

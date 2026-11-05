@@ -64,6 +64,7 @@ export default {
   'Unlink {0}?': 'Leválasztod: {0}?',
   'Unlinked': 'Leválasztva',
   'Waiting for the owner to approve your account': 'Várakozás a tulajdonos jóváhagyására',
+  'You are already signed in. Sign out first to accept this invite.': 'Már be vagy jelentkezve. A meghívó elfogadásához előbb jelentkezz ki.',
   'You are not linked to a trainer.': 'Nem vagy edzőhöz kapcsolva.',
   'You can also share': 'Ezt is megoszthatod',
   'You will no longer see their workouts. They keep their own account and data.': 'Többé nem látod az edzéseit. A saját fiókja és adatai megmaradnak.',

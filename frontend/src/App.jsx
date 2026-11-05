@@ -7,7 +7,7 @@ import { bindUI } from './components/ui.jsx'
 import { setWeightDecimals } from './lib/format.js'
 import { accentValue, applyAccent } from './lib/accent.js'
 import { seasonAccent } from './lib/seasonal.js'
-import { setLang, useLang, baseLang } from './lib/i18n.js'
+import { setLang, useLang, baseLang, t } from './lib/i18n.js'
 import { effectiveLang } from './lib/default-lang.js'
 import { setPlayOnSilent, setVibrate, setAlarmBuzzer, setNativeBuzzer } from './lib/sound.js'
 import { buzzAsAlarm } from './lib/rest-alert.js'
@@ -201,7 +201,13 @@ function Shell() {
   // for good once somebody is in, so signing out later does not bring back a spent invite.
   const [joinCode, setJoinCode] = useState(() => joinTokenFromSearch(window.location.search))
   useEffect(() => { stripJoinFromUrl() }, [])
-  useEffect(() => { if (user || isGuest) setJoinCode('') }, [user, isGuest])
+  // Told once when the invite is dropped unseen; not after the Join screen itself signed them in.
+  const joinShown = useRef(false)
+  useEffect(() => {
+    if (!user && !isGuest) { if (ready && joinCode) joinShown.current = true; return }
+    if (joinCode && !joinShown.current) useUI.getState().toast(t('You are already signed in. Sign out first to accept this invite.'))
+    setJoinCode('')
+  }, [user, isGuest, ready])
   useEffect(() => {
     const onScroll = () => {
       // Modals pins the body while a sheet is open; scrollY is 0 then, not a position.
