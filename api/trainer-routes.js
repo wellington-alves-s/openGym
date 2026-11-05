@@ -9,7 +9,7 @@
  * one student through studentGuard, so another trainer's student, a hostile id and an unknown one
  * all get the same 404. */
 import crypto from 'node:crypto';
-import { isApprovedTrainer, isPendingTrainer, canAccessStudent } from './trainer-access.js';
+import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from './trainer-access.js';
 import { validId, readStudent, listStudents, writeStudent, removeStudent } from './trainer-store.js';
 import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
@@ -33,6 +33,30 @@ export function joinKey(req, pathname) {
   return `${req.method} /api/join/{code}${m[2] || ''}`;
 }
 
+// The one place a link ends: the account loses its trainer, the trainer's invites for it go, and
+// the trainer's record says `unlinked`. Used by both sides' unlink routes and by the effects of
+// deleting or disabling an account. { db, DATA, saveDb } is server.js's own. The account is only
+// touched while it is this trainer's student, and an already unlinked record is left as it is.
+// → true when anything changed, so a caller audits only a real unlink.
+export function unlinkStudent({ db, DATA, saveDb }, trainerId, studentId) {
+  const account = db.users.find(u => u.id === studentId && isStudent(u) && u.trainerId === trainerId);
+  if (account) delete account.trainerId;
+  const dropped = dropStudentInvites(db, { trainerId, studentId });
+  if (account || dropped) saveDb();   // the link is cut first: that is the part that guards the student's data
+  const rec = readStudent(DATA, trainerId, studentId);
+  if (!rec || rec.status === 'unlinked') return !!account || dropped;
+  writeStudent(DATA, trainerId, { ...rec, status: 'unlinked', unlinkedAt: Date.now() });
+  return true;
+}
+
+// A trainer who is deleted or disabled: every student loses the link, every record is closed.
+export function detachTrainer(ctx, trainerId) {
+  detachStudentsOf(ctx.db, trainerId);
+  for (const rec of listStudents(ctx.DATA, trainerId)) unlinkStudent(ctx, trainerId, rec.id);
+  dropStudentInvites(ctx.db, { trainerId });
+  ctx.saveDb();
+}
+
 const NOT_FOUND = { error: 'not found' };   // the dispatcher's own, so a refusal looks like no route
 const view = r => ({ id: r.id, name: r.name, status: r.status, phone: r.phone || null, created: r.created, linkedAt: r.linkedAt || null });
 
@@ -46,6 +70,7 @@ export function trainerRoutes({
   PASSWORD_LOGIN, addressPaused, strikeAddress, passwordProblem, policyError, hashPassword, nameTaken,
   putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount
 }) {
+  const ctx = { db, DATA, saveDb };
   // readSession hands back the live db.users record, so the role checks see the current one.
   const trainerGuard = (req, res) => {
     const user = readSession(req);
@@ -55,17 +80,25 @@ export function trainerRoutes({
     return user;
   };
   // The record, or null after a 404. validId first: a hostile id never reaches a path.
-  const studentGuard = (req, res, trainer, id) => {
+  // `ownFolder`: the record is enough (unlink, which must work when the account is gone or moved).
+  const studentGuard = (req, res, trainer, id, ownFolder) => {
     const rec = validId(id) ? readStudent(DATA, trainer.id, id) : null;
     // Once active, the account has to still be this trainer's too.
-    if (rec && rec.id === id && (rec.status !== 'active' || canAccessStudent(db, trainer, id))) return rec;
+    if (rec && rec.id === id && (ownFolder || rec.status !== 'active' || canAccessStudent(db, trainer, id))) return rec;
     audit(req, 'trainer.denied', { ok: false, user: trainer });
     json(res, 404, NOT_FOUND);
     return null;
   };
-  const trainerAndStudent = (req, res) => {
+  // The signed-in student, else 401 or the 404 of a route that is not theirs.
+  const studentSession = (req, res) => {
+    const user = readSession(req);
+    if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
+    if (!isStudent(user)) { json(res, 404, NOT_FOUND); return null; }
+    return user;
+  };
+  const trainerAndStudent = (req, res, ownFolder) => {
     const trainer = trainerGuard(req, res); if (!trainer) return null;
-    const rec = studentGuard(req, res, trainer, req.studentId); if (!rec) return null;
+    const rec = studentGuard(req, res, trainer, req.studentId, ownFolder); if (!rec) return null;
     return { trainer, rec };
   };
   // The code goes back in this one answer and nowhere else (not db.json, not the audit).
@@ -195,21 +228,45 @@ export function trainerRoutes({
 
     'DELETE /api/trainer/students/{id}': async (req, res) => {
       const g = trainerAndStudent(req, res); if (!g) return;
-      if (g.rec.status !== 'invited') return json(res, 400, { error: 'unlink this student instead', code: 'use-unlink' });
+      // Only a record that never went live is thrown away; one that did is history, unlinked instead.
+      if (g.rec.status !== 'invited' && !(g.rec.status === 'unlinked' && !g.rec.linkedAt)) return json(res, 400, { error: 'unlink this student instead', code: 'use-unlink' });
       removeStudent(DATA, g.trainer.id, g.rec.id);
       if (dropStudentInvites(db, { studentId: g.rec.id })) saveDb();
       json(res, 200, { ok: true });
     },
 
     'POST /api/trainer/students/{id}/unlink': async (req, res) => {
-      const g = trainerAndStudent(req, res); if (!g) return;
-      const { trainer, rec } = g;
-      const account = db.users.find(u => u.id === rec.id && u.role === 'student' && u.trainerId === trainer.id);
-      if (account) delete account.trainerId;
-      dropStudentInvites(db, { studentId: rec.id });
-      saveDb();   // the link is cut first: that is the part that guards the student's data
-      writeStudent(DATA, trainer.id, { ...rec, status: 'unlinked', unlinkedAt: Date.now() });
-      audit(req, 'student.unlink', { user: trainer, target: rec });
+      const g = trainerAndStudent(req, res, true); if (!g) return;
+      if (unlinkStudent(ctx, g.trainer.id, g.rec.id)) audit(req, 'student.unlink', { user: g.trainer, target: g.rec });
+      json(res, 200, { ok: true });
+    },
+
+    /* ---------- the student's side ---------- */
+    'GET /api/student/trainer': async (req, res) => {
+      const me = studentSession(req, res); if (!me) return;
+      const trainer = db.users.find(u => u.id === me.trainerId);
+      const ok = isApprovedTrainer(trainer);
+      json(res, 200, {
+        trainer: ok ? { name: trainer.name } : null,
+        since: ok ? readStudent(DATA, trainer.id, me.id)?.linkedAt || null : null,
+        consent: { ...consentOf(me.consent), at: me.consent?.at || null }
+      });
+    },
+
+    'PUT /api/student/consent': async (req, res) => {
+      const me = studentSession(req, res); if (!me) return;
+      const body = await readBody(req);
+      if (SHARES.slice(1).some(k => typeof body[k] !== 'boolean')) return json(res, 400, { error: 'measures, photos and diet must each be true or false', code: 'bad-consent' });
+      if (readSession(req) !== me) return json(res, 401, { error: 'not signed in' });
+      me.consent = { ...consentOf(body), at: new Date().toISOString() };
+      saveDb();
+      json(res, 200, { consent: me.consent });
+    },
+
+    'POST /api/student/unlink': async (req, res) => {
+      const me = studentSession(req, res); if (!me) return;
+      const trainerId = me.trainerId;
+      if (trainerId && unlinkStudent(ctx, trainerId, me.id)) audit(req, 'student.unlink', { user: me, msg: 'by the student' });
       json(res, 200, { ok: true });
     }
   };

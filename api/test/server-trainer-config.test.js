@@ -44,3 +44,20 @@ test('the harness reads the db from disk and stops the child', async t => {
   assert.equal(s.db().users.length, USERS.length);
   assert.equal((await s.call('/api/me')).status, 401);
 });
+
+test('a student is shown a trainer only while that trainer is approved and active', async t => {
+  const users = [
+    user('coach001', 'Coach Carla', { role: 'trainer', trainerStatus: 'approved' }),
+    user('pend0001', 'Pending Pat', { role: 'trainer', trainerStatus: 'pending' }),
+    user('off00001', 'Off Otto', { role: 'trainer', trainerStatus: 'approved', disabled: true }),
+    user('role0001', 'Plain Pete'),
+    user('sa000001', 'S Approved', { role: 'student', trainerId: 'coach001' }),
+    user('sp000001', 'S Pending', { role: 'student', trainerId: 'pend0001' }),
+    user('sd000001', 'S Disabled', { role: 'student', trainerId: 'off00001' }),
+    user('sr000001', 'S Roleless', { role: 'student', trainerId: 'role0001' })
+  ];
+  const s = await startServer(t, { env: { TRAINER_MODE: '1' }, users });
+  const me = async as => (await s.call('/api/me', { as })).body.user;
+  assert.deepEqual((await me('sa000001')).trainer, { name: 'Coach Carla' });
+  for (const as of ['sp000001', 'sd000001', 'sr000001']) assert.equal('trainer' in await me(as), false, as);
+});

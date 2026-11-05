@@ -16,7 +16,8 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
-import { trainerRoutes, trainerStudentKey, joinKey } from './trainer-routes.js';
+import { trainerRoutes, trainerStudentKey, joinKey, unlinkStudent, detachTrainer } from './trainer-routes.js';
+import { isApprovedTrainer } from './trainer-access.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -1319,8 +1320,8 @@ const publicUser = u => {
   if (!TRAINER_MODE || !u.role) return out;
   out.role = u.role;
   if (u.trainerStatus) out.trainerStatus = u.trainerStatus;
-  const trainer = u.role === 'student' && db.users.find(x => x.id === u.trainerId && x.role === 'trainer');
-  if (trainer) out.trainer = { name: trainer.name };
+  const trainer = u.role === 'student' && db.users.find(x => x.id === u.trainerId);
+  if (isApprovedTrainer(trainer)) out.trainer = { name: trainer.name };
   return out;
 };
 const POLICY_ERRORS = {
@@ -1467,6 +1468,9 @@ async function removeEmail(req, res, user, body) {
 // device links and live presence, and outside db.json their training history, any Coach
 // credential and their photos and videos. The admin's delete and the account's own both end here.
 function removeAccount(u) {
+  // Whatever the mode is now: an account that ever had a role leaves its trainer's side tidy.
+  if (u.role === 'student' && u.trainerId) unlinkStudent({ db, DATA, saveDb }, u.trainerId, u.id);
+  if (u.role === 'trainer') detachTrainer({ db, DATA, saveDb }, u.id);
   db.users = db.users.filter(x => x.id !== u.id);
   db.creds = (db.creds || []).filter(c => c.userId !== u.id);
   db.subs = (db.subs || []).filter(x => x.userId !== u.id);
@@ -2833,6 +2837,7 @@ const routes = {
     if (u.disabled) presence.delete(u.id);   // drop them off "training now" at once
     // A device link made before the lock would otherwise still be waiting when it is lifted.
     if (u.disabled) dropDeviceLinks(db, u.id);
+    if (u.disabled && u.role === 'trainer') detachTrainer({ db, DATA, saveDb }, u.id);
     saveDb();
     audit(req, u.disabled ? 'admin.user.disable' : 'admin.user.enable', { user: admin, target: u });
     json(res, 200, { ok: true, id: u.id, disabled: u.disabled });
