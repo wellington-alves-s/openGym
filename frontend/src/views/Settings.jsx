@@ -55,6 +55,7 @@ import { PAGES, ROOT_GROUPS, pageVisible, searchSettings, pageTrail } from './se
 import { platformNow } from '../lib/platform-now.js'
 import { pathBefore } from '../lib/nav.js'
 import WatchSettingsPage from './WatchSettings.jsx'
+import MyTrainer from './MyTrainer.jsx'
 import { reportSheet } from '../components/ReportSheet.jsx'
 import { csvExportSheet } from '../components/CsvExportSheet.jsx'
 import GymReminderPage, { GymEditPage } from './GymReminder.jsx'
@@ -453,6 +454,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     data: () => '',
     about: () => 'v' + __APP_VERSION__,
     watch: () => '',
+    'my-trainer': () => user?.trainer?.name || '',
   }
 
   const open = id => {
@@ -506,6 +508,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
 
   const pages = {
     watch: () => <WatchSettingsPage />,
+    'my-trainer': () => <MyTrainer />,
     gym: () => <GymReminderPage />,
     'gym-edit': () => <GymEditPage />,
     workout: () => <>
