@@ -480,11 +480,14 @@ TRAINER_MODE=1             # personal trainers and their students
 ```
 
 - **Who becomes a trainer.** Anyone can ask to be a personal trainer when they create their profile (with
-  `INVITE_ONLY=1` they still need the admin's invite code first). They wait as *pending* and can use the app for themselves, but cannot add students until the
-  **owner** approves them in the admin dashboard (or turns trainer mode on for an account from
-  there). A pending request nobody answers is removed after 30 days. On a brand new server, the
-  first account created as a trainer becomes the owner, an admin and an approved trainer, so there
-  is someone who can approve the rest.
+  `INVITE_ONLY=1` they still need the admin's invite code first). They wait as *pending* and only
+  see a waiting screen until the **owner** approves them in the admin dashboard (or turns trainer
+  mode on for an account from there). A pending request nobody answers is removed after 30 days.
+  On a brand new server, the first account created as a trainer becomes the owner, an admin and an
+  approved trainer, so there is someone who can approve the rest.
+- **Sign-up stays open.** Trainer mode does not close sign-up: a visitor can still make a plain
+  account for themselves, and anyone can make a pending trainer account (removed after 30 days if
+  nobody approves it). On a public server, set `INVITE_ONLY=1`.
 - **Students come by invite only.** A trainer adds a student and gets a link with a one-time code,
   valid for 7 days. The trainer sends it to the student themselves, on WhatsApp for example. Nobody
   can create a student account without that link, whatever `INVITE_ONLY` says, and the link stops
@@ -494,7 +497,14 @@ TRAINER_MODE=1             # personal trainers and their students
   name and a password only works if you also set `PASSWORD_LOGIN=1` (see
   [Password sign-in](#password-sign-in-optional)); without it, passkeys are the only way in.
 - **Ending a link.** Either side can unlink at any time. The student keeps their account and data,
-  and the trainer loses access to them. Deleting or disabling a trainer unlinks all their students.
+  and the trainer loses access to them. Deleting or disabling a trainer unlinks all their students,
+  and enabling the account again does not bring the links back. Deleting a trainer account also
+  deletes the trainer's folder of student records.
+- **Leaving is for good, for now.** A student who leaves their trainer keeps a plain account of
+  their own and cannot be invited again; to link again, the trainer adds a new student. When a
+  student deletes their own account, the trainer's record of them (the name, phone and e-mail the
+  trainer typed) stays in the trainer's folder, marked unlinked, until the trainer's account is
+  deleted.
 - **Privacy.** A trainer can only see what the student agrees to share. This first stage shares
   nothing yet: it sets up the accounts and the link, and the data sharing comes later.
 - **For developers.** The routes are in [`api/openapi.yaml`](../api/openapi.yaml) under the
