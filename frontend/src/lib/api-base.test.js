@@ -239,6 +239,52 @@ describe('the redirects nginx sends', () => {
   })
 })
 
+// A student invite is a one-time code in the path (/api/join/CODE) and in the shared link
+// (?join=CODE). Whoever reads `docker logs` could redeem an unused one first, so the access log
+// writes the request line and the referer through a map that blanks the code.
+describe('the access log', () => {
+  const conf = render('')
+  // The map on $source → { name, apply(text) }, its regex run here the way nginx runs it.
+  function redactor(source) {
+    const m = conf.match(new RegExp('\\bmap\\s+\\$' + source + '\\s+\\$(\\w+)\\s*\\{\\s*"~([^"]*)"\\s+"([^"]*)"\\s*;\\s*default\\s+\\$' + source + '\\s*;\\s*\\}'))
+    expect(m, source).toBeTruthy()
+    const [, name, pattern, value] = m
+    const apply = text => {
+      const g = new RegExp(pattern).exec(text)
+      return g ? value.replace(/\$(\w+)/g, (_, v) => g.groups[v]) : text
+    }
+    return { name, apply }
+  }
+
+  it('blanks the invite code in the request line and the referer', () => {
+    const request = redactor('request'), referer = redactor('http_referer')
+    const cases = [
+      ['GET /api/join/ABCD-EFGH-IJKL HTTP/1.1', 'GET /api/join/[redacted] HTTP/1.1'],
+      ['POST /api/join/ABCD-EFGH-IJKL/password HTTP/1.1', 'POST /api/join/[redacted]/password HTTP/1.1'],
+      ['POST /gym/api/join/ABCDEFGHIJKL/verify HTTP/2.0', 'POST /gym/api/join/[redacted]/verify HTTP/2.0'],
+      ['GET /?join=ABCD-EFGH-IJKL HTTP/1.1', 'GET /?join=[redacted] HTTP/1.1'],
+      ['GET /gym/?x=1&join=ABCD-EFGH-IJKL&y=2 HTTP/1.1', 'GET /gym/?x=1&join=[redacted]&y=2 HTTP/1.1'],
+      ['GET /api/health HTTP/1.1', 'GET /api/health HTTP/1.1'],
+      ['GET /?link=ABCD HTTP/1.1', 'GET /?link=ABCD HTTP/1.1']
+    ]
+    for (const [line, logged] of cases) expect(request.apply(line), line).toBe(logged)
+    expect(referer.apply('https://gym.example/?join=ABCD-EFGH-IJKL')).toBe('https://gym.example/?join=[redacted]')
+    expect(referer.apply('https://gym.example/gym/')).toBe('https://gym.example/gym/')
+  })
+
+  it('logs through a format that uses only the redacted request and referer, to the stock file', () => {
+    const request = redactor('request'), referer = redactor('http_referer')
+    const fmt = conf.match(/\blog_format\s+(\w+)\s+([^;]*);/)
+    expect(fmt).toBeTruthy()
+    expect(fmt[2]).toContain('"$' + request.name + '"')
+    expect(fmt[2]).toContain('"$' + referer.name + '"')
+    expect(fmt[2]).not.toMatch(/\$request\b|\$request_uri\b|\$uri\b|\$args\b|\$query_string\b|\$http_referer\b/)
+    const [server] = blocksOf(conf).filter(b => /\blisten\b/.test(b))
+    expect(server).toMatch(new RegExp('\\baccess_log\\s+/var/log/nginx/access\\.log\\s+' + fmt[1] + '\\s*;'))
+    expect(conf.match(/\baccess_log\b/g).length).toBe(1)
+  })
+})
+
 // A BASE_PATH of "/gym/" or "gym" renders location prefixes nginx never matches: the container
 // came up and 404'd under the prefix, silently. The web image now refuses to start on one, from a
 // script nginx's entrypoint runs before it renders the template. Run here with sh, as it is there.

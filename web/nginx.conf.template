@@ -13,10 +13,30 @@ map $request_uri $api_request_uri {
     "~^\Q${BASE_PATH}\E(?<api_request_rest>/.*)$" $api_request_rest;
 }
 
+# A student invite is a one-time code in the path (/api/join/CODE) and in the link the trainer
+# shares (?join=CODE, also the referer of the page's calls). Anyone who can read `docker logs`
+# could redeem an unused one first, so the access log writes both with the code blanked. The
+# variables are lowercase so the entrypoint's envsubst leaves them alone; no backslashes, since
+# nginx reads some inside quotes. Error-log lines (a 502, say) still carry the request as sent.
+map $request $log_request {
+    "~^(?<log_req_head>.*(?:/api/join/|[?&]join=))[^/?& ]+(?<log_req_tail>.*)$" "$log_req_head[redacted]$log_req_tail";
+    default $request;
+}
+map $http_referer $log_referer {
+    "~^(?<log_ref_head>.*(?:/api/join/|[?&]join=))[^/?& ]+(?<log_ref_tail>.*)$" "$log_ref_head[redacted]$log_ref_tail";
+    default $http_referer;
+}
+# The stock image's `main` format, with those two in place of $request and $http_referer.
+log_format redacted '$remote_addr - $remote_user [$time_local] "$log_request" '
+                    '$status $body_bytes_sent "$log_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
 server {
     listen ${NGINX_PORT};
     # No nginx version in the Server header or on its own error pages.
     server_tokens off;
+    # The stock image's file (a link to stdout), through the format above that blanks invite codes.
+    access_log /var/log/nginx/access.log redacted;
     root /usr/share/nginx/html;
     index index.html;
     # Every redirect nginx sends (the unknown-path one below, and /api to /api/) carries a

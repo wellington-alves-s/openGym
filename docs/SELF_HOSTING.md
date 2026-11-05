@@ -492,7 +492,8 @@ TRAINER_MODE=1             # personal trainers and their students
   valid for 7 days. The trainer sends it to the student themselves, on WhatsApp for example. Nobody
   can create a student account without that link, whatever `INVITE_ONLY` says, and the link stops
   working after the first use. If it expires or gets lost, the trainer makes a new one. The server
-  keeps only a hash of the code.
+  keeps only a hash of the code. The bundled nginx leaves the code out of its access log, but a
+  proxy or tunnel in front of it (Cloudflare, for example) keeps its own logs, with the link in them.
 - **Signing in.** Trainers and students use passkeys. Signing up and signing in with an e-mail or a
   name and a password only works if you also set `PASSWORD_LOGIN=1` (see
   [Password sign-in](#password-sign-in-optional)); without it, passkeys are the only way in.
