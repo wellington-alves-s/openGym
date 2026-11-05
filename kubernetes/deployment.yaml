@@ -34,7 +34,7 @@ spec:
             - name: ORIGIN
               value: https://opengym.example.com
             # Everything else in .env.example (INVITE_ONLY, ADMIN_UIDS, FIRST_USER_ADMIN,
-            # ALLOW_GUEST, DEFAULT_LANG, PASSWORD_LOGIN, the push keys, ...) goes here the
+            # ALLOW_GUEST, DEFAULT_LANG, PASSWORD_LOGIN, TRAINER_MODE, the push keys, ...) goes here the
             # same way. FIRST_USER_ADMIN="1" makes the first profile created on an empty
             # instance its admin (off by default).
             # TRUST_PROXY is left off on purpose: the web container overwrites X-Forwarded-For
