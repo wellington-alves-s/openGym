@@ -11,9 +11,10 @@
 import crypto from 'node:crypto';
 import { isApprovedTrainer, isPendingTrainer, canAccessStudent } from './trainer-access.js';
 import { validId, readStudent, listStudents, writeStudent, removeStudent } from './trainer-store.js';
-import { createStudentInvite, dropStudentInvites } from './student-invite.js';
+import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
 const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink)?$/;
+const JOIN_PATH = /^\/api\/join\/([^/]+)(\/password|\/options|\/verify)?$/;
 
 // The route key for a per-student path, or null. Sets req.studentId to the segment as sent.
 export function trainerStudentKey(req, pathname) {
@@ -23,10 +24,28 @@ export function trainerStudentKey(req, pathname) {
   return `${req.method} /api/trainer/students/{id}${m[2] || ''}`;
 }
 
+// The same for /api/join/{code}, the code left on req.joinCode. The key, never the path, is what
+// the dispatcher logs, so the code stays out of the logs.
+export function joinKey(req, pathname) {
+  const m = JOIN_PATH.exec(pathname);
+  if (!m) return null;
+  req.joinCode = m[1];
+  return `${req.method} /api/join/{code}${m[2] || ''}`;
+}
+
 const NOT_FOUND = { error: 'not found' };   // the dispatcher's own, so a refusal looks like no route
 const view = r => ({ id: r.id, name: r.name, status: r.status, phone: r.phone || null, created: r.created, linkedAt: r.linkedAt || null });
 
-export function trainerRoutes({ json, readBody, readSession, db, saveDb, audit, DATA, text }) {
+// What a trainer lets a student share; workouts always, the rest by the student's consent.
+const SHARES = ['workouts', 'measures', 'photos', 'diet'];
+// Only a real `true` is a yes: anything else, a missing consent included, is a no.
+const consentOf = c => ({ measures: c?.measures === true, photos: c?.photos === true, diet: c?.diet === true });
+
+export function trainerRoutes({
+  json, readBody, readSession, db, saveDb, audit, DATA, text,
+  PASSWORD_LOGIN, addressPaused, strikeAddress, passwordProblem, policyError, hashPassword, nameTaken,
+  putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount
+}) {
   // readSession hands back the live db.users record, so the role checks see the current one.
   const trainerGuard = (req, res) => {
     const user = readSession(req);
@@ -57,7 +76,98 @@ export function trainerRoutes({ json, readBody, readSession, db, saveDb, audit, 
     return code;
   };
 
+  /* ---------- redeeming an invite (public) ----------
+     A wrong, used or expired code, a trainer who can no longer take students and a student who
+     already has an account all look the same: one 404, one strike against the address. */
+  // { inv, trainer, rec } while the code can still make this account, else null. No await inside,
+  // so a route asks it again after its own awaits and writes straight after.
+  const liveJoin = code => {
+    const inv = findStudentInvite(db, code);
+    const trainer = inv && db.users.find(u => u.id === inv.trainerId);
+    if (!isApprovedTrainer(trainer) || db.users.some(u => u.id === inv.studentId)) return null;
+    const rec = readStudent(DATA, trainer.id, inv.studentId);
+    return rec && rec.status === 'invited' ? { inv, trainer, rec } : null;
+  };
+  const refuse = (req, res) => { strikeAddress(req, 'join'); json(res, 404, NOT_FOUND); };
+  // The first look of every join route: null after a 429 or the 404.
+  const openJoin = (req, res) => {
+    if (addressPaused(req, res, 'join')) return null;
+    const live = liveJoin(req.joinCode);
+    if (!live) refuse(req, res);
+    return live;
+  };
+  // A taken name counts against the address too: it also answers for sign-in e-mails (nameTaken).
+  const nameRefused = (req, res, name) => {
+    if (!nameTaken(name)) return false;
+    strikeAddress(req, 'join');
+    json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
+    return true;
+  };
+  const joinName = (body, rec) => text(body.name).trim().slice(0, 40) || rec.name;
+  // The student's account, from a live invite checked with no await since. The record goes first:
+  // if it cannot be written nothing else has changed and the code still works.
+  const join = (req, res, { inv, trainer, rec }, name, consent, { h, passkey } = {}) => {
+    const created = new Date().toISOString();
+    const user = {
+      id: inv.studentId, name, created, ...(h ? { pw: { h, set: created } } : {}),
+      role: 'student', trainerId: trainer.id, consent: { ...consentOf(consent), at: created }
+    };
+    writeStudent(DATA, trainer.id, { ...rec, status: 'active', linkedAt: Date.now() });
+    burnStudentInvite(db, inv);
+    openAccount(req, res, user, passkey, 'student.join', { target: trainer, msg: passkey ? 'passkey' : 'password' });
+  };
+  const joinRoutes = {
+    'GET /api/join/{code}': async (req, res) => {
+      const live = openJoin(req, res); if (!live) return;
+      json(res, 200, { trainerName: live.trainer.name, studentName: live.rec.name, shares: SHARES });
+    },
+
+    'POST /api/join/{code}/options': async (req, res) => {
+      const body = await readBody(req);
+      const live = openJoin(req, res); if (!live) return;
+      const name = joinName(body, live.rec);
+      if (nameRefused(req, res, name)) return;
+      const options = await newPasskeyOptions(live.inv.studentId, name);
+      // The invite's hash, never the code, ties the challenge to it.
+      const cid = putChallenge({ kind: 'join', challenge: options.challenge, name, uid: live.inv.studentId, h: live.inv.h });
+      json(res, 200, { cid, options });
+    },
+
+    'POST /api/join/{code}/verify': async (req, res) => {
+      const body = await readBody(req);
+      if (addressPaused(req, res, 'join')) return;
+      const c = takeChallenge(text(body.cid));
+      if (!c || c.kind !== 'join') return json(res, 400, { error: 'challenge expired, try again', code: 'challenge-expired' });
+      const passkey = await verifyNewPasskey(req, res, c, body);
+      if (!passkey) return;
+      const live = liveJoin(req.joinCode);
+      if (!live || live.inv.h !== c.h) return refuse(req, res);
+      if (nameRefused(req, res, c.name)) return;
+      join(req, res, live, c.name, body.consent, { passkey });
+    },
+
+    // Absent, like every password route, while PASSWORD_LOGIN is off.
+    ...(PASSWORD_LOGIN ? {
+      'POST /api/join/{code}/password': async (req, res) => {
+        const body = await readBody(req);
+        const first = openJoin(req, res); if (!first) return;
+        const name = joinName(body, first.rec);
+        const problem = passwordProblem(body.password, name);
+        if (problem) return policyError(res, problem);
+        if (nameRefused(req, res, name)) return;
+        const h = await hashPassword(body.password);
+        // The hash took a while: the code may be spent and the name taken by now.
+        const live = liveJoin(req.joinCode);
+        if (!live || live.inv !== first.inv) return refuse(req, res);
+        if (nameRefused(req, res, name)) return;
+        join(req, res, live, name, body.consent, { h });
+      }
+    } : {})
+  };
+
   return {
+    ...joinRoutes,
+
     'GET /api/trainer/students': async (req, res) => {
       const trainer = trainerGuard(req, res); if (!trainer) return;
       json(res, 200, { students: listStudents(DATA, trainer.id).map(view) });

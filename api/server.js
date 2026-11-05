@@ -16,7 +16,7 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
-import { trainerRoutes, trainerStudentKey } from './trainer-routes.js';
+import { trainerRoutes, trainerStudentKey, joinKey } from './trainer-routes.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -778,13 +778,14 @@ const CSRF_EXEMPT = new Set(['POST /api/pair/redeem']);
 // attacker's own included.
 const PASSKEY_ROUTES = new Set([
   'POST /api/register/options', 'POST /api/register/verify',
-  'POST /api/login/options', 'POST /api/login/verify'
+  'POST /api/login/options', 'POST /api/login/verify',
+  'POST /api/join/{code}/options', 'POST /api/join/{code}/verify'
 ]);
 // The other ways in are the same kind of route: the name and password, the reset code or the
 // device code in the body is the credential, never a Bearer.
 const SIGN_IN_ROUTES = new Set([
   'POST /api/login/password', 'POST /api/register/password', 'POST /api/login/password-reset',
-  'POST /api/device-link/options', 'POST /api/device-link/verify'
+  'POST /api/device-link/options', 'POST /api/device-link/verify', 'POST /api/join/{code}/password'
 ]);
 // A verify error as the answer's body: a passkey made at an address that is not ORIGIN/RP_ID gets
 // the same `code` as the origin check's 403, so the app explains both alike.
@@ -853,6 +854,62 @@ function takeChallenge(cid) {
   return c;
 }
 setInterval(() => { for (const [k, v] of challenges) if (v.exp < Date.now()) challenges.delete(k); }, 60000).unref();
+
+/* ---------- making an account ----------
+   The steps every sign-up shares, the normal one and redeeming a student invite (trainer-routes.js):
+   the passkey ceremony and the final write. */
+const newPasskeyOptions = (uid, name) => generateRegistrationOptions({
+  rpName: RP_NAME, rpID: RP_ID,
+  userID: Buffer.from(uid), userName: name, userDisplayName: name,
+  attestationType: 'none',
+  authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+  excludeCredentials: []
+});
+// The passkey a sign-up ceremony made, as openAccount stores it, or null once the refusal is sent.
+async function verifyNewPasskey(req, res, c, body) {
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: body.credential,
+      expectedChallenge: c.challenge,
+      expectedOrigin: ORIGIN,
+      expectedRPID: RP_ID,
+      requireUserVerification: false
+    });
+  } catch (e) {
+    // e.message can echo attacker-supplied response fields, so only the reason code is kept.
+    auditFail(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'verify-error' });
+    json(res, 400, verifyAnswer(e));
+    return null;
+  }
+  if (!verification.verified) {
+    auditFail(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'not-verified' });
+    json(res, 400, { error: 'not verified' });
+    return null;
+  }
+  const { credential } = verification.registrationInfo;
+  if (db.creds.find(x => x.id === credential.id)) {
+    audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'credential-exists' });
+    json(res, 409, { error: 'credential already registered' });
+    return null;
+  }
+  return {
+    id: credential.id,
+    publicKey: Buffer.from(credential.publicKey).toString('base64url'),
+    counter: credential.counter || 0,
+    transports: transportsOf(body.credential?.response?.transports)
+  };
+}
+// The write and the answer, with its session. Synchronous on purpose: a caller checks what it
+// must (invite, name) and calls this with no await in between.
+function openAccount(req, res, user, passkey, ev, f) {
+  db.users.push(user);
+  // What Settings → Passkeys shows (#95); a passkey from before then has neither date.
+  if (passkey) db.creds.push({ ...passkey, userId: user.id, created: user.created, lastUsed: user.created });
+  saveDb();
+  audit(req, ev, { user, ...f });
+  json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+}
 
 // ---------- device pairing (mobile app "connect to my server", no WebAuthn ceremony) ----------
 // A passkey ceremony can't run inside the app's WebView (its origin never matches RP_ID), so the
@@ -1525,10 +1582,7 @@ const passwordRoutes = {
     const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}) };
     if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
     signUp(req, user, intent);
-    db.users.push(user);
-    saveDb();
-    audit(req, 'auth.register.ok', { user, msg: inv ? inv.code + ' · password' : 'password' });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+    openAccount(req, res, user, null, 'auth.register.ok', { msg: inv ? inv.code + ' · password' : 'password' });
   },
 
   // What Settings shows: whether a password is set, and whether it could be removed.
@@ -2216,13 +2270,7 @@ const routes = {
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
     }
     const uid = crypto.randomBytes(12).toString('base64url');
-    const options = await generateRegistrationOptions({
-      rpName: RP_NAME, rpID: RP_ID,
-      userID: Buffer.from(uid), userName: name, userDisplayName: name,
-      attestationType: 'none',
-      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
-      excludeCredentials: []
-    });
+    const options = await newPasskeyOptions(uid, name);
     const cid = putChallenge({ kind: 'register', challenge: options.challenge, name, uid, code, ...intent });
     json(res, 200, { cid, options });
   },
@@ -2234,29 +2282,8 @@ const routes = {
       auditFail(req, 'auth.register.fail', { ok: false, msg: 'challenge-expired' });
       return json(res, 400, { error: 'challenge expired, try again', code: 'challenge-expired' });
     }
-    let verification;
-    try {
-      verification = await verifyRegistrationResponse({
-        response: body.credential,
-        expectedChallenge: c.challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
-        requireUserVerification: false
-      });
-    } catch (e) {
-      // e.message can echo attacker-supplied response fields, so only the reason code is kept.
-      auditFail(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'verify-error' });
-      return json(res, 400, verifyAnswer(e));
-    }
-    if (!verification.verified) {
-      auditFail(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'not-verified' });
-      return json(res, 400, { error: 'not verified' });
-    }
-    const { credential } = verification.registrationInfo;
-    if (db.creds.find(x => x.id === credential.id)) {
-      audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'credential-exists' });
-      return json(res, 409, { error: 'credential already registered' });
-    }
+    const passkey = await verifyNewPasskey(req, res, c, body);
+    if (!passkey) return;
     // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
     let invite = null;
     if (INVITE_ONLY) {
@@ -2269,18 +2296,7 @@ const routes = {
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
     if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
     signUp(req, user, c);
-    db.users.push(user);
-    db.creds.push({
-      id: credential.id, userId: user.id,
-      publicKey: Buffer.from(credential.publicKey).toString('base64url'),
-      counter: credential.counter || 0,
-      transports: transportsOf(body.credential?.response?.transports),
-      // What Settings → Passkeys shows (#95); a passkey from before then has neither.
-      created: user.created, lastUsed: user.created
-    });
-    saveDb();
-    audit(req, 'auth.register.ok', { user, msg: invite ? invite.code : null });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+    openAccount(req, res, user, passkey, 'auth.register.ok', { msg: invite ? invite.code : null });
   },
 
   'POST /api/login/options': async (req, res) => {
@@ -2959,7 +2975,11 @@ const routes = {
 
   /* ---------- trainer mode ---------- */
   // trainer-routes.js, handed its helpers the same way. Absent while TRAINER_MODE is off.
-  ...(TRAINER_MODE ? trainerRoutes({ json, readBody, readSession, db, saveDb, audit, DATA, text }) : {}),
+  ...(TRAINER_MODE ? trainerRoutes({
+    json, readBody, readSession, db, saveDb, audit, DATA, text,
+    PASSWORD_LOGIN, addressPaused, strikeAddress, passwordProblem, policyError, hashPassword, nameTaken,
+    putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount
+  }) : {}),
 
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature
@@ -3050,7 +3070,7 @@ const server = http.createServer(async (req, res) => {
   // above stays a plain lookup, and so csrfOk and the catch-all see one name for every file.
   const mm = /^\/api\/media\/([0-9a-f]{64})$/.exec(url.pathname);
   if (mm) { key = req.method + ' /api/media/{hash}'; req.mediaHash = mm[1]; }
-  else key = trainerStudentKey(req, url.pathname) || key;
+  else key = trainerStudentKey(req, url.pathname) || joinKey(req, url.pathname) || key;
   const handler = routes[key];
   if (!handler) return json(res, 404, { error: 'not found' });
   if (!csrfOk(req, key)) {
