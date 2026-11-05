@@ -1,77 +1,34 @@
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { webauthnOK, passkeyLogin, passkeyRegister, passkeyError, bio } from '../lib/api.js'
-import { hasData } from '../store/useStore.js'
+import { webauthnOK, passkeyLogin, passkeyError, bio } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import Icon from '../components/Icon.jsx'
-import { Button, Segmented } from '../components/ui.jsx'
+import { Button } from '../components/ui.jsx'
 import { askAddDeviceData } from '../sheets.jsx'
-import { passwordOn, PasswordRegisterForm, openPasswordSignIn } from '../components/PasswordAuth.jsx'
+import { passwordOn, openPasswordSignIn } from '../components/PasswordAuth.jsx'
+import RegisterProfile from '../components/RegisterProfile.jsx'
+import Entry from './Entry.jsx'
+import TrainerSignup from './TrainerSignup.jsx'
 import { openDeviceLinkRedeem } from '../components/Passkeys.jsx'
 import { openLostAccess } from '../components/LostAccess.jsx'
-
-function RegisterSheet({ close }) {
-  const { setUser, pushState, pullState, loadConfig } = useStore()
-  const config = useStore(s => s.config)
-  const [name, setName] = useState('')
-  const [code, setCode] = useState('')
-  const inviteOnly = !!config?.invite_only
-  // A password is offered only where the instance allows it (#118), and is the only choice in a
-  // browser that cannot make a passkey. Where both work, the passkey stays the first one.
-  const pwOn = passwordOn(config)
-  const [how, setHow] = useState(webauthnOK() ? 'passkey' : 'password')
-  const ref = useRef(null)
-  useEffect(() => { setTimeout(() => ref.current?.focus(), 250) }, [])
-  // Boot already fetched this; retry here only if that attempt failed, so the invite field still
-  // appears on an instance whose config arrived late rather than never.
-  useEffect(() => { loadConfig() }, [loadConfig])
-  const go = async () => {
-    const n = name.trim()
-    if (!n) { useUI.getState().toast(t('Enter a name')); return }
-    if (inviteOnly && !code.trim()) { useUI.getState().toast(t('An invite code is required')); return }
-    try {
-      const u = await passkeyRegister(n, code.trim())
-      setUser(u); close()
-      if (hasData(useStore.getState().S)) { await pushState(); useUI.getState().toast(t('Profile created, and this device’s data moved into it')) }
-      else { await pullState(); useUI.getState().toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(passkeyError(e, t('Registration failed'))) }
-  }
-  const choose = pwOn && webauthnOK() && <>
-    <Segmented options={[{ value: 'passkey', label: t('Passkey'), icon: 'fingerprint' }, { value: 'password', label: t('Password'), icon: 'key' }]}
-      value={how} onChange={setHow} />
-    <div style={{ height: 12 }} />
-  </>
-  if (pwOn && how === 'password') return <>
-    <h3>{t('Create your profile')}</h3>
-    {choose}
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={inviteOnly} name={name} setName={setName} code={code} setCode={setCode} />
-  </>
-  return <>
-    <h3>{t('Create your profile')}</h3>
-    {choose}
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name, then confirm with {0}. The passkey lives on your device, so no password needed.', bio())}</div>
-    <input ref={ref} className="input" placeholder={t('Your name')} maxLength={40} value={name} onChange={e => setName(e.target.value)} />
-    {inviteOnly && <>
-      <div style={{ height: 10 }} />
-      <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
-        onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
-    </>}
-    <div style={{ height: 12 }} />
-    <Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
-  </>
-}
 
 export default function Login() {
   const { setUser, adoptProfile, setGuest } = useStore()
   const config = useStore(s => s.config)
   const canGuest = guestAllowed(config)
   const pwOn = passwordOn(config)
-  const register = () => useUI.getState().openSheet(close => <RegisterSheet close={close} />)
+  // Trainer mode: who is signing in, 'student' or 'trainer', asked first (Entry).
+  const [kind, setKind] = useState(null)
+  const [signup, setSignup] = useState(false)
+  const trainerMode = !!config?.trainer_mode
+  const register = () => useUI.getState().openSheet(close => <RegisterProfile close={close} />)
+  // Where the screen offers a new profile. A student's account is made from their trainer's link.
+  const create = !trainerMode ? <Button icon="plusCircle" onClick={register}>{t('Create new profile')}</Button>
+    : kind === 'trainer' ? <Button icon="plusCircle" onClick={() => setSignup(true)}>{t('Create trainer account')}</Button>
+    : <div className="card small muted" style={{ textAlign: 'start' }}>{t('Only your personal trainer can create accounts. Ask your trainer for an invite link.')}</div>
   const signIn = async () => {
     try { const u = await passkeyLogin(); setUser(u, { adopt: true }); await adoptProfile(askAddDeviceData); useUI.getState().toast(t('Welcome back, {0}', u.name)) }
     catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(passkeyError(e, t('Sign-in failed'))) }
@@ -97,6 +54,9 @@ export default function Login() {
     </div>
   )
 
+  if (trainerMode && !kind) return <div className="narrow" style={wrap}>{head}<Entry onPick={setKind} /></div>
+  if (trainerMode && signup) return <div className="narrow" style={{ textAlign: 'start', paddingTop: 24 }}><TrainerSignup onBack={() => setSignup(false)} /></div>
+
   return (
     <div className="narrow" style={wrap}>
       {head}
@@ -105,7 +65,7 @@ export default function Login() {
         <Button variant="primary" icon="fingerprint" onClick={signIn}>{t('Sign in with passkey')}</Button>
         <div style={{ height: 10 }} />
         {pwOn && <><Button icon="key" onClick={() => openPasswordSignIn()}>{t('Sign in with password')}</Button><div style={{ height: 10 }} /></>}
-        <Button icon="plusCircle" onClick={register}>{t('Create new profile')}</Button>
+        {create}
         {/* Already signed in on another device: a code from there gives this one a passkey of
             its own (#95), instead of a new, empty profile. */}
         <div style={{ height: 10 }} />
@@ -119,7 +79,7 @@ export default function Login() {
         <div className="card small muted" style={{ textAlign: 'start', marginBottom: 14 }}>{t("This browser doesn't support passkeys. Sign in with your name and password instead.")}</div>
         <Button variant="primary" icon="key" onClick={() => openPasswordSignIn()}>{t('Sign in with password')}</Button>
         <div style={{ height: 10 }} />
-        <Button icon="plusCircle" onClick={register}>{t('Create new profile')}</Button>
+        {create}
         <Button variant="ghost" className="dim" onClick={openLostAccess}>{t('Lost access?')}</Button>
         {canGuest && <div style={{ height: 10 }} />}
       </> : <div className="card small muted" style={{ textAlign: 'start' }}>{canGuest
@@ -128,6 +88,7 @@ export default function Login() {
         // so say that plainly instead of offering a local profile that cannot be created.
         : t("This browser doesn't support passkeys, and this instance requires an account. Try a browser or device with passkey support.")}</div>}
       {canGuest && <Button variant="ghost" className="dim" onClick={() => setGuest(true)}>{t('Continue without account')}</Button>}
+      {trainerMode && <Button variant="ghost" className="dim" onClick={() => setKind(null)}>{t('Back')}</Button>}
       <div className="dim small" style={{ marginTop: 26, lineHeight: 1.5 }}>{pwOn ? t('Passkeys use {0}. A password works too, where passkeys do not.', bio()) : t('Passkeys use {0}. No passwords to remember.', bio())}<br />{t('Each profile keeps its own plan, workouts & body weight.')}</div>
     </div>
   )

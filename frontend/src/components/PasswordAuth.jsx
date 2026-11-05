@@ -153,8 +153,9 @@ export function PasswordSignInSheet({ close, onPasskey }) {
 export const openPasswordSignIn = onPasskey => ui().openSheet(close => <PasswordSignInSheet close={close} onPasskey={onPasskey} />)
 
 /* The password half of creating a profile. Name and invite code are the caller's state, so
-   switching between passkey and password on the sign-up sheet keeps what was typed. */
-export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode }) {
+   switching between passkey and password on the sign-up sheet keeps what was typed. `extra` and
+   `children` as in RegisterProfile.jsx; `close` gets the new user. */
+export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode, extra, children }) {
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [again, setAgain] = useState('')
@@ -174,9 +175,9 @@ export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, s
     if (bad) { setErr(bad); return }
     setBusy(true); setErr(null)
     try {
-      const u = await passwordRegister(n, pw, code.trim(), mail)
+      const u = await passwordRegister(n, pw, code.trim(), mail, ...(extra ? [extra] : []))
       const st = useStore.getState()
-      st.setUser(u); close()
+      st.setUser(u); close(u)
       if (hasData(useStore.getState().S)) { await st.pushState(); toast(t('Profile created, and this device’s data moved into it')) }
       else { await st.pullState(); toast(t('Welcome, {0}', u.name)) }
     } catch (e) { setErr(passwordError(e)) }
@@ -189,6 +190,7 @@ export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, s
     <input className="input" type="email" name="email" autoComplete="email" inputMode="email" placeholder={t('E-mail (optional)')} maxLength={254}
       value={email} onChange={e => setEmail(e.target.value)} {...field} />
     <div className="dim small" style={{ marginTop: 6 }}>{t('Lets you sign in with it instead of your name. Nothing is ever sent to it.')}</div>
+    {children}
     {inviteOnly && <>
       <div style={{ height: 10 }} />
       <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}

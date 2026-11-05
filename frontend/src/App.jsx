@@ -41,6 +41,8 @@ import { SeasonalLayer } from './components/Seasonal.jsx'
 import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import { useAnimPacksBoot } from './components/Animations.jsx'
 import Login from './views/Login.jsx'
+import TrainerPending from './views/TrainerPending.jsx'
+import { isPendingTrainer, homeFor } from './lib/roles.js'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
@@ -275,7 +277,8 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps
+  const pending = isPendingTrainer(user)
+  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || pending
 
   const authed = user || isGuest
   // The boot screen in index.html covers the start; it goes once there is something to show.
@@ -288,7 +291,13 @@ function Shell() {
     </div>
   )
 
-  const view = l => (!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (
+  // A trainer waiting for the owner has one route; every other link sends them to it.
+  const view = l => (!authed ? <Login /> : pending ? (
+    <Routes location={l}>
+      <Route path="/pending" element={<TrainerPending />} />
+      <Route path="*" element={<Navigate to={homeFor(user)} replace />} />
+    </Routes>
+  ) : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (
     <Routes location={l}>
       <Route path="/home" element={<Home />} />
       {/* Gym check-in — switched off in Settings, the route falls through to the
