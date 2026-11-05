@@ -17,7 +17,7 @@ import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
 import { trainerRoutes, trainerStudentKey, joinKey, unlinkStudent, detachTrainer } from './trainer-routes.js';
-import { isApprovedTrainer } from './trainer-access.js';
+import { isApprovedTrainer, purgeStalePendingTrainers } from './trainer-access.js';
 import { startCadence } from './coach/cadence.js';
 import { startWarmup } from './coach/warmup.js';
 import { dayReminderPush, nudgePush, restTimerPush, testPush } from './push-messages.js';
@@ -2983,7 +2983,8 @@ const routes = {
   ...(TRAINER_MODE ? trainerRoutes({
     json, readBody, readSession, db, saveDb, audit, DATA, text,
     PASSWORD_LOGIN, addressPaused, strikeAddress, passwordProblem, policyError, hashPassword, nameTaken,
-    putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount
+    putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount,
+    requireAdmin, requireOwner, isAdmin, removeAccount
   }) : {}),
 
   /* ---------- photos & videos ---------- */
@@ -2991,6 +2992,23 @@ const routes = {
   // answers, and the client already treats that as "this server does not store them".
   ...(MEDIA_ON ? mediaRoutes : {})
 };
+
+/* ---------- trainer mode: pending sign-ups nobody answered ---------- */
+// Sign-up is open, so a pending trainer left for 30 days goes, data and all, as a reject does it.
+function purgePendingTrainers() {
+  try {
+    for (const id of purgeStalePendingTrainers(db, Date.now())) {
+      const u = db.users.find(x => x.id === id);
+      if (!u || isAdmin(u)) continue;   // ADMIN_UIDS makes an admin the record does not say
+      removeAccount(u);
+      audit({ headers: {} }, 'trainer.reject', { msg: `${u.name} (not answered in 30 days)` });
+    }
+  } catch (e) { console.error('trainer: purge of pending sign-ups failed', e); }
+}
+if (TRAINER_MODE) {
+  purgePendingTrainers();
+  setInterval(purgePendingTrainers, 3600000).unref();
+}
 
 /* ---------- Coach: boot recovery, notifications, scheduled reviews ---------- */
 // A job that was running when the process died is not coming back; say so rather than leaving

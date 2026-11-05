@@ -68,7 +68,8 @@ const consentOf = c => ({ measures: c?.measures === true, photos: c?.photos === 
 export function trainerRoutes({
   json, readBody, readSession, db, saveDb, audit, DATA, text,
   PASSWORD_LOGIN, addressPaused, strikeAddress, passwordProblem, policyError, hashPassword, nameTaken,
-  putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount
+  putChallenge, takeChallenge, newPasskeyOptions, verifyNewPasskey, openAccount,
+  requireAdmin, requireOwner, isAdmin, removeAccount
 }) {
   const ctx = { db, DATA, saveDb };
   // readSession hands back the live db.users record, so the role checks see the current one.
@@ -95,6 +96,14 @@ export function trainerRoutes({
     if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
     if (!isStudent(user)) { json(res, 404, NOT_FOUND); return null; }
     return user;
+  };
+  // The pending trainer an owner's body names, else null after a 404 or a 400 (approved, not a
+  // trainer at all, or an admin: an admin is never rejected or approved from here).
+  const pendingTrainer = (body, res) => {
+    const u = typeof body.id === 'string' ? db.users.find(x => x.id === body.id) : null;
+    if (!u) { json(res, 404, { error: 'no such user' }); return null; }
+    if (!isPendingTrainer(u) || isAdmin(u)) { json(res, 400, { error: 'not a pending trainer', code: 'not-pending' }); return null; }
+    return u;
   };
   const trainerAndStudent = (req, res, ownFolder) => {
     const trainer = trainerGuard(req, res); if (!trainer) return null;
@@ -268,6 +277,52 @@ export function trainerRoutes({
       const trainerId = me.trainerId;
       if (trainerId && unlinkStudent(ctx, trainerId, me.id)) audit(req, 'student.unlink', { user: me, msg: 'by the student' });
       json(res, 200, { ok: true });
+    },
+
+    /* ---------- the owner's side ---------- */
+    // Any admin may look; approving, rejecting and switching the mode are the owner's. No e-mail or phone.
+    'GET /api/admin/trainers': async (req, res) => {
+      if (!requireAdmin(req, res)) return;
+      const trainers = db.users.filter(u => u.role === 'trainer').map(u => ({
+        id: u.id, name: u.name, status: u.trainerStatus, created: u.created,
+        students: listStudents(DATA, u.id).filter(r => r.status !== 'unlinked').length
+      }));
+      json(res, 200, { trainers });
+    },
+
+    'POST /api/admin/trainer/approve': async (req, res) => {
+      const owner = requireOwner(req, res); if (!owner) return;
+      const u = pendingTrainer(await readBody(req), res); if (!u) return;
+      u.trainerStatus = 'approved';
+      saveDb();
+      audit(req, 'trainer.approve', { user: owner, target: u });
+      json(res, 200, { ok: true });
+    },
+
+    // The pending account goes the way an admin's delete takes any account, data and all.
+    'POST /api/admin/trainer/reject': async (req, res) => {
+      const owner = requireOwner(req, res); if (!owner) return;
+      const u = pendingTrainer(await readBody(req), res); if (!u) return;
+      audit(req, 'trainer.reject', { user: owner, msg: u.name });   // by name: the id means nothing once it is gone
+      removeAccount(u);
+      json(res, 200, { ok: true });
+    },
+
+    // On: any account but a student's becomes an approved trainer, the owner's own included. Off: the
+    // role goes and the trainer's students lose the link, as when a trainer is deleted.
+    'POST /api/admin/user/trainer': async (req, res) => {
+      const owner = requireOwner(req, res); if (!owner) return;
+      const body = await readBody(req);
+      const u = typeof body.id === 'string' ? db.users.find(x => x.id === body.id) : null;
+      if (!u) return json(res, 404, { error: 'no such user' });
+      if (typeof body.on !== 'boolean') return json(res, 400, { error: 'on must be true or false' });
+      if (body.on && isStudent(u)) return json(res, 400, { error: 'a student cannot be a trainer', code: 'student' });
+      if (!body.on && u.role !== 'trainer') return json(res, 400, { error: 'this account is not a trainer', code: 'not-trainer' });
+      if (body.on) { u.role = 'trainer'; u.trainerStatus = 'approved'; }
+      else { delete u.role; delete u.trainerStatus; delete u.phone; detachTrainer(ctx, u.id); }
+      saveDb();
+      audit(req, 'trainer.mode', { user: owner, target: u, msg: body.on ? 'on' : 'off' });
+      json(res, 200, { ok: true, id: u.id, role: u.role || null });
     }
   };
 }

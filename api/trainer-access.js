@@ -29,3 +29,10 @@ export function detachStudentsOf(db, trainerId) {
   }
   return detached;
 }
+
+// Sign-up is open, so a pending trainer nobody answers must not pile up in db.json. The ids of the
+// pending trainers older than maxAgeMs (30 days), never an admin; an unreadable `created` counts as
+// new, so nothing is removed on a guess. The caller removes them, the way a reject does.
+export function purgeStalePendingTrainers(db, now, maxAgeMs = 30 * 24 * 3600 * 1000) {
+  return (db?.users || []).filter(u => isPendingTrainer(u) && u.admin !== true && now - Date.parse(u.created) > maxAgeMs).map(u => u.id);
+}

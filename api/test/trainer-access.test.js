@@ -1,7 +1,7 @@
 /* Who may see whose data: the one check every trainer route goes through. */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from '../trainer-access.js';
+import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf, purgeStalePendingTrainers } from '../trainer-access.js';
 
 const trainer = (over = {}) => ({ id: 't1', role: 'trainer', trainerStatus: 'approved', ...over });
 const student = (over = {}) => ({ id: 's1', role: 'student', trainerId: 't1', name: 'Ana', consent: { at: 1 }, ...over });
@@ -109,5 +109,30 @@ describe('detachStudentsOf', () => {
   it('returns an empty list when there is nothing to detach', () => {
     assert.deepEqual(detachStudentsOf(dbOf(trainer()), 't1'), []);
     assert.deepEqual(detachStudentsOf({}, 't1'), []);
+  });
+});
+
+describe('purgeStalePendingTrainers', () => {
+  const NOW = Date.parse('2026-11-05T12:00:00Z');
+  const DAY = 24 * 3600 * 1000;
+  const ago = days => new Date(NOW - days * DAY).toISOString();
+  const pending = (id, days, over = {}) => ({ id, role: 'trainer', trainerStatus: 'pending', created: ago(days), ...over });
+
+  it('returns only pending trainers older than 30 days, and does not touch the db', () => {
+    const db = dbOf(
+      pending('old', 31), pending('fresh', 29), pending('edge', 30),
+      trainer({ id: 'appr', created: ago(90) }),
+      student({ id: 'stu', created: ago(90) }),
+      { id: 'plain', created: ago(90) },
+      pending('adm', 90, { admin: true })
+    );
+    assert.deepEqual(purgeStalePendingTrainers(db, NOW), ['old']);
+    assert.equal(db.users.length, 7);
+  });
+
+  it('takes the age from the caller and keeps accounts whose date is missing or unreadable', () => {
+    const db = dbOf(pending('a', 10), pending('b', 10, { created: undefined }), pending('c', 10, { created: 'nope' }));
+    assert.deepEqual(purgeStalePendingTrainers(db, NOW, 5 * DAY), ['a']);
+    assert.deepEqual(purgeStalePendingTrainers({}, NOW), []);
   });
 });
