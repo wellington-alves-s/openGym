@@ -44,7 +44,8 @@ import Login from './views/Login.jsx'
 import Join from './views/Join.jsx'
 import { joinTokenFromSearch, stripJoinFromUrl } from './lib/student-link.js'
 import TrainerPending from './views/TrainerPending.jsx'
-import { isPendingTrainer, homeFor } from './lib/roles.js'
+import Students from './views/trainer/Students.jsx'
+import { isPendingTrainer, isApprovedTrainer, homeFor } from './lib/roles.js'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
@@ -286,7 +287,7 @@ function Shell() {
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
   const pending = isPendingTrainer(user)
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || pending
+  const noTabs = inWorkout || loc.pathname === '/coach' || ((needsMobileOnboarding || permSteps) && !isApprovedTrainer(user)) || pending
 
   const authed = user || isGuest
   // The boot screen in index.html covers the start; it goes once there is something to show.
@@ -303,6 +304,15 @@ function Shell() {
   const view = l => (!authed ? (joinCode ? <Join code={joinCode} /> : <Login />) : pending ? (
     <Routes location={l}>
       <Route path="/pending" element={<TrainerPending />} />
+      <Route path="*" element={<Navigate to={homeFor(user)} replace />} />
+    </Routes>
+  ) : isApprovedTrainer(user) ? (
+    // The trainer's whole app: the students and their own settings (the Profile tab). Placed before
+    // the lifter's first-launch steps, which are not theirs.
+    <Routes location={l}>
+      <Route path="/students" element={<Students />} />
+      <Route path="/settings" element={<SettingsRoute />} />
+      <Route path="/settings/:page" element={<SettingsRoute />} />
       <Route path="*" element={<Navigate to={homeFor(user)} replace />} />
     </Routes>
   ) : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (

@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore.js'
 import { effectiveRoutineIds, effectiveRoutines } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
+import { isApprovedTrainer, tabsFor } from '../lib/roles.js'
 import Icon from './Icon.jsx'
 import Elapsed from './Elapsed.jsx'
 import { useConnectionTrouble } from './SyncBanner.jsx'
@@ -39,6 +40,13 @@ export default function TabBar({ onStart }) {
   const switchTab = path => {
     if (loc.pathname !== path || loc.search) nav(path, { replace: true })
   }
+
+  // An approved trainer has no workout to start: two tabs, and the bar of everyone else is untouched.
+  if (isApprovedTrainer(user)) return (
+    <nav id="tabbar">
+      {tabsFor(user).map(tab => <Tab key={tab.key} active={cur === tab.path.split('/')[1]} icon={tab.icon} label={t(tab.label)} onClick={() => switchTab(tab.path)} />)}
+    </nav>
+  )
 
   const running = !!S.active && cur !== 'workout' && !S.active.editingWorkoutId && !S.active.backfill && S.active.start > 0
   const startWorkout = () => {
