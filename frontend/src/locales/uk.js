@@ -1091,6 +1091,11 @@ export default {
   // --- v1.3.x catch-up: muscle explorer, favourites, starter plans v2, workout view, exact RIR/RPE entry, updates, offline sync ---
   "By muscle": "За м'язом",
   "Explore muscles": "Дослідити м'язи",
+  "Apply": "Застосувати",
+  "Muscle groups": "Групи м'язів",
+  "Relevance": "За релевантністю",
+  "Alphabetical": "За алфавітом",
+  "Rotate": "Повернути",
   "Choose a muscle to see exercises that train it.": "Вибери м'яз, щоб побачити вправи, які його тренують.",
   "Exercises for {0}": "Вправи для {0}",
   "Clear selection": "Скинути вибір",

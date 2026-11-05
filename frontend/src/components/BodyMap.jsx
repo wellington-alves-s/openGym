@@ -14,7 +14,7 @@ import { t } from '../lib/i18n.js'
 let CACHE = null                                  // shared across every mounted map
 let PENDING = null
 
-function useBodyPaths() {
+export function useBodyPaths() {
   const [paths, setPaths] = useState(CACHE)
   useEffect(() => {
     if (CACHE) return

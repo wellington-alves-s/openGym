@@ -1782,6 +1782,20 @@ body.no-tabbar #timer.working{box-shadow:inset 0 var(--hair) 0 var(--acc),0 -10p
 
 .bm-m.sel{stroke:var(--label);stroke-width:7}
 .bodymap.tappable .bm-m{cursor:pointer}
+/* Labelled map (components/BodyMapLabeled.jsx): the figure fills a box whose side columns hold the
+   muscle names; names and the rotate button are positioned over it in percent of that box. */
+.bodymap.bm-lab{display:block;position:relative;width:100%;max-width:520px;margin:0 auto}
+.bm-lab svg{position:absolute;inset:0;width:100%;height:100%}
+.bm-lab .bm-m{cursor:pointer}
+.bm-line path{fill:none;stroke:var(--label-3);stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}
+.bm-line rect{fill:none;stroke:var(--label-3);stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}
+.bm-line.on path,.bm-line.on rect{stroke:var(--acc)}
+.bm-name{position:absolute;transform:translateY(-100%);padding:0 0 2px;border:0;border-bottom:1px solid var(--label-3);
+  background:none;color:inherit;font:inherit;font-size:13px;line-height:1.2;white-space:nowrap;cursor:pointer}
+.bm-name.l{left:0;text-align:start}
+.bm-name.r{right:0;text-align:end}
+.bm-name.on{color:var(--acc);border-bottom-color:var(--acc)}
+.bm-rot{position:absolute;right:0;bottom:0}
 .bodymap.tappable .bm-m:focus-visible{outline:none;stroke:var(--label);stroke-width:7;filter:drop-shadow(0 0 2px var(--surface))}
 /* A hairline in the surface colour separates neighbouring muscles; the artwork has no
    outline path of its own, so without this the body reads as one flat blob. */
@@ -2341,3 +2355,4 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 .gym-radius-row>:first-child{flex:1}
 .gym-radius-val{min-width:64px;text-align:end;font-variant-numeric:tabular-nums;color:var(--label-2)}
 .gym-actions{display:flex;flex-direction:column;gap:10px;margin:4px 0 30px}
+.fs-apply{position:sticky;bottom:0;padding:8px 0 4px;background:var(--bg-el)}

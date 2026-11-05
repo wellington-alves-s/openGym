@@ -790,6 +790,11 @@ export const PT_BR_OVERRIDES = {
 // --- muscle explorer ---
   'By muscle': 'Por músculo',
   'Explore muscles': 'Explorar músculos',
+  'Apply': 'Aplicar',
+  'Muscle groups': 'Grupos musculares',
+  'Relevance': 'Relevância',
+  'Alphabetical': 'Alfabética',
+  'Rotate': 'Girar',
   'Choose a muscle to see exercises that train it.': 'Escolha um músculo para ver os exercícios que o treinam.',
   'Exercises for {0}': 'Exercícios para {0}',
   'Clear selection': 'Limpar seleção',
