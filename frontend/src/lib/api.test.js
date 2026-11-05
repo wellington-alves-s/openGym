@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { webauthnOK, bio, BIO, passkeyError, api } from './api.js'
+import { webauthnOK, bio, BIO, passkeyError, api, passwordRegister, passkeyRegister } from './api.js'
 import de from '../locales/de.js'
 import { _setLangState } from './i18n-core.js'
 
@@ -223,5 +223,38 @@ describe('a write refused for the wrong address', () => {
   it('any other refusal keeps the server\'s words', async () => {
     answer(403, { error: 'forbidden' })
     expect((await api('/api/data', { method: 'PUT', body: '{}' }).catch(x => x)).message).toBe('forbidden')
+  })
+})
+
+// Registering as a trainer sends `as` and `phone` along; a plain sign-up sends exactly what it did before.
+describe('registration extras', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const answer = () => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ user: { id: 'u1' }, cid: 'c1', options: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+  const body = () => JSON.parse(fetch.mock.calls[0][1].body)
+
+  it('a password sign-up merges the extra into the body', async () => {
+    answer()
+    await passwordRegister('Di', 'correct horse', '', 'di@example.com', { as: 'trainer', phone: '555' })
+    expect(body()).toEqual({ name: 'Di', password: 'correct horse', code: '', email: 'di@example.com', as: 'trainer', phone: '555' })
+  })
+
+  it('a password sign-up without it sends the same body as before', async () => {
+    answer()
+    await passwordRegister('Di', 'correct horse', 'ABC', '')
+    expect(body()).toEqual({ name: 'Di', password: 'correct horse', code: 'ABC' })
+  })
+
+  it('a passkey sign-up merges the extra into the options request', async () => {
+    answer()
+    setCapability(navigator, 'credentials', { create: async () => { throw new Error('stop here') } })
+    await passkeyRegister('Di', '', { as: 'trainer', phone: '555' }).catch(() => {})
+    expect(body()).toEqual({ name: 'Di', code: '', as: 'trainer', phone: '555' })
+  })
+
+  it('a passkey sign-up without it sends the same body as before', async () => {
+    answer()
+    setCapability(navigator, 'credentials', { create: async () => { throw new Error('stop here') } })
+    await passkeyRegister('Di', 'ABC').catch(() => {})
+    expect(body()).toEqual({ name: 'Di', code: 'ABC' })
   })
 })

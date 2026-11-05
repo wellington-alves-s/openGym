@@ -1,0 +1,29 @@
+// The trainer-mode routes (api/trainer-routes.js), through api.js like every other call.
+import { api } from './api.js'
+
+const send = (method, path, body) => api(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+// An id or code from outside is one path segment, whatever it holds.
+const seg = s => encodeURIComponent(s)
+
+// A trainer's students.
+export const listStudents = async () => (await api('/api/trainer/students')).students || []
+export const createStudent = ({ name, phone, email }) => send('POST', '/api/trainer/students', { name, phone, email })   // → { student, code }
+export const newInvite = async id => (await send('POST', `/api/trainer/students/${seg(id)}/invite`)).code
+export const removeStudent = id => send('DELETE', `/api/trainer/students/${seg(id)}`)
+export const unlinkStudent = id => send('POST', `/api/trainer/students/${seg(id)}/unlink`)
+
+// Joining with an invite code (public).
+export const joinInfo = code => api(`/api/join/${seg(code)}`)   // → { trainerName, studentName, shares }
+export const joinWithPassword = async (code, { name, password, consent }) =>
+  (await send('POST', `/api/join/${seg(code)}/password`, { name, password, consent })).user
+
+// A student's side.
+export const myTrainer = () => api('/api/student/trainer')   // → { trainer, since, consent }
+export const setConsent = consent => send('PUT', '/api/student/consent', consent)
+export const leaveTrainer = () => send('POST', '/api/student/unlink')
+
+// The owner's side.
+export const listTrainers = async () => (await api('/api/admin/trainers')).trainers || []
+export const approveTrainer = id => send('POST', '/api/admin/trainer/approve', { id })
+export const rejectTrainer = id => send('POST', '/api/admin/trainer/reject', { id })
+export const setTrainerMode = (id, on) => send('POST', '/api/admin/user/trainer', { id, on })
