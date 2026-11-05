@@ -2,7 +2,7 @@
 // has made the record, becomes the invite link; InviteLinkSheet is the same link for "New link" on
 // a student already listed. The link (it holds the one-time code) lives in this sheet's state only:
 // closed, it is gone, and it is never written anywhere or logged.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
 import { createStudent } from '../lib/trainer-api.js'
@@ -34,23 +34,24 @@ export default function NewStudentSheet({ onCreated }) {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
+  const inFlight = useRef(false)   // the state lags a quick second submit; the ref does not
   const [err, setErr] = useState(null)
   const [link, setLink] = useState(null)
   if (link) return <InviteLinkSheet link={link} />
 
   const submit = async ev => {
     ev.preventDefault()
-    if (busy) return
+    if (inFlight.current) return
     const n = name.trim()
     if (!n) { setErr(t('Enter a name')); return }
-    setBusy(true); setErr(null)
+    inFlight.current = true; setBusy(true); setErr(null)
     try {
       const { code } = await createStudent({ name: n, phone: phone.trim(), email: email.trim() })
       setLink(joinLinkUrl(code))
       onCreated?.()
     } catch (e) {
       setErr(e?.data?.error || e?.message || t('Could not save. Try again.'))
-    } finally { setBusy(false) }
+    } finally { inFlight.current = false; setBusy(false) }
   }
   return <form onSubmit={submit} noValidate>
     <h3 style={{ marginBottom: 12 }}>{t('New student')}</h3>
@@ -64,6 +65,6 @@ export default function NewStudentSheet({ onCreated }) {
       aria-label={t('E-mail (optional)')} maxLength={254} value={email} onChange={e => setEmail(e.target.value)} />
     {err && <div className="card small" role="alert" style={{ marginTop: 10, color: 'var(--danger, #ff453a)' }}>{err}</div>}
     <div style={{ height: 14 }} />
-    <Button variant="primary" type="submit" disabled={busy}>{t('Create invite')}</Button>
+    <Button variant="primary" type="submit" aria-disabled={busy}>{t('Create invite')}</Button>
   </form>
 }

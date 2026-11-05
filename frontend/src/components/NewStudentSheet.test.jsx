@@ -86,6 +86,21 @@ describe('NewStudentSheet', () => {
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
   })
+
+  it('a second submit while the first is in flight sends nothing, and the button keeps focus', async () => {
+    let release
+    mocks.createStudent.mockImplementation(() => new Promise(r => { release = () => r({ student: { id: 's1' }, code: 'ABCD-EFGH-JKLM' }) }))
+    const host = mount(<NewStudentSheet />)
+    type(field(host, 'Student name'), 'Ana')
+    const send = () => host.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    act(() => { send(); send() })
+    expect(button(host, 'Create invite').disabled).toBe(false)
+    expect(button(host, 'Create invite').getAttribute('aria-disabled')).toBe('true')
+    act(() => { send() })
+    expect(mocks.createStudent).toHaveBeenCalledTimes(1)
+    await act(async () => { release() })
+    await settle()
+  })
 })
 
 describe('InviteLinkSheet', () => {

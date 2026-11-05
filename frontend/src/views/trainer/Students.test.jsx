@@ -140,7 +140,7 @@ describe('Students', () => {
 })
 
 describe('Students, a double tap', () => {
-  it('"New link" runs once while the call is in flight and the button is disabled', async () => {
+  it('"New link" runs once while the call is in flight and the button says it is busy', async () => {
     mocks.listStudents.mockResolvedValue([ana])
     let release
     mocks.newInvite.mockImplementation(() => new Promise(r => { release = r }))
@@ -148,12 +148,15 @@ describe('Students, a double tap', () => {
     await settle()
     const li = row(host, 'Ana')
     const btn = () => [...li.querySelectorAll('button')].find(b => b.textContent === 'New link')
-    act(() => { btn().click(); btn().click() })
+    act(() => { btn().click() })
+    // Not `disabled`: the button keeps keyboard focus, and the tap itself is what is ignored.
+    expect(btn().disabled).toBe(false)
+    expect(btn().getAttribute('aria-disabled')).toBe('true')
+    act(() => { btn().click() })
     expect(mocks.newInvite).toHaveBeenCalledTimes(1)
-    expect(btn().disabled).toBe(true)
     await act(async () => { release('ABCD-EFGH-JKLM') })
     await settle()
     expect(mocks.openSheet).toHaveBeenCalledTimes(1)
-    expect(btn().disabled).toBe(false)
+    expect(btn().getAttribute('aria-disabled')).toBe('false')
   })
 })

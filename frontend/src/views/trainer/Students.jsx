@@ -74,7 +74,7 @@ export default function Students() {
           <div className="small dim">{when(s)}</div>
           {(s.status === 'invited' || s.status === 'active') && <div className="row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
             {s.status === 'invited' && <>
-              <Button size="sm" aria-label={t('New link for {0}', s.name)} disabled={making === s.id} onClick={() => newLink(s)}>{t('New link')}</Button>
+              <Button size="sm" aria-label={t('New link for {0}', s.name)} aria-disabled={making === s.id} onClick={() => newLink(s)}>{t('New link')}</Button>
               <Button size="sm" aria-label={t('Remove invite for {0}', s.name)} onClick={() => remove(s)}>{t('Remove invite')}</Button>
             </>}
             {s.status === 'active' && <Button size="sm" aria-label={t('Unlink {0}', s.name)} onClick={() => unlink(s)}>{t('Unlink')}</Button>}

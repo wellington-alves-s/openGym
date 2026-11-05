@@ -102,9 +102,13 @@ describe('MyTrainer', () => {
     mocks.setConsent.mockImplementation(c => new Promise(r => { release = () => r({ consent: c }) }))
     const host = await open()
     tap(sw(host, 'Diet'))
+    // Busy, the switches say so but stay focusable: the tap itself is what is ignored.
+    expect(sw(host, 'Diet').disabled).toBe(false)
+    expect(sw(host, 'Body measurements').getAttribute('aria-disabled')).toBe('true')
     tap(sw(host, 'Body measurements'))
     expect(mocks.setConsent).toHaveBeenCalledTimes(1)
     await act(async () => { release() })
+    expect(sw(host, 'Body measurements').getAttribute('aria-disabled')).toBe('false')
     tap(sw(host, 'Body measurements'))
     expect(mocks.setConsent).toHaveBeenCalledTimes(2)
     expect(mocks.setConsent).toHaveBeenLastCalledWith({ measures: false, photos: false, diet: true })

@@ -74,7 +74,7 @@ export default function MyTrainer() {
       </div>
       {[['measures', t('Body measurements')], ['photos', t('Progress photos')], ['diet', t('Diet')]].map(([key, label]) => <div key={key} className="row between" style={{ margin: '8px 0' }}>
         <span>{label}</span>
-        <Switch aria-label={label} checked={consent[key]} disabled={saving} onChange={() => flip(key)} />
+        <Switch aria-label={label} checked={consent[key]} aria-disabled={saving} onChange={() => flip(key)} />
       </div>)}
     </div>
     <div style={{ height: 14 }} />

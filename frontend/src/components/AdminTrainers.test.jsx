@@ -157,8 +157,17 @@ describe('AdminTrainers', () => {
     const host = mount(<AdminTrainers owner ownId="own" />)
     await settle()
     press(labelled(host, 'Approve Rita'))
+    // Busy, the controls say so but keep focus: the tap itself is what is ignored.
+    for (const l of ['Approve Rita', 'Reject Rita', 'Trainer mode on my account']) {
+      expect(labelled(host, l).disabled, l).toBe(false)
+      expect(labelled(host, l).getAttribute('aria-disabled'), l).toBe('true')
+    }
     press(labelled(host, 'Approve Rita'))
+    press(labelled(host, 'Reject Rita'))
+    press(labelled(host, 'Trainer mode on my account'))
     expect(mocks.approveTrainer).toHaveBeenCalledTimes(1)
+    expect(mocks.confirmSheet).not.toHaveBeenCalled()
+    expect(mocks.setTrainerMode).not.toHaveBeenCalled()
     await act(async () => { release() })
     await settle()
   })

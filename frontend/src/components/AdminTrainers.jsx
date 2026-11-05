@@ -43,10 +43,15 @@ export default function AdminTrainers({ owner, ownId }) {
     await load()
     inFlight.current = false; setBusy(false)
   }
-  const reject = p => confirmSheet({
-    title: 'Reject ' + p.name + '?', message: 'The account is deleted.',
-    confirmText: 'Reject', danger: true, onConfirm: () => run(() => rejectTrainer(p.id)),
-  })
+  // The controls are aria-disabled, not disabled, while busy (a disabled one drops keyboard focus),
+  // so every tap comes here: one that only opens a confirm is ignored too.
+  const reject = p => {
+    if (inFlight.current) return
+    confirmSheet({
+      title: 'Reject ' + p.name + '?', message: 'The account is deleted.',
+      confirmText: 'Reject', danger: true, onConfirm: () => run(() => rejectTrainer(p.id)),
+    })
+  }
   const rows = Array.isArray(list) ? list : []
   const pending = rows.filter(p => p.status === 'pending')
   const approved = rows.filter(p => p.status === 'approved')
@@ -54,6 +59,7 @@ export default function AdminTrainers({ owner, ownId }) {
   const flip = on => {
     const go = () => run(async () => { await setTrainerMode(ownId, on); setOwnOn(on) }, true)
     if (on) return go()
+    if (inFlight.current) return
     confirmSheet({
       title: 'Turn off trainer mode?', message: 'Your students are unlinked. They keep their own accounts and data.',
       confirmText: 'Turn off', danger: true, onConfirm: go,
@@ -70,7 +76,7 @@ export default function AdminTrainers({ owner, ownId }) {
       : <>
         {owner && <div className="row between" style={{ margin: '10px 0 4px' }}>
           <span>Trainer mode on my account</span>
-          <Switch aria-label="Trainer mode on my account" checked={isTrainer} disabled={busy} onChange={flip} />
+          <Switch aria-label="Trainer mode on my account" checked={isTrainer} aria-disabled={busy} onChange={flip} />
         </div>}
         {!rows.length && <div className="adm-empty">No trainer accounts yet.</div>}
         {pending.length > 0 && <>
@@ -81,8 +87,8 @@ export default function AdminTrainers({ owner, ownId }) {
               <span className="small dim">{fmtDate(isoOf(new Date(p.created)), false, true)}</span>
             </div>
             {owner && <div className="row" style={{ marginTop: 6, flexWrap: 'wrap' }}>
-              <Button size="sm" variant="primary" aria-label={'Approve ' + p.name} disabled={busy} onClick={() => run(() => approveTrainer(p.id))}>Approve</Button>
-              <Button size="sm" aria-label={'Reject ' + p.name} disabled={busy} onClick={() => reject(p)}>Reject</Button>
+              <Button size="sm" variant="primary" aria-label={'Approve ' + p.name} aria-disabled={busy} onClick={() => run(() => approveTrainer(p.id))}>Approve</Button>
+              <Button size="sm" aria-label={'Reject ' + p.name} aria-disabled={busy} onClick={() => reject(p)}>Reject</Button>
             </div>}
           </div>)}
         </>}
