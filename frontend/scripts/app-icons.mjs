@@ -249,7 +249,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const body = make()
     const buf = Buffer.isBuffer(body) ? body : Buffer.from(body)
     if (check) {
-      if (!existsSync(p) || !readFileSync(p).equals(buf)) bad.push(rel)
+      // A text file may sit in a Windows checkout with CRLF line ends: same content.
+      const same = () => { const on = readFileSync(p); return on.equals(buf) || (!Buffer.isBuffer(body) && on.toString().replace(/\r\n/g, '\n') === buf.toString()) }
+      if (!existsSync(p) || !same()) bad.push(rel)
       continue
     }
     mkdirSync(dirname(p), { recursive: true })

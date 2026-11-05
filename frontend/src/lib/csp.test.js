@@ -14,7 +14,7 @@ const directive = name => policy.split(';').map(d => d.trim().split(/\s+/)).find
 
 describe('web Content-Security-Policy', () => {
   it('allows every inline script in index.html by its hash, and nothing inline beyond that', () => {
-    const html = read('frontend/index.html')
+    const html = read('frontend/index.html').replace(/\r\n/g, '\n')   // a Windows checkout turns the line ends into CRLF; the image is built from LF
     const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1])
     expect(inline.length).toBeGreaterThan(0)
     const scripts = directive('script-src')
