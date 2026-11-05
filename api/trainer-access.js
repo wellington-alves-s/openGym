@@ -14,7 +14,7 @@ export const isStudent = user => !!user && user.role === 'student';
 // True only for an approved, active trainer and one of their own active students. A route answers
 // false the same way as an unknown id (404), so a trainer cannot probe for other people's accounts.
 export function canAccessStudent(db, trainer, studentId) {
-  if (!isApprovedTrainer(trainer) || typeof studentId !== 'string') return false;
+  if (!isApprovedTrainer(trainer) || !trainer.id || typeof trainer.id !== 'string' || typeof studentId !== 'string') return false;
   const student = (db?.users || []).find(u => u.id === studentId);
   return isStudent(student) && !student.disabled && student.trainerId === trainer.id;
 }
@@ -22,6 +22,7 @@ export function canAccessStudent(db, trainer, studentId) {
 // When a trainer leaves (deleted, or no longer one), their students keep their accounts and data
 // and just lose the link. Returns the ids it changed so the caller can audit them.
 export function detachStudentsOf(db, trainerId) {
+  if (!trainerId || typeof trainerId !== 'string') return [];   // else it would match every already-detached student
   const detached = [];
   for (const u of db?.users || []) {
     if (isStudent(u) && u.trainerId === trainerId) { delete u.trainerId; detached.push(u.id); }

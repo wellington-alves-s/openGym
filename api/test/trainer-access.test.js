@@ -73,6 +73,14 @@ describe('canAccessStudent', () => {
     assert.equal(canAccessStudent(db, trainer(), undefined), false);
   });
 
+  it('refuses a trainer without an id, even against a student with no trainerId', () => {
+    const noId = { role: 'trainer', trainerStatus: 'approved' };
+    const undef = student({ trainerId: undefined });
+    const deleted = student(); delete deleted.trainerId;
+    assert.equal(canAccessStudent(dbOf(noId, undef), noId, 's1'), false);
+    assert.equal(canAccessStudent(dbOf(noId, deleted), noId, 's1'), false);
+  });
+
   it('does not let a trainer reach themselves or another trainer', () => {
     assert.equal(canAccessStudent(dbOf(trainer(), trainer({ id: 't2' })), trainer(), 't2'), false);
   });
@@ -89,6 +97,13 @@ describe('detachStudentsOf', () => {
     assert.deepEqual(db.users[1].consent, { at: 1 });
     assert.equal(db.users[1].role, 'student');
     assert.equal(db.users[2].trainerId, 't2');
+  });
+
+  it('does nothing without a trainer id (already-detached students are not affected)', () => {
+    const detached = student(); delete detached.trainerId;
+    const db = dbOf(detached);
+    assert.deepEqual(detachStudentsOf(db, undefined), []);
+    assert.deepEqual(detachStudentsOf(db, ''), []);
   });
 
   it('returns an empty list when there is nothing to detach', () => {
