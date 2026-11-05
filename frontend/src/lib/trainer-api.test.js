@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('./api.js', () => ({ api: vi.fn(async () => ({})) }))
+vi.mock('./api.js', () => ({ api: vi.fn(async () => ({})), createPasskey: vi.fn() }))
 
-const { api } = await import('./api.js')
+const { api, createPasskey } = await import('./api.js')
 const t = await import('./trainer-api.js')
 
 beforeEach(() => api.mockClear())
@@ -118,5 +118,28 @@ describe('owner side', () => {
     expect(sent()).toEqual({ id: 'u1', on: true })
     await t.setTrainerMode('u1', false)
     expect(sent()).toEqual({ id: 'u1', on: false })
+  })
+})
+
+describe('joining with a passkey', () => {
+  it('asks for options with the name, makes the passkey, and sends it with the consent', async () => {
+    const consent = { measures: false, photos: true, diet: false }
+    api.mockResolvedValueOnce({ cid: 'c1', options: { challenge: 'x' } })
+    api.mockResolvedValueOnce({ user: { id: 's1', role: 'student' } })
+    createPasskey.mockResolvedValueOnce({ id: 'cred' })
+    expect(await t.joinWithPasskey('AB-12', { name: 'Bo', consent })).toEqual({ id: 's1', role: 'student' })
+    expect(api.mock.calls.at(-2)[0]).toBe('/api/join/AB-12/options')
+    expect(JSON.parse(api.mock.calls.at(-2)[1].body)).toEqual({ name: 'Bo' })
+    expect(createPasskey).toHaveBeenCalledWith({ challenge: 'x' })
+    expect(lastCall()[0]).toBe('/api/join/AB-12/verify')
+    expect(lastCall()[1].method).toBe('POST')
+    expect(sent()).toEqual({ cid: 'c1', credential: { id: 'cred' }, consent })
+  })
+
+  it('stops when the prompt is closed, sending nothing more', async () => {
+    api.mockResolvedValueOnce({ cid: 'c1', options: {} })
+    createPasskey.mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'NotAllowedError' }))
+    await expect(t.joinWithPasskey('AB-12', { name: 'Bo', consent: {} })).rejects.toThrow()
+    expect(lastCall()[0]).toBe('/api/join/AB-12/options')
   })
 })

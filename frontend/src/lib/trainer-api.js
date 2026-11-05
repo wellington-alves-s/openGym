@@ -1,5 +1,5 @@
 // The trainer-mode routes (api/trainer-routes.js), through api.js like every other call.
-import { api } from './api.js'
+import { api, createPasskey } from './api.js'
 
 const send = (method, path, body) => api(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
 // An id or code from outside is one path segment, whatever it holds.
@@ -16,6 +16,11 @@ export const unlinkStudent = id => send('POST', `/api/trainer/students/${seg(id)
 export const joinInfo = code => api(`/api/join/${seg(code)}`)   // → { trainerName, studentName, shares }
 export const joinWithPassword = async (code, { name, password, consent }) =>
   (await send('POST', `/api/join/${seg(code)}/password`, { name, password, consent })).user
+export async function joinWithPasskey(code, { name, consent }) {
+  const { cid, options } = await send('POST', `/api/join/${seg(code)}/options`, { name })
+  const credential = await createPasskey(options)
+  return (await send('POST', `/api/join/${seg(code)}/verify`, { cid, credential, consent })).user
+}
 
 // A student's side.
 export const myTrainer = () => api('/api/student/trainer')   // → { trainer, since, consent }

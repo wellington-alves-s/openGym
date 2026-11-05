@@ -41,6 +41,8 @@ import { SeasonalLayer } from './components/Seasonal.jsx'
 import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import { useAnimPacksBoot } from './components/Animations.jsx'
 import Login from './views/Login.jsx'
+import Join from './views/Join.jsx'
+import { joinTokenFromSearch, stripJoinFromUrl } from './lib/student-link.js'
 import TrainerPending from './views/TrainerPending.jsx'
 import { isPendingTrainer, homeFor } from './lib/roles.js'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
@@ -193,6 +195,12 @@ function Shell() {
     linkOffered.current = true
     openDeviceLinkRedeem()
   }, [ready, linkCode])
+  // Opened from a trainer's invite link (?join=): read once, then off the address. Only a browser
+  // with nobody in it uses it; a signed-in one ignores it (it signs out first), and it is dropped
+  // for good once somebody is in, so signing out later does not bring back a spent invite.
+  const [joinCode, setJoinCode] = useState(() => joinTokenFromSearch(window.location.search))
+  useEffect(() => { stripJoinFromUrl() }, [])
+  useEffect(() => { if (user || isGuest) setJoinCode('') }, [user, isGuest])
   useEffect(() => {
     const onScroll = () => {
       // Modals pins the body while a sheet is open; scrollY is 0 then, not a position.
@@ -292,7 +300,7 @@ function Shell() {
   )
 
   // A trainer waiting for the owner has one route; every other link sends them to it.
-  const view = l => (!authed ? <Login /> : pending ? (
+  const view = l => (!authed ? (joinCode ? <Join code={joinCode} /> : <Login />) : pending ? (
     <Routes location={l}>
       <Route path="/pending" element={<TrainerPending />} />
       <Route path="*" element={<Navigate to={homeFor(user)} replace />} />
