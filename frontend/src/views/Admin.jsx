@@ -10,6 +10,7 @@ import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import AdminCoach from './AdminCoach.jsx'
+import AdminTrainers from '../components/AdminTrainers.jsx'
 import '../admin.css'
 
 // Admin-only operator dashboard (owner passkey + admin flag; guarded again server-side).
@@ -320,6 +321,7 @@ export default function Admin() {
     return () => clearTimeout(tm)
   }, [toCoach])
   const user = useStore(s => s.user)
+  const trainerMode = useStore(s => !!s.config?.trainer_mode)
   const openSheet = useUI(s => s.openSheet)
   const [users, setUsers] = useState(null)
   const [usersErr, setUsersErr] = useState(null)   // why the last load failed, until one succeeds
@@ -390,6 +392,8 @@ export default function Admin() {
     <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
 
     <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
+
+    {trainerMode && <AdminTrainers owner={viewerOwner} ownId={user.id} />}
 
     <div className="card">
       <h2 style={{ margin: 0 }}>Users</h2>
