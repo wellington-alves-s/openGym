@@ -110,6 +110,46 @@ describe('AdminTrainers', () => {
     expect(mocks.listTrainers).toHaveBeenCalledTimes(2)
   })
 
+  it('Reject cancelled in the confirm makes no rejectTrainer call', async () => {
+    mocks.listTrainers.mockResolvedValue([rita])
+    const host = mount(<AdminTrainers owner ownId="own" />)
+    await settle()
+    press(labelled(host, 'Reject Rita'))
+    expect(mocks.confirmSheet).toHaveBeenCalledTimes(1)   // the sheet is dismissed: onConfirm never runs
+    await settle()
+    expect(mocks.rejectTrainer).not.toHaveBeenCalled()
+    expect(mocks.listTrainers).toHaveBeenCalledTimes(1)
+  })
+
+  it('the switch follows the server answer when the list reload fails, and the next tap turns it off', async () => {
+    mocks.listTrainers.mockResolvedValueOnce([dora]).mockRejectedValue(new Error('down'))
+    const host = mount(<AdminTrainers owner ownId="own" />)
+    await settle()
+    press(labelled(host, 'Trainer mode on my account'))
+    await settle()
+    expect(mocks.setTrainerMode).toHaveBeenCalledWith('own', true)
+    const sw = labelled(host, 'Trainer mode on my account')
+    expect(sw.getAttribute('aria-checked')).toBe('true')
+    press(sw)
+    const opts = mocks.confirmSheet.mock.calls[0][0]
+    await act(async () => { await opts.onConfirm() })
+    expect(mocks.setTrainerMode).toHaveBeenLastCalledWith('own', false)
+    expect(labelled(host, 'Trainer mode on my account').getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('a failed /api/me refresh after the switch changes does not crash and still reloads the list', async () => {
+    mocks.listTrainers.mockResolvedValueOnce([dora]).mockResolvedValueOnce([dora, ownerTrainer])
+    mocks.api.mockRejectedValue(new Error('offline'))
+    const host = mount(<AdminTrainers owner ownId="own" />)
+    await settle()
+    press(labelled(host, 'Trainer mode on my account'))
+    await settle()
+    expect(mocks.setUser).not.toHaveBeenCalled()
+    expect(mocks.listTrainers).toHaveBeenCalledTimes(2)
+    expect(mocks.toast).not.toHaveBeenCalled()
+    expect(labelled(host, 'Trainer mode on my account').getAttribute('aria-checked')).toBe('true')
+  })
+
   it('a second tap on Approve while the first is in flight does not send a second request', async () => {
     mocks.listTrainers.mockResolvedValue([rita])
     let release

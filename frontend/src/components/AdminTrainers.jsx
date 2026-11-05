@@ -17,9 +17,11 @@ export default function AdminTrainers({ owner, ownId }) {
   // null while loading, 'failed' when the list could not be read, else the trainers.
   const [list, setList] = useState(null)
   const [busy, setBusy] = useState(false)
+  // What the server answered to the owner's last switch change, until a fresh list says it itself.
+  const [ownOn, setOwnOn] = useState(null)
   const inFlight = useRef(false)
   const load = useCallback(async () => {
-    try { setList(await listTrainers()) } catch { setList(prev => (Array.isArray(prev) ? prev : 'failed')) }
+    try { const l = await listTrainers(); setList(l); setOwnOn(null) } catch { setList(prev => (Array.isArray(prev) ? prev : 'failed')) }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -42,15 +44,15 @@ export default function AdminTrainers({ owner, ownId }) {
     inFlight.current = false; setBusy(false)
   }
   const reject = p => confirmSheet({
-    title: 'Reject ' + p.name + '?', message: 'The account is deleted. ' + p.name + ' can sign up again later.',
+    title: 'Reject ' + p.name + '?', message: 'The account is deleted.',
     confirmText: 'Reject', danger: true, onConfirm: () => run(() => rejectTrainer(p.id)),
   })
   const rows = Array.isArray(list) ? list : []
   const pending = rows.filter(p => p.status === 'pending')
   const approved = rows.filter(p => p.status === 'approved')
-  const isTrainer = approved.some(p => p.id === ownId)
+  const isTrainer = ownOn ?? approved.some(p => p.id === ownId)
   const flip = on => {
-    const go = () => run(() => setTrainerMode(ownId, on), true)
+    const go = () => run(async () => { await setTrainerMode(ownId, on); setOwnOn(on) }, true)
     if (on) return go()
     confirmSheet({
       title: 'Turn off trainer mode?', message: 'Your students are unlinked. They keep their own accounts and data.',
