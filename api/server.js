@@ -64,6 +64,31 @@ function claimFirstAdmin(req, user) {
   user.owner = true;
   audit(req, 'admin.first-user', { user });
 }
+// The first trainer on an empty trainer-mode server owns it, with or without FIRST_USER_ADMIN:
+// there is nobody else who could approve them. Same no-await rule as claimFirstAdmin.
+function claimFirstTrainer(req, user) {
+  if (!TRAINER_MODE || db.users.length !== 0) return;
+  user.admin = true;
+  user.owner = true;
+  user.trainerStatus = 'approved';
+  audit(req, 'admin.first-user', { user });
+}
+// `as` and `phone` of a registration body: {} when the mode is off or `as` is absent (then the
+// field is not looked at at all), { as, phone } for a trainer, { error } for any other value.
+function trainerIntent(body) {
+  if (!TRAINER_MODE || body.as === undefined || body.as === null) return {};
+  if (body.as !== 'trainer') return { error: { error: 'unknown role', code: 'bad-role' } };
+  return { as: 'trainer', phone: text(body.phone).trim().slice(0, 30) };
+}
+// What both registration routes run just before db.users.push.
+function signUp(req, user, intent) {
+  if (intent.as !== 'trainer') return claimFirstAdmin(req, user);
+  user.role = 'trainer';
+  user.trainerStatus = 'pending';
+  if (intent.phone) user.phone = intent.phone;
+  claimFirstTrainer(req, user);
+  audit(req, 'trainer.signup', { user });
+}
 // Guest mode ("Continue without account") keeps everything in the browser and never touches this
 // server — but on an instance meant for a known set of people, an entrance nobody can walk back
 // out of is still the wrong front door (#42). Default ON, so existing instances are unchanged;
@@ -1446,6 +1471,8 @@ const passwordRoutes = {
     const body = await readBody(req);
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
+    const intent = trainerIntent(body);
+    if (intent.error) return json(res, 400, intent.error);
     const code = text(body.code).trim().toUpperCase();
     const invite = () => db.invites.find(i => i.code === code && !i.usedBy && !i.revoked);
     if (INVITE_ONLY && addressPaused(req, res, 'signup')) return;
@@ -1496,7 +1523,7 @@ const passwordRoutes = {
     const created = new Date().toISOString();
     const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}) };
     if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
-    claimFirstAdmin(req, user);
+    signUp(req, user, intent);
     db.users.push(user);
     saveDb();
     audit(req, 'auth.register.ok', { user, msg: inv ? inv.code + ' · password' : 'password' });
@@ -2179,6 +2206,8 @@ const routes = {
     const body = await readBody(req);
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
+    const intent = trainerIntent(body);
+    if (intent.error) return json(res, 400, intent.error);
     const code = text(body.code).trim().toUpperCase();
     if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
       // The rejected code itself is never recorded — a near-miss guess in the log is a liability.
@@ -2193,7 +2222,7 @@ const routes = {
       authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
       excludeCredentials: []
     });
-    const cid = putChallenge({ kind: 'register', challenge: options.challenge, name, uid, code });
+    const cid = putChallenge({ kind: 'register', challenge: options.challenge, name, uid, code, ...intent });
     json(res, 200, { cid, options });
   },
 
@@ -2238,7 +2267,7 @@ const routes = {
     }
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
     if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
-    claimFirstAdmin(req, user);
+    signUp(req, user, c);
     db.users.push(user);
     db.creds.push({
       id: credential.id, userId: user.id,

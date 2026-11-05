@@ -28,14 +28,14 @@ export async function startServer(t, { env = {}, users = [] } = {}) {
   fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({ users, creds: [], subs: [], invites: [] }));
   const child = spawn(process.execPath, ['server.js'], {
     cwd: API, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: '0', DATA_DIR: dir, ORIGIN, RP_ID: 'localhost', TRUST_PROXY: '1', INVITE_ONLY: '', ADMIN_UIDS: '', ...env }
+    env: { ...process.env, PORT: '0', DATA_DIR: dir, ORIGIN, RP_ID: 'localhost', TRUST_PROXY: '1', INVITE_ONLY: '', ADMIN_UIDS: '', TRAINER_MODE: '', PASSWORD_LOGIN: '', ...env }
   });
   let log = '';
   child.stdout.on('data', d => log += d);
   child.stderr.on('data', d => log += d);
   t.after(async () => {
     if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await once(child, 'exit'); }
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); // Windows may hold it briefly
   });
   const base = `http://127.0.0.1:${await boundPort(child, () => log)}`;
 
