@@ -1,6 +1,6 @@
 // The trainer's students: who was invited, who is linked, who left. A new invite link is shown by a
 // sheet (components/NewStudentSheet.jsx) and is not kept here.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useUI } from '../../store/useUI.js'
 import { t } from '../../lib/i18n.js'
 import { fmtDate, isoOf } from '../../lib/format.js'
@@ -32,10 +32,19 @@ export default function Students() {
     load()
   }
   const newStudent = () => useUI.getState().openSheet(() => <NewStudentSheet onCreated={load} />)
-  const newLink = s => run(async () => {
-    const link = joinLinkUrl(await newInvite(s.id))
-    useUI.getState().openSheet(() => <InviteLinkSheet link={link} />)
-  })
+  // One call per student at a time: a second tap would stack a second sheet and supersede the code.
+  const [making, setMaking] = useState(null)
+  const inFlight = useRef(null)
+  const newLink = async s => {
+    if (inFlight.current === s.id) return
+    inFlight.current = s.id; setMaking(s.id)
+    try {
+      await run(async () => {
+        const link = joinLinkUrl(await newInvite(s.id))
+        useUI.getState().openSheet(() => <InviteLinkSheet link={link} />)
+      })
+    } finally { inFlight.current = null; setMaking(null) }
+  }
   const remove = s => confirmSheet({
     title: t('Remove invite?'), message: t('{0} will not be able to use the link any more.', s.name),
     confirmText: t('Remove invite'), danger: true, onConfirm: () => run(() => removeStudent(s.id)),
@@ -65,7 +74,7 @@ export default function Students() {
           <div className="small dim">{when(s)}</div>
           {(s.status === 'invited' || s.status === 'active') && <div className="row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
             {s.status === 'invited' && <>
-              <Button size="sm" aria-label={t('New link for {0}', s.name)} onClick={() => newLink(s)}>{t('New link')}</Button>
+              <Button size="sm" aria-label={t('New link for {0}', s.name)} disabled={making === s.id} onClick={() => newLink(s)}>{t('New link')}</Button>
               <Button size="sm" aria-label={t('Remove invite for {0}', s.name)} onClick={() => remove(s)}>{t('Remove invite')}</Button>
             </>}
             {s.status === 'active' && <Button size="sm" aria-label={t('Unlink {0}', s.name)} onClick={() => unlink(s)}>{t('Unlink')}</Button>}

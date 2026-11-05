@@ -91,3 +91,22 @@ describe('TrainerPending checks for the approval', () => {
     expect(mocks.api).not.toHaveBeenCalled()
   })
 })
+
+describe('TrainerPending and an ended session', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('ends the local session when the server answers 401, as boot does', async () => {
+    mocks.api.mockRejectedValue(Object.assign(new Error('HTTP 401'), { status: 401 }))
+    mount(<TrainerPending />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    expect(mocks.setUser).toHaveBeenCalledWith(null)
+  })
+
+  it('keeps waiting on any other error', async () => {
+    mocks.api.mockRejectedValue(Object.assign(new Error('HTTP 502'), { status: 502 }))
+    mount(<TrainerPending />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    expect(mocks.setUser).not.toHaveBeenCalled()
+  })
+})

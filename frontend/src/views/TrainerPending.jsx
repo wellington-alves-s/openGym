@@ -24,7 +24,11 @@ export default function TrainerPending() {
         const me = await api('/api/me')
         const st = useStore.getState()
         if (live && me?.user?.id && me.user.trainerStatus !== st.user?.trainerStatus) st.setUser(me.user)
-      } catch { /* offline or a hiccup: ask again later */ }
+      } catch (e) {
+        // The session ended (revoked, account deleted): boot drops the user the same way, and the
+        // sign-in screen takes over. Anything else (offline, a hiccup): ask again later.
+        if (live && e?.status === 401) useStore.getState().setUser(null)
+      }
     }
     const onVisible = () => { if (document.visibilityState !== 'hidden') recheck() }
     const timer = setInterval(recheck, RECHECK_MS)

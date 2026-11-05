@@ -313,6 +313,8 @@ function Shell() {
       <Route path="/students" element={<Students />} />
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
+      {/* The owner can be a trainer too and keeps the dashboard that approves the others. */}
+      {user?.admin && <Route path="/admin" element={<Admin />} />}
       <Route path="*" element={<Navigate to={homeFor(user)} replace />} />
     </Routes>
   ) : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (

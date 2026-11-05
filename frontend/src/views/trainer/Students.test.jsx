@@ -138,3 +138,22 @@ describe('Students', () => {
     expect(names(host)).toEqual(['Ana'])
   })
 })
+
+describe('Students, a double tap', () => {
+  it('"New link" runs once while the call is in flight and the button is disabled', async () => {
+    mocks.listStudents.mockResolvedValue([ana])
+    let release
+    mocks.newInvite.mockImplementation(() => new Promise(r => { release = r }))
+    const host = mount(<Students />)
+    await settle()
+    const li = row(host, 'Ana')
+    const btn = () => [...li.querySelectorAll('button')].find(b => b.textContent === 'New link')
+    act(() => { btn().click(); btn().click() })
+    expect(mocks.newInvite).toHaveBeenCalledTimes(1)
+    expect(btn().disabled).toBe(true)
+    await act(async () => { release('ABCD-EFGH-JKLM') })
+    await settle()
+    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
+    expect(btn().disabled).toBe(false)
+  })
+})

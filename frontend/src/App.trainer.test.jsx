@@ -73,3 +73,19 @@ describe('everyone else', () => {
     expect(host.querySelectorAll('#tabbar button')).toHaveLength(5)
   })
 })
+
+// The owner can be a trainer too, and keeps the admin dashboard (approving trainers, trainer mode).
+describe('an approved trainer and the admin dashboard', () => {
+  it('who is the owner can open /admin', async () => {
+    signIn({ ...approved, admin: true })
+    await open('#/admin')
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })   // the lazy chunk
+    expect(window.location.hash).toBe('#/admin')
+  })
+
+  it('who is not the owner is sent to /students', async () => {
+    signIn(approved)
+    await open('#/admin')
+    expect(window.location.hash).toBe('#/students')
+  })
+})
