@@ -182,6 +182,18 @@ describe('Models', () => {
       expect(mocks.getModel).toHaveBeenCalledTimes(3)   // open, the rename, open again
     })
 
+    it('the list reads again once the last save of the editor is in, so its counts are not one save behind', async () => {
+      let release
+      mocks.getModel.mockResolvedValue(model(3))
+      mocks.listModels.mockResolvedValueOnce(two).mockResolvedValue([{ ...two[0], routines: 3 }, two[1]])
+      mocks.saveModel.mockReturnValue(new Promise(r => { release = r }))
+      await leaveWithEdits()
+      expect(row('Strength base').textContent).toContain('2 routines')
+      await act(async () => release(model(4))); await settle()
+      expect(mocks.listModels).toHaveBeenCalledTimes(2)
+      expect(row('Strength base').textContent).toContain('3 routines')
+    })
+
     it('refuses the rename while they still cannot be saved', async () => {
       mocks.getModel.mockResolvedValue(model(3))
       mocks.listModels.mockResolvedValue(two)

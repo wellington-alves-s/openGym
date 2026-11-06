@@ -24,9 +24,13 @@ const DEBOUNCE_MS = 800
 // The session of the page around the editor, for the screens that edit the program itself.
 export const DraftSessionContext = createContext(null)
 
+// A save the server refuses for good (a 400 with one of these codes): saying why beats "Try again".
+const PROGRAM_REFUSALS = { 'too-big': () => t('This program is too big. Delete or shorten a month.'), 'too-many-phases': () => t('A program can have at most 24 months.') }
+
 // load(key) → { program, rev }; save(key, program, rev) → { rev }; backTo(key, phaseId) → the path
-// the editor goes back to; changedText() → what leaving says after a 409 (the layout's banner too).
-export function createDraftSessions({ load, save, backTo, changedText = () => t('The plan changed somewhere else') }) {
+// the editor goes back to; changedText() → what leaving says after a 409 (the layout's banner too);
+// refusedText(code) → why a 400 with that code cannot be saved, or null for the generic failure.
+export function createDraftSessions({ load, save, backTo, changedText = () => t('The plan changed somewhere else'), refusedText = code => PROGRAM_REFUSALS[code]?.() || null }) {
   const sessions = new Map()   // key → session, only while the document is open or holds unsaved edits
   const loading = new Map()    // key → the load under way, so two copies of the page fetch once
   const lastRev = new Map()    // key → the newest revision a save returned
@@ -71,10 +75,13 @@ export function createDraftSessions({ load, save, backTo, changedText = () => t(
     s.updateProgram = fn => {
       commit()
       const next = structuredClone(s.program)
+      const openBundle = next.phases.find(p => p.id === s.phaseId)?.bundle
       fn(next)
       if (!next.phases?.length) return   // the server refuses a program with no phase, every time
       s.program = next
-      if (!phaseOf(s.phaseId)) show(next.phases[0].id)
+      const open = phaseOf(s.phaseId)
+      if (!open) show(next.phases[0].id)
+      else if (open.bundle !== openBundle) show(s.phaseId)   // a new plan for the open phase: the store shows it, or the next commit writes the old one back
       if (!s.stopped) { s.dirty = true; s.failed = false; s.schedule() }
       emit()
     }
@@ -88,7 +95,11 @@ export function createDraftSessions({ load, save, backTo, changedText = () => t(
         .then(({ rev }) => { s.rev = rev; if (sessions.get(key) === s) lastRev.set(key, rev); if (!s.dirty) setStatus('saved') })
         .catch(e => {
           if (e?.status === 409) { s.stopped = true; setStatus('conflict') }
-          else { s.dirty = true; s.failed = true; setStatus('failed') }
+          else {
+            // A refusal stays until the next edit: no retry on its own, the edits stay in the session.
+            s.refused = e?.status === 400 ? refusedText(e.data?.code) : null
+            s.dirty = true; s.failed = true; setStatus(s.refused ? 'refused' : 'failed')
+          }
         })
         .finally(() => { s.inFlight = null; if (s.dirty && !s.failed && !s.timer) s.save() })
     }
@@ -137,13 +148,13 @@ export function createDraftSessions({ load, save, backTo, changedText = () => t(
 
   function acquire(s) {
     s.users++
-    if (s.dirty && !s.timer && !s.inFlight && !s.stopped) s.schedule()   // edits a failed save left behind
+    if (s.dirty && !s.timer && !s.inFlight && !s.stopped && s.status !== 'refused') s.schedule()   // edits a failed save left behind
     return () => {
       if (--s.users > 0) return
       s.flush().then(ok => {
         if (sessions.get(s.key) !== s || s.users > 0) return
         if (ok) dispose(s)
-        else useUI.getState().toast(s.stopped ? changedText() : t('Could not save. Try again.'))
+        else useUI.getState().toast(s.stopped ? changedText() : s.status === 'refused' ? s.refused : t('Could not save. Try again.'))
       })
     }
   }
@@ -155,7 +166,7 @@ export function createDraftSessions({ load, save, backTo, changedText = () => t(
     const s = sessions.get(key)
     if (!s) return lastRev.get(key)
     if (s.stopped) throw Object.assign(new Error('the plan changed elsewhere'), { status: 409 })
-    if (!await s.flush()) throw new Error(t('Could not save. Try again.'))
+    if (!await s.flush()) throw new Error(s.status === 'refused' ? s.refused : t('Could not save. Try again.'))
     if (s.users === 0) dispose(s)   // not open: whatever is published next starts fresh
     return s.rev
   }
@@ -205,7 +216,11 @@ export function PhaseGate() {
   const { phase } = useParams()
   const shown = useSyncExternalStore(session.watch, () => session.phaseId)
   const known = useSyncExternalStore(session.watch, () => !phase || session.program.phases.some(ph => ph.id === phase))
-  useEffect(() => { if (phase && !under) session.openPhase(phase) }, [session, phase, under])
-  if (!known) return under ? null : createElement(Navigate, { to: '..', relative: 'path', replace: true })
+  const [unreadable, setUnreadable] = useState(null)   // a phase whose bundle openPhase could not read
+  useEffect(() => {
+    if (!phase || under) return
+    try { session.openPhase(phase) } catch { useUI.getState().toast(t('Could not open this month')); setUnreadable(phase) }
+  }, [session, phase, under])
+  if (!known || unreadable === phase) return under ? null : createElement(Navigate, { to: '..', relative: 'path', replace: true })
   return !phase || shown === phase ? createElement(Outlet) : null
 }

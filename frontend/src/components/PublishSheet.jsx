@@ -10,7 +10,8 @@ export const rxErrorText = e => e?.status === 409 ? t('The plan changed somewher
   : e?.data?.code === 'empty-draft' ? t('Add at least one exercise first')
     : e?.data?.error || e?.message || t('Could not save. Try again.')
 
-export default function PublishSheet({ sid, empty, latestRev, onDone, close }) {
+// noStart: several months and no start date; publishing still works, the months just do not turn by themselves.
+export default function PublishSheet({ sid, empty, noStart, latestRev, onDone, close }) {
   const [note, setNote] = useState('')
   const [err, setErr] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -32,6 +33,7 @@ export default function PublishSheet({ sid, empty, latestRev, onDone, close }) {
   return <div>
     <h3 style={{ marginBottom: 8 }}>{t('Publish')}</h3>
     <div className="muted small" style={{ marginBottom: 10, lineHeight: 1.5 }}>{t('Your student gets this plan the next time they open the app.')}</div>
+    {noStart && <div className="card small" role="note" style={{ marginBottom: 10 }}>{t('Pick a start date so the months can turn by themselves')}</div>}
     <TextArea placeholder={t('Note (optional)')} aria-label={t('Note (optional)')} maxLength={200} rows={3}
       value={note} onChange={e => setNote(e.target.value)} />
     {err && <div className="card small" role="alert" style={{ marginTop: 10, color: 'var(--danger, #ff453a)' }}>{err}</div>}

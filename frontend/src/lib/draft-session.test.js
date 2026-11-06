@@ -151,6 +151,14 @@ describe('createDraftSessions', () => {
     expect(sent.phases[1].bundle).toEqual({ opengym_plan: 0 })
   })
 
+  it('updateProgram giving the open phase a new plan shows it, and the next save keeps it', async () => {
+    const s = await open()
+    s.updateProgram(p => { p.phases[0].bundle = bundle('Swapped') })
+    expect(s.store.getState().S.routines[0].name).toBe('Swapped')
+    await wait(800)
+    expect(save.mock.calls.at(-1)[1].phases[0].bundle.routines[0].name).toBe('Swapped')
+  })
+
   it('a change that leaves no phase is ignored', async () => {
     const s = await open()
     const before = s.program
@@ -203,6 +211,66 @@ describe('createDraftSessions', () => {
     expect(await done).toBe(true)
     expect(save).toHaveBeenCalledTimes(2)
     expect(s.rev).toBe(7)
+  })
+
+  it('flush also waits for an edit made while it awaits a save', async () => {
+    let release
+    save.mockImplementationOnce(() => new Promise(r => { release = r }))
+    const s = await open()
+    rename(s, 'X'); await wait(800)
+    const done = s.flush()
+    rename(s, 'Y')   // lands while flush awaits the save in flight
+    release({ rev: 6 })
+    expect(await done).toBe(true)
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(save.mock.calls[1][1].phases[0].bundle.routines[0].name).toBe('Y')
+  })
+
+  it('a save that returns after its session was dropped leaves no revision for whenSaved', async () => {
+    let release
+    save.mockImplementationOnce(() => new Promise(r => { release = r }))
+    const s = await open()
+    rename(s, 'X'); await wait(800)
+    reg.dropSession('k1')
+    release({ rev: 6 }); await tick()
+    expect(s.rev).toBe(6)
+    expect(await reg.whenSaved('k1')).toBeUndefined()
+  })
+
+  it.each([
+    ['too-big', 'This program is too big. Delete or shorten a month.'],
+    ['too-many-phases', 'A program can have at most 24 months.'],
+  ])('a 400 %s says why, keeps the edits and tries again only after the next edit', async (code, said) => {
+    const toast = vi.fn()
+    const real = useUI.getState().toast
+    useUI.setState({ toast })
+    onTestFinished(() => useUI.setState({ toast: real }))
+    save.mockRejectedValue(Object.assign(new Error('refused'), { status: 400, data: { code } }))
+    const s = await open()
+    rename(s, 'Big'); await wait(800)
+    expect([s.status, s.refused]).toEqual(['refused', said])
+    await wait(10000)
+    expect(save).toHaveBeenCalledTimes(1)
+    await expect(reg.whenSaved('k1')).rejects.toThrow(said)
+    pages.splice(0).reverse().forEach(f => f()); await tick(); await tick()
+    expect(toast).toHaveBeenCalledWith(said)
+    expect(reg.sessionOf('k1')).toBe(s)
+    const n = save.mock.calls.length
+    expect(await open()).toBe(s)
+    await wait(10000)
+    expect(save).toHaveBeenCalledTimes(n)
+    save.mockImplementation(async (key, p, r) => ({ rev: r + 1 }))
+    rename(s, 'Small'); await wait(800)
+    expect(s.status).toBe('saved')
+    expect(save.mock.calls.at(-1)[1].phases[0].bundle.routines[0].name).toBe('Small')
+  })
+
+  it('a registry may leave the refusals out: the generic failure then', async () => {
+    reg = createDraftSessions({ load: (...a) => load(...a), save: (...a) => save(...a), backTo: () => '/x', refusedText: () => null })
+    save.mockRejectedValueOnce(Object.assign(new Error('refused'), { status: 400, data: { code: 'too-big' } }))
+    const s = await open()
+    rename(s, 'Big'); await wait(800)
+    expect(s.status).toBe('failed')
   })
 
   it('a save that fails keeps the session after leaving, and the next visit saves with the held revision', async () => {
@@ -315,6 +383,27 @@ describe('PhaseGate', () => {
             React.createElement(Route, { path: ':id', element: React.createElement('p', null, 'editor') })))))))
     expect(host.textContent).toBe('program')
     expect(s.phaseId).toBe('a')
+    act(() => root.unmount()); host.remove()
+  })
+
+  it('a phase that cannot be read goes back to the program with a toast', async () => {
+    const toast = vi.fn()
+    const real = useUI.getState().toast
+    useUI.setState({ toast })
+    onTestFinished(() => useUI.setState({ toast: real }))
+    setup(5, program({ id: 'a', name: '', weeks: 4, bundle: bundle('A') }, { id: 'b', name: '', weeks: 4, bundle: { opengym_plan: 0 } }))
+    const s = await open()
+    const host = document.createElement('div'); document.body.appendChild(host)
+    const root = createRoot(host)
+    act(() => root.render(React.createElement(MemoryRouter, { initialEntries: ['/p/b'] },
+      React.createElement(DraftSessionContext.Provider, { value: s },
+        React.createElement(Routes, null,
+          React.createElement(Route, { path: '/p', element: React.createElement('p', null, 'program') }),
+          React.createElement(Route, { path: '/p/:phase', element: React.createElement(PhaseGate) },
+            React.createElement(Route, { index: true, element: React.createElement('p', null, 'editor') })))))))
+    expect(host.textContent).toBe('program')
+    expect(s.phaseId).toBe('a')
+    expect(toast).toHaveBeenCalledWith('Could not open this month')
     act(() => root.unmount()); host.remove()
   })
 })

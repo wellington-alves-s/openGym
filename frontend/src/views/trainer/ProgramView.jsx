@@ -2,7 +2,7 @@
 // opens to its routines. Months are added empty, copied from the one before or taken from a model,
 // and moved, renamed, resized and deleted here. Every change goes through the draft session
 // (lib/draft-session.js), which saves the whole program by itself.
-import { useContext, useState, useSyncExternalStore } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../../store/useStore.js'
 import { useUI } from '../../store/useUI.js'
@@ -19,6 +19,7 @@ import ModelPickerSheet from '../../components/ModelPickerSheet.jsx'
 import SaveModelSheet from '../../components/SaveModelSheet.jsx'
 
 const MAX_PHASES = 24   // api/rx.js RX_LIMITS.phases
+const BIG_BYTES = 262144 * 0.8   // api/rx.js RX_LIMITS.programBytes: past this, warn before saves are refused
 export const monthName = (ph, i) => ph.name || t('Month {0}', i + 1)
 const validWeeks = v => /^\d+$/.test(v) && +v >= 1 && +v <= 52
 
@@ -33,6 +34,10 @@ export default function ProgramView() {
   const { start, phases } = program
   const change = fn => session.updateProgram(fn)
   const full = phases.length >= MAX_PHASES
+  const big = useMemo(() => new TextEncoder().encode(JSON.stringify(program)).length > BIG_BYTES, [program])
+  const listRef = useRef(null)
+  const focusNext = useRef(null)   // what takes focus once the list has drawn the change
+  useEffect(() => { const sel = focusNext.current; if (sel) { focusNext.current = null; listRef.current?.querySelector(sel)?.focus() } })
   // A plan from before months is one open-ended month; a second one needs it to have a length.
   const add = phase => change(p => { p.phases.forEach(ph => { if (!(ph.weeks > 0)) ph.weeks = 4 }); p.phases.push(phase) })
   const newMonth = () => add({ id: uid(), name: '', weeks: 4, bundle: { opengym_plan: 1, unit, week: {}, routines: [], customEx: [] } })
@@ -47,10 +52,15 @@ export default function ProgramView() {
     const bundle = session.current().phases.find(x => x.id === ph.id).bundle
     useUI.getState().openSheet(close => <SaveModelSheet bundle={bundle} defaultName={monthName(ph, i)} close={close} />)
   }
-  const move = (i, by) => change(p => { const [ph] = p.phases.splice(i, 1); p.phases.splice(i + by, 0, ph) })
+  // At either end the pressed button turns disabled and would drop focus: the other one takes it.
+  const move = (ph, i, by) => {
+    const to = i + by, dir = to === 0 ? 'down' : to === phases.length - 1 ? 'up' : by < 0 ? 'up' : 'down'
+    focusNext.current = `[data-move="${ph.id}:${dir}"]`
+    change(p => { const [x] = p.phases.splice(i, 1); p.phases.splice(to, 0, x) })
+  }
   const remove = (ph, i) => confirmSheet({
     title: t('Delete {0}?', monthName(ph, i)), confirmText: t('Delete month'), danger: true,
-    onConfirm: () => change(p => { p.phases = p.phases.filter(x => x.id !== ph.id) }),
+    onConfirm: () => { change(p => { p.phases = p.phases.filter(x => x.id !== ph.id) }); listRef.current?.focus() },
   })
   const edit = (id, fn) => change(p => { fn(p.phases.find(x => x.id === id)) })
   const setStart = v => { if (!v || /^\d{4}-\d{2}-\d{2}$/.test(v)) change(p => { p.start = v || null }) }
@@ -64,15 +74,17 @@ export default function ProgramView() {
     </div>
     <div className="card">
       <label className="small dim" htmlFor="program-start">{t('Start date')}</label>
-      <input id="program-start" className="input" type="date" value={start || ''} onChange={e => setStart(e.target.value)} style={{ marginTop: 6 }} />
-      {!start && phases.length > 1 && <div className="small" style={{ marginTop: 6 }}>{t('Pick a start date')}</div>}
+      <input id="program-start" className="input" type="date" value={start || ''} onChange={e => setStart(e.target.value)} style={{ marginTop: 6 }}
+        aria-describedby={!start && phases.length > 1 ? 'program-start-hint' : undefined} />
+      {!start && phases.length > 1 && <div id="program-start-hint" className="small" style={{ marginTop: 6 }}>{t('Pick a start date')}</div>}
     </div>
     <div className="row" style={{ margin: '12px 0', gap: 8, flexWrap: 'wrap' }}>
       <Button size="sm" variant="tinted" icon="plus" disabled={full} onClick={newMonth}>{t('New month')}</Button>
       <Button size="sm" icon="copy" disabled={full} onClick={duplicate}>{t('Duplicate previous month')}</Button>
       <Button size="sm" icon="folder" disabled={full} onClick={useModel}>{t('Use a model')}</Button>
     </div>
-    <ul className="card months" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+    {big && <div className="small" role="note" style={{ margin: '0 0 8px' }}>{t('This program is getting big')}</div>}
+    <ul className="card months" ref={listRef} tabIndex={-1} aria-label={t('Plan')} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
       {phases.map((ph, i) => {
         const from = start && !openEnded ? addDays(start, 7 * week) : null
         week += ph.weeks
@@ -85,8 +97,8 @@ export default function ProgramView() {
               <div className="tt">{name}</div>
               <div className="small dim">{[when, routineCount(routines)].filter(Boolean).join(' · ')}</div>
             </div>
-            <button className="iconbtn" aria-label={t('Move up')} disabled={i === 0} onClick={() => move(i, -1)}><Icon name="chevronUp" /></button>
-            <button className="iconbtn" aria-label={t('Move down')} disabled={i === phases.length - 1} onClick={() => move(i, 1)}><Icon name="chevronDown" /></button>
+            <button className="iconbtn" data-move={ph.id + ':up'} aria-label={t('Move {0} up', name)} disabled={i === 0} onClick={() => move(ph, i, -1)}><Icon name="chevronUp" /></button>
+            <button className="iconbtn" data-move={ph.id + ':down'} aria-label={t('Move {0} down', name)} disabled={i === phases.length - 1} onClick={() => move(ph, i, 1)}><Icon name="chevronDown" /></button>
             {phases.length > 1 && <button className="iconbtn" aria-label={t('Delete {0}', name)} onClick={() => remove(ph, i)}><Icon name="trash" /></button>}
           </div>
           <MonthFields ph={ph} placeholder={t('Month {0}', i + 1)} edit={fn => edit(ph.id, fn)} />

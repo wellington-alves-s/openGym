@@ -22,7 +22,9 @@ export default function SaveModelSheet({ bundle, defaultName = '', close, onSave
       useUI.getState().toast(t('Saved as a model'))
       onSaved?.(model)
     } catch (e) {
-      setErr(e?.data?.error || e?.message || t('Could not save. Try again.'))
+      const code = e?.data?.code
+      setErr(code === 'too-many-models' ? t('You can keep up to 100 models. Delete one to make room.') : code === 'bad-name' ? t('Enter a name')
+        : e?.data?.error || e?.message || t('Could not save. Try again.'))
     } finally { inFlight.current = false; setBusy(false) }
   }
   return <form onSubmit={submit} noValidate>

@@ -1,6 +1,6 @@
 // Use a model (the program view): the trainer's models, and the plan of the one they choose handed
 // to onPick(bundle, name) as read from the server. The caller makes the month from a copy of it.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { exCount, routineCount } from '../lib/format.js'
 import { getModel, listModels } from '../lib/trainer-api.js'
@@ -12,6 +12,8 @@ export default function ModelPickerSheet({ onPick, close }) {
   // null while loading, 'failed', else the list.
   const [models, setModels] = useState(null)
   const [busy, setBusy] = useState(false)
+  const alive = useRef(true)   // a sheet dismissed while the model loads adds nothing
+  useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   const load = useCallback(() => { setModels(null); listModels().then(setModels, () => setModels('failed')) }, [])
   useEffect(() => { load() }, [load])
   const pick = async m => {
@@ -19,9 +21,10 @@ export default function ModelPickerSheet({ onPick, close }) {
     setBusy(true)
     try {
       const { model } = await getModel(m.id)
+      if (!alive.current) return
       close()
       onPick(model.bundle, model.name)
-    } catch { setModels('failed') } finally { setBusy(false) }
+    } catch { if (alive.current) setModels('failed') } finally { if (alive.current) setBusy(false) }
   }
   return <div>
     <h3 style={{ marginBottom: 12 }}>{t('Use a model')}</h3>

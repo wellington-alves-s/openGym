@@ -91,6 +91,8 @@ describe('ProgramView', () => {
     type(host.querySelector('input[type="date"]'), '')
     expect(session.program.start).toBeNull()
     expect(host.textContent).toContain('Pick a start date')
+    const hint = host.querySelector('#' + host.querySelector('input[type="date"]').getAttribute('aria-describedby'))
+    expect(hint.textContent).toBe('Pick a start date')
   })
 
   it('a tap on a month opens its routines', async () => {
@@ -134,12 +136,43 @@ describe('ProgramView', () => {
 
   it('moves a month up and down, and not past either end', async () => {
     await mount()
-    expect(buttonIn(months()[0], 'Move up').disabled).toBe(true)
-    expect(buttonIn(months()[1], 'Move down').disabled).toBe(true)
-    press(months()[0], 'Move down')
+    expect(buttonIn(months()[0], 'Move Base up').disabled).toBe(true)
+    expect(buttonIn(months()[1], 'Move Month 2 down').disabled).toBe(true)
+    press(months()[0], 'Move Base down')
     expect(phases().map(p => p.id)).toEqual(['p2', 'p1'])
-    press(months()[1], 'Move up')
+    press(months()[1], 'Move Base up')
     expect(phases().map(p => p.id)).toEqual(['p1', 'p2'])
+  })
+
+  it('the move buttons name their month, and a month moved to an end keeps focus on its other button', async () => {
+    await mount({ ...twoMonths(), phases: [...twoMonths().phases, { id: 'p3', name: 'Peak', weeks: 1, bundle: bundle('Legs') }] })
+    expect(months().map(li => [...li.querySelectorAll('button[data-move]')].map(b => b.getAttribute('aria-label'))))
+      .toEqual([['Move Base up', 'Move Base down'], ['Move Month 2 up', 'Move Month 2 down'], ['Move Peak up', 'Move Peak down']])
+    act(() => buttonIn(months()[1], 'Move Month 2 down').focus())
+    press(months()[1], 'Move Month 2 down')
+    expect(titles()).toEqual(['Base', 'Peak', 'Month 3'])
+    expect(document.activeElement).toBe(buttonIn(months()[2], 'Move Month 3 up'))
+    press(months()[1], 'Move Peak up')
+    expect(document.activeElement).toBe(buttonIn(months()[0], 'Move Peak down'))
+    press(months()[0], 'Move Peak down')
+    expect(document.activeElement).toBe(buttonIn(months()[1], 'Move Peak down'))
+  })
+
+  it('after a delete the focus goes to the list of months', async () => {
+    await mount()
+    press(months()[1], 'Delete Month 2')
+    act(() => mocks.confirmSheet.mock.calls[0][0].onConfirm())
+    expect(document.activeElement).toBe(host.querySelector('ul.months'))
+  })
+
+  it('warns when the program is getting near the size the server takes', async () => {
+    await mount()
+    expect(host.textContent).not.toContain('This program is getting big')
+    const fat = twoMonths()
+    fat.phases[0].bundle.routines[0].ex[0].note = 'x'.repeat(220000)
+    act(() => root.unmount()); host.remove(); release.forEach(f => f()); reg.dropSession('abc')
+    await mount(fat)
+    expect(host.textContent).toContain('This program is getting big')
   })
 
   it('deletes a month only once confirmed, and never the last one', async () => {

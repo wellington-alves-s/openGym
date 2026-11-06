@@ -100,6 +100,7 @@ describe('StudentDetail', () => {
     mount(); await settle()
     press('Publish')
     expect(mocks.openSheet.mock.calls[1][0](() => {}).props.empty).toBe(false)
+    expect(mocks.openSheet.mock.calls[1][0](() => {}).props.noStart).toBe(true)   // two months, no start date
     act(() => root.unmount()); host.remove()
     mocks.getRx.mockResolvedValue(rx())
     mount(); await settle()

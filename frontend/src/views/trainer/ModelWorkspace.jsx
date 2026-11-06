@@ -15,6 +15,7 @@ const models = createDraftSessions({
   save: async (mid, program, rev) => ({ rev: (await saveModel(mid, { bundle: program.phases[0].bundle, _rev: rev })).model._rev }),
   backTo: mid => '/models/' + mid + '/plan',
   changedText: () => t('The model changed somewhere else'),
+  refusedText: () => null,   // the program refusals talk about months; a model gets the generic failure
 })
 
 // Reload, or a model deleted: drops the session and what it did not send.
@@ -22,6 +23,9 @@ export const dropSession = models.dropSession
 // Before a rename: sends what the editor still holds, so the rename takes the newest rev. Rejects
 // while those edits cannot be saved.
 export const whenSaved = models.whenSaved
+// For the list: a session ends once its last save is in, which is when the counts change.
+export const watchSessions = models.watch
+export const sessionOf = models.sessionOf
 
 export default function ModelWorkspace() {
   return <DraftLayout registry={models} id={useParams().mid} loadFailed={t('Could not load the model. Check your connection and try again.')} />

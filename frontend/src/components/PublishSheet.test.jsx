@@ -56,6 +56,19 @@ describe('PublishSheet', () => {
     expect(close).not.toHaveBeenCalled()
   })
 
+  it('several months with no start date warn before publishing, and still publish', async () => {
+    mocks.publishRx.mockResolvedValue({ rx: { _rev: 2 }, v: 1 })
+    mount(<PublishSheet sid="abc" empty={false} noStart latestRev={async () => 1} close={vi.fn()} />)
+    expect(host.textContent).toContain('Pick a start date so the months can turn by themselves')
+    await press('Publish')
+    expect(mocks.publishRx).toHaveBeenCalledTimes(1)
+  })
+
+  it('no warning without noStart', () => {
+    mount(<PublishSheet sid="abc" empty={false} latestRev={async () => 1} close={vi.fn()} />)
+    expect(host.textContent).not.toContain('Pick a start date')
+  })
+
   it('a double tap publishes once', async () => {
     let release
     mocks.publishRx.mockReturnValue(new Promise(r => { release = r }))

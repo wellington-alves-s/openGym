@@ -41,7 +41,7 @@ export function DraftLayout({ registry, id, loadFailed }) {
     </div></div>}
     {/* Always there, empty when idle, so a screen reader hears each change. */}
     <div className="narrow small dim" role="status" style={{ textAlign: 'end', marginTop: 4 }}>
-      {status === 'saving' ? t('Saving') : status === 'saved' ? t('Saved')
+      {status === 'saving' ? t('Saving') : status === 'saved' ? t('Saved') : status === 'refused' ? session.refused
         : status === 'failed' ? <>{t('Could not save. Try again.')} <Button size="sm" onClick={() => session.save()}>{t('Try again')}</Button></> : null}
     </div>
     <Outlet />

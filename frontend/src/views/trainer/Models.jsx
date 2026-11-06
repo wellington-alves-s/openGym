@@ -12,7 +12,7 @@ import { confirmSheet } from '../../sheets.jsx'
 import { Button } from '../../components/ui.jsx'
 import Icon from '../../components/Icon.jsx'
 import { dateOf } from '../../components/VersionsSheet.jsx'
-import { dropSession, whenSaved } from './ModelWorkspace.jsx'
+import { dropSession, sessionOf, watchSessions, whenSaved } from './ModelWorkspace.jsx'
 
 const sayOf = e => (e?.status === 409 ? t('The model changed somewhere else') : e?.data?.error || e?.message || t('Could not save. Try again.'))
 
@@ -52,6 +52,11 @@ export default function Models() {
     try { setList(await listModels()) } catch { setList(prev => (Array.isArray(prev) ? prev : 'failed')) }
   }, [])
   useEffect(() => { load() }, [load])
+  // An editor just left saves on its way out: read the list again once that session is gone.
+  useEffect(() => {
+    const open = Array.isArray(list) ? list.filter(m => sessionOf(m.id)).map(m => m.id) : []
+    if (open.length) return watchSessions(() => { if (open.some(id => !sessionOf(id))) load() })
+  }, [list, load])
 
   const create = async name => {
     const { model } = await createModel({ name, bundle: { opengym_plan: 1, unit, week: {}, routines: [], customEx: [] } })
@@ -72,7 +77,6 @@ export default function Models() {
       try { await deleteModel(m.id); dropSession(m.id) } catch (e) { useUI.getState().toast(sayOf(e)) }
       await load()
       heading.current?.focus()   // the row and its button are gone
-
     },
   })
 

@@ -86,6 +86,20 @@ describe('ModelPickerSheet', () => {
     expect(close).not.toHaveBeenCalled()
     expect(host.querySelector('[role="alert"]')).toBeTruthy()
   })
+
+  it('a sheet dismissed while the model loads adds no month', async () => {
+    mocks.listModels.mockResolvedValue([{ id: 'm1', name: 'A', updated: 1, routines: 1, exercises: 1 }])
+    let release
+    mocks.getModel.mockReturnValue(new Promise(r => { release = r }))
+    const onPick = vi.fn(), close = vi.fn()
+    const host = mount(<ModelPickerSheet onPick={onPick} close={close} />)
+    await settle()
+    await act(async () => host.querySelector('li [role="button"]').click())
+    act(() => { const { root, host: h } = mounted.pop(); root.unmount(); h.remove() })
+    release({ model: { id: 'm1', name: 'A', _rev: 1, bundle } }); await settle()
+    expect(onPick).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
+  })
 })
 
 describe('SaveModelSheet', () => {
@@ -113,7 +127,17 @@ describe('SaveModelSheet', () => {
     const close = vi.fn()
     const host = mount(<SaveModelSheet bundle={bundle} defaultName="Base" close={close} />)
     await submit(host)
-    expect(host.querySelector('[role="alert"]').textContent).toBe('a trainer keeps up to 100 models')
+    expect(host.querySelector('[role="alert"]').textContent).toBe('You can keep up to 100 models. Delete one to make room.')
     expect(close).not.toHaveBeenCalled()
+  })
+
+  it('a name the server refuses asks for a name; another refusal shows what the server said', async () => {
+    mocks.createModel.mockRejectedValueOnce(Object.assign(new Error('x'), { status: 400, data: { error: 'name must be 1 to 40 characters', code: 'bad-name' } }))
+      .mockRejectedValueOnce(Object.assign(new Error('x'), { status: 400, data: { error: 'too many routines', code: 'too-many-routines' } }))
+    const host = mount(<SaveModelSheet bundle={bundle} defaultName="Base" close={vi.fn()} />)
+    await submit(host)
+    expect(host.querySelector('[role="alert"]').textContent).toBe('Enter a name')
+    await submit(host)
+    expect(host.querySelector('[role="alert"]').textContent).toBe('too many routines')
   })
 })
