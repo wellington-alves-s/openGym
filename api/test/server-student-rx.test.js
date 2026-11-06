@@ -13,6 +13,7 @@ const USERS = [
   user('student02', 'Student B', { role: 'student', trainerId: 'trainer01' }),
   user('student03', 'Student C', { role: 'student', trainerId: 'trainer01' }),
   user('student07', 'Phases', { role: 'student', trainerId: 'trainer01' }),
+  user('student08', 'One phase', { role: 'student', trainerId: 'trainer01' }),
   user('student04', 'Loose', { role: 'student' }),
   user('student05', 'Behind', { role: 'student', trainerId: 'trainer02' }),
   user('plain001', 'Plain')
@@ -29,6 +30,11 @@ const files = {
   'trainers/trainer01/students/student02.json': rec('student02'),
   'trainers/trainer01/students/student03.json': rec('student03'),
   'trainers/trainer01/students/student07.json': rec('student07'),
+  'trainers/trainer01/students/student08.json': rec('student08'),
+  'trainers/trainer01/rx/student08.json': JSON.stringify({
+    _rev: 1, draft: { program: prog(bundle('DRAFT-D')), updated: 9 }, current: 1,
+    versions: [{ v: 1, at: 10, note: 'solo', program: { ...prog(bundle('d1')), start: '2026-11-09' } }]
+  }),
   'trainers/trainer01/rx/student01.json': rxDoc('A', 2),
   'trainers/trainer01/rx/student02.json': rxDoc('B', 1),
   'trainers/trainer01/rx/student07.json': JSON.stringify({
@@ -95,7 +101,14 @@ test('with TRAINER_MODE off the routes do not exist', async t => {
   for (const p of PATHS) assert.equal((await s.call(p, { as: 'student01' })).status, 404, p);
 });
 
-test('with several phases the student gets the program and no bundle key; with one phase both', async t => {
+test('a one-phase program in the new format comes as the program and its bundle', async t => {
+  const s = await startServer(t, ON);
+  const r = await s.call(PATHS[1], { as: 'student08' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, { v: 1, at: 10, note: 'solo', program: { ...prog(bundle('d1')), start: '2026-11-09' }, bundle: bundle('d1') });
+});
+
+test('with several phases the student gets the program and no bundle key', async t => {
   const s = await startServer(t, ON);
   const r = await s.call(PATHS[1], { as: 'student07' });
   assert.equal(r.status, 200);

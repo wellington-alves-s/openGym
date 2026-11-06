@@ -110,6 +110,18 @@ describe('publishDraft', () => {
     assert.ok(versionOf(rx, rx.current));
   });
 
+  it('with 50 stage 2a versions (bundle only) the trim drops the oldest and the rest still read', () => {
+    const legacy = Array.from({ length: 50 }, (_, i) => ({ v: i + 1, at: i, note: '', bundle: bundle() }));
+    let rx = { _rev: 1, draft: { bundle: bundle(), updated: 1 }, versions: legacy, current: 1 };
+    rx = publishDraft(rx, 'new', 99);
+    assert.equal(rx.versions.length, 50);
+    assert.deepEqual(rx.versions.map(v => v.v).slice(0, 2), [2, 3]);   // the oldest legacy one goes
+    assert.equal(rx.current, 51);
+    assert.deepEqual(rx.versions.at(-1).program, programOf({ bundle: bundle() }));
+    assert.deepEqual(versionOf(rx, 2).program, programOf({ bundle: bundle() }));   // the legacy ones left still read
+    assert.equal('program' in rx.versions[0], false);   // and stay as they were stored
+  });
+
   it('does not mutate its argument', () => {
     const rx = saveBundle(emptyRx(), bundle(), 1);
     const snap = JSON.stringify(rx);
@@ -198,6 +210,12 @@ describe('checkProgram', () => {
   it('refuses what is not a program', () => {
     for (const p of [null, undefined, 'x', 3, [], {}, { start: null }, { start: null, phases: 'x' }, { start: null, phases: [] }])
       assert.equal(checkProgram(p), 'bad-program', JSON.stringify(p));
+  });
+
+  it('a cyclic program is bad-program, never a throw', () => {
+    const p = prog(bundle());
+    p.phases[0].self = p;
+    assert.equal(checkProgram(p), 'bad-program');
   });
 
   it('caps the phases at 24', () => {

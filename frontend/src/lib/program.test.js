@@ -35,6 +35,7 @@ describe('phaseAt', () => {
     expect(r.state).toBe('before')
     expect(r.index).toBe(0)
     expect(r.progress).toBe(0)
+    expect([r.weekInPhase, r.weekInProgram]).toEqual([0, 0])   // the card says the start date, never Week 0
   })
 
   it('starts on week 1 of phase 0', () => {
@@ -65,6 +66,9 @@ describe('phaseAt', () => {
 
   it('stays on phase 0 when there is no start date', () => {
     expect(phaseAt(prog(null, 4, 2), '2026-06-01')).toMatchObject({ index: 0, state: 'running', progress: 0, totalWeeks: 0 })
+    const three = prog(null, 4, 2, 3)
+    for (const day of ['2020-01-01', '2026-06-01', '2040-12-31'])
+      expect(phaseAt(three, day)).toMatchObject({ index: 0, state: 'running', weekInPhase: 1, phaseWeeks: 4, weekInProgram: 1, totalWeeks: 0, progress: 0 })
   })
 
   it('a single phase with 0 weeks never ends', () => {

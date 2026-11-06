@@ -191,6 +191,9 @@ test('a body with neither program nor bundle, or a bad program, is a 400 with it
   assert.equal(await code({ _rev: 0 }), 'bad-program');
   assert.equal(await code({ program: 'x', _rev: 0 }), 'bad-program');
   assert.equal(await code({ program: { start: null, phases: [] }, _rev: 0 }), 'bad-program');
+  assert.equal(await code({ program: null, _rev: 0 }), 'bad-program');
+  assert.equal(await code({ program: { start: null, phases: 'x' }, _rev: 0 }), 'bad-program');
+  assert.equal(await code({ program: { start: null, phases: { 0: {} } }, _rev: 0 }), 'bad-program');
   const many = prog(...Array.from({ length: 25 }, () => bundle('ex1')));
   assert.equal(await code({ program: many, _rev: 0 }), 'too-many-phases');
   assert.equal(await code({ program: { ...prog(bundle('ex1')), start: '2026-02-30' }, _rev: 0 }), 'bad-start');
