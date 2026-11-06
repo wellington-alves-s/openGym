@@ -206,3 +206,18 @@ describe('the month of a program', () => {
     expect(localStorage.length).toBe(0)
   })
 })
+
+describe('the cache follows the account', () => {
+  it('an account switch during the download writes under no key', async () => {
+    const bundle = { opengym_plan: 1, unit: 'kg', week: {}, routines: [{ id: 'r1', name: 'Push', ex: [] }], customEx: [] }
+    useStore.setState({ user: { id: 'u1', role: 'student' } })
+    let release
+    rev.mockResolvedValue({ v: 1 })
+    rx.mockReturnValue(new Promise(r => { release = r }))
+    await mount(); await flush()
+    await act(async () => useStore.setState({ user: { id: 'u2', role: 'student' } }))
+    await act(async () => { release({ v: 1, bundle }) }); await flush()
+    expect(localStorage.getItem('gym_rx_v1:u1')).toBeNull()
+    expect(localStorage.getItem('gym_rx_v1:u2')).toBeNull()
+  })
+})

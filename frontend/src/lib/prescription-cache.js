@@ -8,7 +8,7 @@ export function readCache(uid) {
   if (!uid) return null
   try {
     const rec = JSON.parse(localStorage.getItem(key(uid)))
-    return typeof rec?.v === 'number' && Number.isFinite(rec.v) && Array.isArray(rec.program?.phases) ? rec : null
+    return typeof rec?.v === 'number' && Number.isFinite(rec.v) && Array.isArray(rec.program?.phases) && rec.program.phases.every(p => typeof p?.id === 'string') ? rec : null
   } catch { return null }
 }
 

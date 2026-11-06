@@ -262,3 +262,49 @@ describe('syncPrescription with a program', () => {
     expect(h.cache.write).not.toHaveBeenCalled()
   })
 })
+
+describe('syncPrescription: offline never rolls back, and the cache follows the account', () => {
+  const plan = ids => ({ opengym_plan: 1, unit: 'kg', week: {}, routines: ids.map(id => ({ id, name: id, ex: [] })), customEx: [] })
+  const prog = { start: '2026-11-02', phases: [{ id: 'p1', name: 'A', weeks: 4, bundle: plan(['old']) }, { id: 'p2', name: 'B', weeks: 4, bundle: plan(['new']) }] }
+  const mem = rec => { let c = rec; return { read: () => c, write: vi.fn(x => { c = x }), clear: vi.fn(() => { c = null }) } }
+  const applied = (v, p) => { const S = { unit: 'kg', routines: [structuredClone(own)], week: {}, dayPlan: {} }; applyPrescription(S, plan(['new']), v, p); return S }
+  const offline = (S, cached, today) => {
+    const { h, state } = rig({ S, rev: new TypeError('Failed to fetch') })
+    h.cache = mem(cached); h.today = () => today
+    return { h, state }
+  }
+
+  it('a cache older than the applied plan never rolls it back while offline', async () => {
+    const S = applied(4, 'p1')
+    const { h, state } = offline(S, { v: 3, program: prog }, '2026-11-09')
+    const before = structuredClone(state.S)
+    expect(await syncPrescription(h)).toBe('offline')
+    expect(state.S).toEqual(before)
+    expect(h.update).not.toHaveBeenCalled()
+    expect(h.notify).not.toHaveBeenCalled()
+  })
+
+  it('a cache of the same version as the applied plan still turns the month offline', async () => {
+    const { h, state } = offline(applied(3, 'p1'), { v: 3, program: prog }, '2026-12-01')
+    expect(await syncPrescription(h)).toBe('applied')
+    expect(state.S.routines.map(r => r.id)).toEqual(['own1', 'rx-new'])
+    expect(state.S.routines[1].rx).toEqual({ v: 3, p: 'p2' })
+  })
+
+  it('a removal deferred by a workout still forgets the cache', async () => {
+    const S = { ...applied(3, 'p1'), active: { id: 'w' } }
+    const { h } = rig({ S, rev: { v: null } })
+    h.cache = mem({ v: 3, program: prog }); h.today = () => '2026-11-09'
+    expect(await syncPrescription(h)).toBe('deferred')
+    expect(h.cache.clear).toHaveBeenCalled()
+  })
+
+  it('moving on after an empty phase is announced as a phase, not as a new version', async () => {
+    const two = { start: '2026-11-02', phases: [{ id: 'p1', name: 'Rest', weeks: 1, bundle: plan([]) }, { id: 'p2', name: 'Build', weeks: 4, bundle: plan(['new']) }] }
+    const S = { unit: 'kg', routines: [structuredClone(own)], week: {}, dayPlan: {} }
+    const { h } = rig({ S, rev: { v: 3 } })
+    h.cache = mem({ v: 3, program: two }); h.today = () => '2026-11-12'
+    expect(await syncPrescription(h)).toBe('applied')
+    expect(h.notify.mock.calls).toEqual([[3, { name: 'Build', index: 1 }]])
+  })
+})

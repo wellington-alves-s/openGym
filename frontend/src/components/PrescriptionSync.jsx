@@ -24,7 +24,7 @@ export default function PrescriptionSync() {
           fetchRev: studentRxRev, fetchRx: studentRx,
           getS: () => useStore.getState().S,
           update: fn => { if (current()) useStore.getState().update(fn) },
-          cache: { read: () => readCache(uid), write: rec => writeCache(uid, rec), clear: () => clearCache(uid) },
+          cache: { read: () => readCache(uid), write: rec => { if (current()) writeCache(uid, rec) }, clear: () => { if (current()) clearCache(uid) } },
           today: todayISO,
           notify: (v, phase) => {
             if (!current()) return

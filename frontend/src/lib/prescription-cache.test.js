@@ -27,7 +27,7 @@ describe('prescription cache', () => {
 
   it('anything not shaped { v: number, program: { phases: [] } } reads null', () => {
     const put = x => localStorage.setItem('gym_rx_v1:u1', typeof x === 'string' ? x : JSON.stringify(x))
-    for (const bad of ['{nope', 'null', '5', { v: '3', program }, { v: 3 }, { v: 3, program: {} }, { v: 3, program: { phases: 'x' } }, { v: NaN, program }]) {
+    for (const bad of ['{nope', 'null', '5', { v: '3', program }, { v: 3 }, { v: 3, program: {} }, { v: 3, program: { phases: 'x' } }, { v: 3, program: { phases: [{}] } }, { v: 3, program: { phases: [null] } }, { v: NaN, program }]) {
       put(bad)
       expect(readCache('u1')).toBeNull()
     }

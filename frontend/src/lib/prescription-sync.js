@@ -19,25 +19,28 @@ const NO_CACHE = { read: () => null, write() {}, clear() {} }
 export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify, cache = NO_CACHE, today = todayISO }) {
   const hasRx = () => (getS().routines || []).some(isPrescribed)
   const drop = () => {
-    cache.clear()
     if (!hasRx()) return 'same'
     update(S => { removePrescription(S) })
     return 'removed'
   }
-  const gone = () => (getS().active && hasRx() ? 'deferred' : drop())
+  // The server withdrew the plan: forget the cached program even if a workout defers the removal.
+  const gone = () => { cache.clear(); return getS().active && hasRx() ? 'deferred' : drop() }
   try {
     let rec = cache.read()
+    const cachedV = rec?.v
     let v
     try {
       ({ v } = await fetchRev())
     } catch (e) {
       // No answer at all (no status): the cached program can still say which month it is.
-      if (!rec || e?.status != null || !isNetwork(e)) throw e
+      // A cache older than what is applied (another device, a failed write) must never roll it back.
+      if (!rec || e?.status != null || !isNetwork(e) || rec.v < appliedVersion(getS())) throw e
       v = rec.v
     }
     if (v === null) return gone()
     if (typeof v !== 'number') return 'offline'   // an answer we cannot read never takes the plan away
     const before = appliedKey(getS())
+    const appliedV = appliedVersion(getS())
     if (before === `${v}:`) return 'same'   // applied by the stage 2a app: one phase, nothing to switch
     if (rec?.v !== v) {
       if (getS().active) return 'deferred'
@@ -54,9 +57,10 @@ export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify
     if (!phase.bundle?.routines?.length && !before) return 'same'   // nothing to apply, nothing to announce
     if (getS().active) return 'deferred'
     update(S => { applyPrescription(S, phase.bundle, rec.v, phase.id) })
-    const [was, wasPhase] = before.split(':')
-    if (rec.v !== (Number(was) || 0)) notify(rec.v)
-    else if (wasPhase) notify(rec.v, { name: phase.name || '', index })
+    // After an empty phase nothing is applied: the cache then remembers which version we were on.
+    const prevV = before ? appliedV : cachedV
+    if (rec.v !== prevV) notify(rec.v)
+    else notify(rec.v, { name: phase.name || '', index })
     return 'applied'
   } catch (e) {
     // Only the server saying "not linked" takes the plan away; no answer at all never does.
