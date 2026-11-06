@@ -19,6 +19,9 @@ const models = createDraftSessions({
 
 // Reload, or a model deleted: drops the session and what it did not send.
 export const dropSession = models.dropSession
+// Before a rename: sends what the editor still holds, so the rename takes the newest rev. Rejects
+// while those edits cannot be saved.
+export const whenSaved = models.whenSaved
 
 export default function ModelWorkspace() {
   return <DraftLayout registry={models} id={useParams().mid} loadFailed={t('Could not load the model. Check your connection and try again.')} />

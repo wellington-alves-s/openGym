@@ -12,7 +12,7 @@ import { confirmSheet } from '../../sheets.jsx'
 import { Button } from '../../components/ui.jsx'
 import Icon from '../../components/Icon.jsx'
 import { dateOf } from '../../components/VersionsSheet.jsx'
-import { dropSession } from './ModelWorkspace.jsx'
+import { dropSession, whenSaved } from './ModelWorkspace.jsx'
 
 const sayOf = e => (e?.status === 409 ? t('The model changed somewhere else') : e?.data?.error || e?.message || t('Could not save. Try again.'))
 
@@ -47,6 +47,7 @@ export default function Models() {
   const [list, setList] = useState(null)
   // 'new', or the id of the model being renamed.
   const [editing, setEditing] = useState(null)
+  const heading = useRef(null)
   const load = useCallback(async () => {
     try { setList(await listModels()) } catch { setList(prev => (Array.isArray(prev) ? prev : 'failed')) }
   }, [])
@@ -57,7 +58,9 @@ export default function Models() {
     nav('/models/' + model.id + '/plan')
   }
   // The summaries carry no _rev: read the model first, and once more if it changed in between.
+  // Edits a failed save left in the model's session go up first, or that session would meet a 409.
   const rename = async (m, name) => {
+    await whenSaved(m.id)
     const put = async () => saveModel(m.id, { name, _rev: (await getModel(m.id)).model._rev })
     await put().catch(e => (e?.status === 409 ? put() : Promise.reject(e)))
     setEditing(null)
@@ -67,13 +70,15 @@ export default function Models() {
     title: t('Delete {0}?', m.name), confirmText: t('Delete model'), danger: true,
     onConfirm: async () => {
       try { await deleteModel(m.id); dropSession(m.id) } catch (e) { useUI.getState().toast(sayOf(e)) }
-      load()
+      await load()
+      heading.current?.focus()   // the row and its button are gone
+
     },
   })
 
   return <div className="narrow">
     <div className="row between" style={{ margin: '8px 0 16px' }}>
-      <h2 style={{ margin: 0 }}>{t('Models')}</h2>
+      <h2 ref={heading} tabIndex={-1} style={{ margin: 0 }}>{t('Models')}</h2>
       <Button variant="primary" size="sm" icon="plus" onClick={() => setEditing('new')}>{t('New model')}</Button>
     </div>
     {editing === 'new' && <div className="card" style={{ marginBottom: 12 }}>

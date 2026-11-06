@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Models from './Models.jsx'
+import ModelWorkspace, { dropSession } from './ModelWorkspace.jsx'
+import { useWorkspaceStore } from '../../lib/workspace.js'
 import { DEF, useStore } from '../../store/useStore.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -125,12 +127,73 @@ describe('Models', () => {
     await act(async () => mocks.confirmSheet.mock.calls[0][0].onConfirm()); await settle()
     expect(mocks.deleteModel).toHaveBeenCalledWith('m1')
     expect([...host.querySelectorAll('li .tt')].map(e => e.textContent)).toEqual(['Deload'])
+    expect(document.activeElement).toBe(host.querySelector('h2'))
   })
 
   it('with no models says how to make one', async () => {
     mocks.listModels.mockResolvedValue([])
     await mount()
     expect(host.textContent).toContain('No models yet. Make one here, or save a month of a program as a model.')
+  })
+
+  /* A save that failed on the way out leaves the model's session open with its edits and rev. A
+     rename sends those edits first, so the editor never meets a 409 the trainer caused. */
+  describe('with edits a failed save left in the model', () => {
+    const offline = () => Object.assign(new Error('offline'), { status: 0 })
+    const model = rev => ({ model: { id: 'm1', name: 'Strength base', updated: 1, _rev: rev,
+      bundle: { opengym_plan: 1, unit: 'lb', week: {}, customEx: [], routines: [{ id: 'r1', name: 'Push', emoji: 'dumbbell', ex: [] }] } } })
+    let store
+    function Probe() {
+      store = useWorkspaceStore()
+      const nav = useNavigate()
+      return <button onClick={() => nav('/models')}>leave</button>
+    }
+    async function leaveWithEdits() {
+      host = document.createElement('div')
+      document.body.appendChild(host)
+      root = createRoot(host)
+      await act(async () => root.render(<MemoryRouter initialEntries={['/models/m1/plan']}><Routes>
+        <Route path="/models" element={<Models />} />
+        <Route path="/models/:mid/plan" element={<ModelWorkspace />}><Route index element={<Probe />} /></Route>
+      </Routes></MemoryRouter>))
+      await settle()
+      act(() => store.getState().update(s => { s.routines[0].name = 'Held edit' }))
+      await press(host, 'leave'); await settle()
+    }
+    afterEach(() => dropSession('m1'))
+
+    it('sends them with the old rev before the rename, and the model opens again without a conflict', async () => {
+      let rev = 3
+      mocks.getModel.mockImplementation(async () => model(rev))
+      mocks.listModels.mockResolvedValue(two)
+      mocks.saveModel.mockRejectedValueOnce(offline()).mockImplementation(async () => model(++rev))
+      await leaveWithEdits()
+      expect(mocks.saveModel).toHaveBeenCalledTimes(1)
+      await press(row('Strength base'), 'Rename Strength base')
+      type(nameField(), 'Power')
+      await submit()
+      const calls = mocks.saveModel.mock.calls.slice(1)
+      expect(calls.map(([id, body]) => [id, Object.keys(body).filter(k => body[k] !== undefined).sort(), body._rev]))
+        .toEqual([['m1', ['_rev', 'bundle'], 3], ['m1', ['_rev', 'name'], 4]])
+      expect(calls[0][1].bundle.routines[0].name).toBe('Held edit')
+      expect(nameField()).toBeNull()
+      await act(async () => row('Strength base').querySelector('[role="button"]').click()); await settle()
+      expect(host.querySelector('[role="alert"]')).toBeNull()
+      expect(mocks.getModel).toHaveBeenCalledTimes(3)   // open, the rename, open again
+    })
+
+    it('refuses the rename while they still cannot be saved', async () => {
+      mocks.getModel.mockResolvedValue(model(3))
+      mocks.listModels.mockResolvedValue(two)
+      mocks.saveModel.mockRejectedValue(offline())
+      await leaveWithEdits()
+      await press(row('Strength base'), 'Rename Strength base')
+      type(nameField(), 'Power')
+      await submit()
+      expect(host.querySelector('[role="alert"]').textContent).toBe('Could not save. Try again.')
+      expect(mocks.saveModel.mock.calls.some(([, body]) => body.name !== undefined)).toBe(false)
+      expect(nameField().value).toBe('Power')
+    })
   })
 
   it('a list that does not load says so, and Try again reads it again', async () => {
