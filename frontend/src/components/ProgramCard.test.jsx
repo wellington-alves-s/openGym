@@ -57,13 +57,12 @@ describe('ProgramCard', () => {
     expect(bar.getAttribute('aria-label')).toBeTruthy()
   })
 
-  it('uses the phase name in place of the month number, and says Today when the day is today', async () => {
+  it('keeps the month count and adds the phase name, and says Today when the day is today', async () => {
     const p = [phase('p1', {}), phase('p2', { 1: ['b', 'c', 'd'] }, 'Strength')]
     own('u1', program(addDays(TODAY, -30), p))
     setStore()
     await mount()
-    expect(host.textContent).toContain('Strength')
-    expect(host.textContent).not.toContain('Month 2')
+    expect(host.textContent).toContain('Month 2 of 2 · Strength')
     expect(host.textContent).toContain('Next: Treino B + Treino C +1, Today')
   })
 
@@ -93,6 +92,13 @@ describe('ProgramCard', () => {
     expect(host.textContent).toContain('Next: Treino B, Wednesday')
     expect(host.textContent).not.toContain('Week')
     expect(host.querySelector('[role="progressbar"]')).toBeNull()
+  })
+
+  it('a single named phase reads "Month 1 · Name"', async () => {
+    own('u1', program(null, [{ ...phase('p1', {}, 'Base'), weeks: 0 }]))
+    setStore()
+    await mount()
+    expect(host.textContent).toContain('Month 1 · Base')
   })
 
   it('a rest month still shows, without a Next line', async () => {

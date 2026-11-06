@@ -87,6 +87,12 @@ describe('MyTrainer', () => {
     store.user = { id: 'u2' }
     host = await open()
     expect(host.textContent).not.toContain('Month 2 of 2')
+    d.setDate(d.getDate() - 400)
+    writeCache('u1', { v: 2, program: { start: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), phases } })
+    store.user = { id: 'u1' }
+    host = await open()
+    expect(host.textContent).toContain('Program finished')
+    expect(host.textContent).not.toContain('Month 2 of 2')
   })
 
   it('shows the trainer, since when, and the switches as the server has them', async () => {

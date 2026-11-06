@@ -18,9 +18,11 @@ export function programNow(uid) {
   return now ? { program, now } : null
 }
 
-/** The phase's own name, else "Month n of N" (just "Month n" when the program has one phase). */
-export const monthLabel = (now, count) => now.phase.name
-  || (count > 1 ? t('Month {0} of {1}', now.index + 1, count) : t('Month {0}', now.index + 1))
+/** "Month n of N" ("Month n" when the program has one phase), followed by the phase's name when it has one. */
+export const monthLabel = (now, count) => {
+  const n = count > 1 ? t('Month {0} of {1}', now.index + 1, count) : t('Month {0}', now.index + 1)
+  return now.phase.name ? n + ' · ' + now.phase.name : n
+}
 
 function nextLine(now, routines) {
   const next = nextSession(now.phase, todayISO())
