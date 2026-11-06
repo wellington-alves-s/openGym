@@ -1220,6 +1220,7 @@ export default {
   'Next: {0}, {1}': 'التالي: {0}، {1}',
   'Starts on {0}': 'يبدأ في {0}',
   'Program finished': 'انتهى البرنامج',
+  'Program progress': 'تقدم الخطة',
   'Prescribed by your trainer': 'وصفه مدربك',
   'Version {0}': 'الإصدار {0}',
   'Prescribed': 'موصوف',

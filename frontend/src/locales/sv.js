@@ -105,6 +105,7 @@ export default {
   'Next: {0}, {1}': 'Nästa: {0}, {1}',
   'Starts on {0}': 'Börjar den {0}',
   'Program finished': 'Programmet är slut',
+  'Program progress': 'Planens förlopp',
   'Prescribed by your trainer': 'Ordinerat av din tränare',
   'Version {0}': 'Version {0}',
   'Prescribed': 'Ordinerat',

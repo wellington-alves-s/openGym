@@ -61,4 +61,15 @@ describe('another account on a copy whose session ended', () => {
     useStore.getState().setUser({ id: 'yuri', name: 'Yuri' })
     expect(await useStore.getState().keptChanges()).toEqual([])
   })
+
+  it('a sign-out also forgets the program cached for that account, and only that one', async () => {
+    useStore.setState({ S: { ...clone(DEF), _ts: 500 }, user: { id: 'stud1', name: 'Bia' }, ready: true })
+    localStorage.setItem('gym_rx_v1:stud1', '{"v":1}')
+    localStorage.setItem('gym_rx_v1:other', '{"v":1}')
+    api.mockResolvedValue({})
+    await useStore.getState().signOut({ force: true })
+    expect(useStore.getState().user).toBeNull()
+    expect(localStorage.getItem('gym_rx_v1:stud1')).toBeNull()
+    expect(localStorage.getItem('gym_rx_v1:other')).not.toBeNull()
+  })
 })

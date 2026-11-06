@@ -106,6 +106,7 @@ export default {
   'Next: {0}, {1}': 'Következő: {0}, {1}',
   'Starts on {0}': 'Kezdete: {0}',
   'Program finished': 'A program véget ért',
+  'Program progress': 'A terv haladása',
   'Prescribed by your trainer': 'Az edződ írta elő',
   'Version {0}': '{0}. verzió',
   'Prescribed': 'Előírt',

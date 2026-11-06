@@ -30,6 +30,7 @@ import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 import { sanitizeAccent } from '../lib/accent.js'
 import { registerExerciseAliases } from '../lib/exercise-aliases.js'
+import { clearCache as clearRxCache } from '../lib/prescription-cache.js'
 
 const KEY = 'gym_state_v1'
 // Where the saved copy stands with the server: the revision it descends from, and its own `_ts`
@@ -997,6 +998,7 @@ export const useStore = create((set, get) => {
   // it sees the new copy, or it joins its own copy of the account into it (QA 2026-10-06).
   const clearLocalSession = () => {
     const hadMedia = referencedHashes(get().S).size > 0
+    clearRxCache(get().user?.id)   // the trainer's program cached for this account: nobody else's to read
     get().setUser(null)
     localStorage.removeItem('gym_guest')
     forgetSync()

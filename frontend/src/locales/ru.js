@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': 'Далее: {0}, {1}',
   'Starts on {0}': 'Начало: {0}',
   'Program finished': 'Программа завершена',
+  'Program progress': 'Прогресс плана',
   'Prescribed by your trainer': 'Назначено твоим тренером',
   'Version {0}': 'Версия {0}',
   'Prescribed': 'Назначено',

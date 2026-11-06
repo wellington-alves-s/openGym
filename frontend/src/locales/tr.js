@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': 'Sonraki: {0}, {1}',
   'Starts on {0}': 'Başlangıç: {0}',
   'Program finished': 'Program bitti',
+  'Program progress': 'Plan ilerlemesi',
   'Prescribed by your trainer': 'Antrenörün tarafından verildi',
   'Version {0}': 'Sürüm {0}',
   'Prescribed': 'Verilen',

@@ -54,7 +54,32 @@ describe('ProgramCard', () => {
     expect(bar.getAttribute('aria-valuemin')).toBe('0')
     expect(bar.getAttribute('aria-valuemax')).toBe('100')
     expect(bar.getAttribute('aria-valuenow')).toBe('52')
-    expect(bar.getAttribute('aria-label')).toBeTruthy()
+    expect(bar.getAttribute('aria-label')).toBe('Program progress')   // the value is the whole program, not the week
+  })
+
+  it('several months and no start date: the first month, no week and no bar', async () => {
+    own('u1', program(null, THREE))
+    setStore()
+    await mount()
+    expect(host.textContent).toContain('Month 1 of 3')
+    expect(host.textContent).not.toContain('Week')
+    expect(host.querySelector('[role="progressbar"]')).toBeNull()
+  })
+
+  it('opens the plan from the keyboard, with Enter or Space', async () => {
+    own('u1', program(addDays(TODAY, -44), THREE))
+    setStore()
+    await mount()
+    const card = host.querySelector('[role="button"]')
+    expect(card.tabIndex).toBe(0)
+    for (const key of ['Enter', ' ']) act(() => card.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })))
+    expect(nav.mock.calls).toEqual([['/plan'], ['/plan']])
+  })
+
+  it('a long name with no spaces may break anywhere, on the card and on the trainer screen', async () => {
+    const css = (await import('node:fs')).readFileSync(process.cwd() + '/src/index.css', 'utf8')
+    expect(css).toContain('.prog-card{cursor:pointer;overflow-wrap:anywhere}')
+    expect(css).toContain('.prog-line{overflow-wrap:anywhere}')
   })
 
   it('keeps the month count and adds the phase name, and says Today when the day is today', async () => {

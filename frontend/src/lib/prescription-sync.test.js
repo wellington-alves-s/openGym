@@ -210,6 +210,16 @@ describe('syncPrescription with a program', () => {
     expect(b.h.update).not.toHaveBeenCalled()
   })
 
+  it('a first plan whose download a workout deferred is announced as an update, not as a month', async () => {
+    const { h, state } = prig({ rev: { v: 3 } })
+    h.fetchRx.mockImplementation(async () => { state.S = { ...state.S, active: { id: 'w' } }; return { v: 3, program } })   // a workout starts during the download
+    expect(await syncPrescription(h)).toBe('deferred')
+    expect(h.cache.get()).toEqual({ v: 3, program })
+    state.S = { ...state.S, active: null }
+    expect(await syncPrescription(h)).toBe('applied')
+    expect(h.notify.mock.calls).toEqual([[3]])
+  })
+
   it('a cache from an older version downloads again', async () => {
     const old = { v: 2, program: { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: plan([], {}) }] } }
     const { h, state } = prig({ rev: { v: 3 }, cached: old })
@@ -299,12 +309,13 @@ describe('syncPrescription: offline never rolls back, and the cache follows the 
     expect(h.cache.clear).toHaveBeenCalled()
   })
 
-  it('moving on after an empty phase is announced as a phase, not as a new version', async () => {
+  // Nothing was applied before (the first month is empty): the student has not heard of this plan yet.
+  it('moving on after an empty first phase is announced as the plan coming in', async () => {
     const two = { start: '2026-11-02', phases: [{ id: 'p1', name: 'Rest', weeks: 1, bundle: plan([]) }, { id: 'p2', name: 'Build', weeks: 4, bundle: plan(['new']) }] }
     const S = { unit: 'kg', routines: [structuredClone(own)], week: {}, dayPlan: {} }
     const { h } = rig({ S, rev: { v: 3 } })
     h.cache = mem({ v: 3, program: two }); h.today = () => '2026-11-12'
     expect(await syncPrescription(h)).toBe('applied')
-    expect(h.notify.mock.calls).toEqual([[3, { name: 'Build', index: 1 }]])
+    expect(h.notify.mock.calls).toEqual([[3]])
   })
 })

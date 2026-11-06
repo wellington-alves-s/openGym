@@ -27,7 +27,6 @@ export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify
   const gone = () => { cache.clear(); return getS().active && hasRx() ? 'deferred' : drop() }
   try {
     let rec = cache.read()
-    const cachedV = rec?.v
     let v
     try {
       ({ v } = await fetchRev())
@@ -57,9 +56,8 @@ export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify
     if (!phase.bundle?.routines?.length && !before) return 'same'   // nothing to apply, nothing to announce
     if (getS().active) return 'deferred'
     update(S => { applyPrescription(S, phase.bundle, rec.v, phase.id) })
-    // After an empty phase nothing is applied: the cache then remembers which version we were on.
-    const prevV = before ? appliedV : cachedV
-    if (rec.v !== prevV) notify(rec.v)
+    // Nothing applied before (a first plan, a download a workout deferred, an empty month): the plan coming in.
+    if (!before || rec.v !== appliedV) notify(rec.v)
     else notify(rec.v, { name: phase.name || '', index })
     return 'applied'
   } catch (e) {

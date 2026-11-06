@@ -1,5 +1,6 @@
 // The student's program on Home: which month and week, how far along, and the next training day.
 // Read from the account's cached program (lib/prescription-cache.js), never from the network.
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
@@ -10,11 +11,11 @@ import { programFrom, phaseAt, nextSession } from '../lib/program.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 
 /** Where this account's program stands today: { program, now } or null (no cache, no phase). */
-export function programNow(uid) {
+export function programNow(uid, today = todayISO()) {
   const cache = readCache(uid)
   if (!cache) return null
   const program = programFrom(cache)
-  const now = phaseAt(program, todayISO())
+  const now = phaseAt(program, today)
   return now ? { program, now } : null
 }
 
@@ -35,9 +36,12 @@ function nextLine(now, routines) {
 
 export default function ProgramCard() {
   const nav = useNavigate()
-  const user = useStore(s => s.user)
-  useStore(s => appliedKey(s.S)) // re-render when the applied month changes
-  const at = programNow(user?.id)
+  const uid = useStore(s => s.user?.id)
+  const applied = useStore(s => appliedKey(s.S))
+  const routines = useStore(s => s.S?.routines)
+  const today = todayISO()
+  // The cache is read again only when the account, the applied month or the day changes (a sync writes it, then applies).
+  const at = useMemo(() => programNow(uid, today), [uid, applied, today])
   if (!at) return null
   const { program, now } = at
   const lines = []
@@ -49,7 +53,7 @@ export default function ProgramCard() {
   } else {
     lines.push(monthLabel(now, program.phases.length))
     if (now.totalWeeks > 0) { lines.push(t('Week {0} of {1}', now.weekInPhase, now.phaseWeeks)); pct = Math.round(now.progress * 100) }
-    const next = nextLine(now, useStore.getState().S?.routines || [])
+    const next = nextLine(now, routines || [])
     if (next) lines.push(next)
   }
   return <div className="card">
@@ -57,6 +61,6 @@ export default function ProgramCard() {
       <div><strong>{lines[0]}</strong></div>
       {lines.slice(1).map(l => <div key={l} className="small dim">{l}</div>)}
     </div>
-    {pct !== null && <div className="prog-bar" role="progressbar" aria-label={lines[now.state === 'after' ? 0 : 1]} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i style={{ width: pct + '%' }} /></div>}
+    {pct !== null && <div className="prog-bar" role="progressbar" aria-label={t('Program progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i style={{ width: pct + '%' }} /></div>}
   </div>
 }

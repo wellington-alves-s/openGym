@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': '下一次：{0}，{1}',
   'Starts on {0}': '{0} 开始',
   'Program finished': '计划已结束',
+  'Program progress': '计划进度',
   'Prescribed by your trainer': '教练指定',
   'Version {0}': '版本 {0}',
   'Prescribed': '已指定',

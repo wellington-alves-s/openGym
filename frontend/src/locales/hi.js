@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': 'अगला: {0}, {1}',
   'Starts on {0}': '{0} को शुरू होगा',
   'Program finished': 'प्रोग्राम पूरा हुआ',
+  'Program progress': 'योजना की प्रगति',
   'Prescribed by your trainer': 'आपके ट्रेनर ने तय की है',
   'Version {0}': 'संस्करण {0}',
   'Prescribed': 'तय की गई',

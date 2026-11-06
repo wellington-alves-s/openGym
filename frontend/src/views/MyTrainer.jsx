@@ -72,7 +72,7 @@ export default function MyTrainer() {
       <div><strong>{info.trainer.name}</strong></div>
       {info.since && <div className="small dim">{fmtDate(isoOf(new Date(info.since)), false, true)}</div>}
       {planVersion > 0 && <div className="small dim">{t('Training plan: version {0}', planVersion)}</div>}
-      {planVersion > 0 && month && <div className="small dim">{month.now.state === 'after' ? t('Program finished') : monthLabel(month.now, month.program.phases.length)}</div>}
+      {planVersion > 0 && month && <div className="small dim prog-line">{month.now.state === 'after' ? t('Program finished') : monthLabel(month.now, month.program.phases.length)}</div>}
     </div>
     <p className="small muted">{t('{0} sees your workouts. You choose what else to share.', info.trainer.name)}</p>
     <div className="card">

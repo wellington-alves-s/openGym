@@ -2070,7 +2070,8 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 }
 
 /* --- home: the student's program card --- */
-.prog-card{cursor:pointer}
+.prog-card{cursor:pointer;overflow-wrap:anywhere}
+.prog-line{overflow-wrap:anywhere}   /* MyTrainer's month line: a 40-character name with no spaces */
 .prog-bar{height:5px;border-radius:3px;margin-top:10px;background:var(--surface-3);overflow:hidden}
 .prog-bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
 

@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': '다음: {0}, {1}',
   'Starts on {0}': '{0}에 시작',
   'Program finished': '프로그램 종료',
+  'Program progress': '계획 진행률',
   'Prescribed by your trainer': '트레이너가 지정한 루틴',
   'Version {0}': '버전 {0}',
   'Prescribed': '지정됨',

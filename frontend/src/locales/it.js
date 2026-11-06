@@ -104,6 +104,7 @@ export default {
   'Next: {0}, {1}': 'Prossimo: {0}, {1}',
   'Starts on {0}': 'Inizia il {0}',
   'Program finished': 'Programma concluso',
+  'Program progress': 'Avanzamento del piano',
   'Prescribed by your trainer': 'Prescritta dal tuo personal trainer',
   'Version {0}': 'Versione {0}',
   'Prescribed': 'Prescritta',

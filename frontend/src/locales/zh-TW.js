@@ -103,6 +103,7 @@ export default {
   'Next: {0}, {1}': '下一次：{0}，{1}',
   'Starts on {0}': '{0} 開始',
   'Program finished': '計畫已結束',
+  'Program progress': '計畫進度',
   'Prescribed by your trainer': '教練指定',
   'Version {0}': '版本 {0}',
   'Prescribed': '已指定',
