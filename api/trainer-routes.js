@@ -129,7 +129,7 @@ export function trainerRoutes({
   };
   // → the trimmed name, else null after the 400.
   const modelName = (res, v) => {
-    const name = text(v).trim();
+    const name = typeof v === 'string' ? v.trim() : '';
     if (name && name.length <= 40) return name;
     json(res, 400, { error: 'name must be 1 to 40 characters', code: 'bad-name' });
     return null;

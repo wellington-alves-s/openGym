@@ -73,15 +73,18 @@ export function removeRx(dir, trainerId, studentId) {
 }
 
 // The trainer's own profile, `<dir>/trainers/<trainerId>/profile.json`: { models: [{ id, name, updated, _rev, bundle }] }.
-// Always the whole file in and out; a missing or unreadable one is an empty profile.
+// Always the whole file in and out; a missing one is an empty profile. Any other read error or a malformed
+// file throws (the route answers 500): reading it as empty would let the next write wipe the real models.
 const profileFile = (dir, trainerId) => path.join(dir, 'trainers', trainerId, 'profile.json');
 
 export function readProfile(dir, trainerId) {
   if (!validId(trainerId)) return { models: [] };
-  try {
-    const p = JSON.parse(fs.readFileSync(profileFile(dir, trainerId), 'utf8'));
-    return Array.isArray(p?.models) ? p : { models: [] };
-  } catch { return { models: [] }; }
+  let raw;
+  try { raw = fs.readFileSync(profileFile(dir, trainerId), 'utf8'); }
+  catch (e) { if (e.code === 'ENOENT') return { models: [] }; throw e; }
+  const p = JSON.parse(raw);
+  if (!p || typeof p !== 'object' || !Array.isArray(p.models)) throw new Error('malformed profile.json for ' + trainerId);
+  return p;
 }
 
 export function writeProfile(dir, trainerId, profile) {

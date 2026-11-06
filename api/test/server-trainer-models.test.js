@@ -78,7 +78,7 @@ test('each model has its own _rev: changing one does not make the other stale', 
 
 test('bad input: names, bundles, _rev and an empty PUT are 400s that change nothing', async t => {
   const s = await startServer(t, ON);
-  for (const name of ['', '   ', 'x'.repeat(41), null]) {
+  for (const name of ['', '   ', 'x'.repeat(41), null, 5]) {
     const r = await create(s, name);
     assert.deepEqual([r.status, r.body.code], [400, 'bad-name'], String(name));
   }
@@ -98,8 +98,33 @@ test('bad input: names, bundles, _rev and an empty PUT are 400s that change noth
   assert.equal((await put(s, m.id, { _rev: 1 })).body.code, 'bad-model');
   assert.equal((await put(s, m.id, { name: '', _rev: 1 })).body.code, 'bad-name');
   assert.equal((await put(s, m.id, { name: 'y'.repeat(41), _rev: 1 })).body.code, 'bad-name');
+  assert.equal((await put(s, m.id, { name: 5, _rev: 1 })).body.code, 'bad-name');
+  assert.equal((await put(s, m.id, { name: null, _rev: 1 })).body.code, 'bad-name');
   assert.equal((await put(s, m.id, { bundle: 'nope', _rev: 1 })).body.code, 'bad-bundle');
   assert.equal(fs.readFileSync(file(s), 'utf8'), before);
+});
+
+test('a profile.json that cannot be read is a 500 on every model route and is never overwritten', async t => {
+  for (const bad of ['{ not json', '[1, 2]', '"x"', JSON.stringify({ models: 'x' }), 'null']) {
+    const s = await startServer(t, { ...ON, files: { 'trainers/trainer01/profile.json': bad } });
+    const calls = [
+      ['/api/trainer/models', {}],
+      ['/api/trainer/models', { method: 'POST', body: { name: 'A', bundle: bundle('ex1') } }],
+      ['/api/trainer/models/abcdefghijklmnop', { method: 'PUT', body: { name: 'B', _rev: 1 } }],
+      ['/api/trainer/models/abcdefghijklmnop', { method: 'DELETE' }]
+    ];
+    for (const [p, o] of calls) assert.equal((await s.call(p, { ...o, as: 'trainer01' })).status, 500, `${bad} ${o.method || 'GET'}`);
+    assert.equal(fs.readFileSync(file(s), 'utf8'), bad);
+  }
+});
+
+test('a profile.json that is a directory is a 500, a missing one is an empty list', async t => {
+  const s = await startServer(t, ON);
+  assert.deepEqual((await s.call('/api/trainer/models', { as: 'trainer01' })).body, { models: [] });
+  fs.mkdirSync(file(s), { recursive: true });
+  assert.equal((await s.call('/api/trainer/models', { as: 'trainer01' })).status, 500);
+  assert.equal((await create(s)).status, 500);
+  assert.equal(fs.statSync(file(s)).isDirectory(), true);
 });
 
 test('deleting removes the model; a second delete and a read are 404', async t => {

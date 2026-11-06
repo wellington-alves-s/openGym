@@ -101,13 +101,17 @@ describe('trainer store', () => {
     assert.equal(readRx(dir, T, 'student-0001'), null);
   });
 
-  it('a trainer with no profile file reads { models: [] }, also when the file is unreadable', () => {
+  it('a trainer with no profile file reads { models: [] }; an unreadable or malformed one throws', () => {
     assert.deepEqual(readProfile(dir, T), { models: [] });
     fs.mkdirSync(path.join(dir, 'trainers', T), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'trainers', T, 'profile.json'), '{not json');
-    assert.deepEqual(readProfile(dir, T), { models: [] });
-    fs.writeFileSync(path.join(dir, 'trainers', T, 'profile.json'), 'null');
-    assert.deepEqual(readProfile(dir, T), { models: [] });
+    for (const bad of ['{not json', 'null', '[]', JSON.stringify({ models: {} })]) {
+      fs.writeFileSync(path.join(dir, 'trainers', T, 'profile.json'), bad);
+      assert.throws(() => readProfile(dir, T), undefined, bad);
+    }
+    fs.rmSync(path.join(dir, 'trainers', T, 'profile.json'));
+    fs.mkdirSync(path.join(dir, 'trainers', T, 'profile.json'));
+    assert.throws(() => readProfile(dir, T), { code: 'EISDIR' });
+    fs.rmSync(path.join(dir, 'trainers', T, 'profile.json'), { recursive: true });
   });
 
   it('writeProfile creates the folder and the file (0o600) and readProfile gives it back', () => {
