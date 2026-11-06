@@ -12,7 +12,7 @@
 // underneath. Both find the same session. It ends once the trainer has left and its last save is
 // in; a save that failed keeps it, so coming back saves the edits.
 import { createContext, createElement, useCallback, useContext, useEffect, useState, useSyncExternalStore } from 'react'
-import { Outlet, useParams } from 'react-router-dom'
+import { Navigate, Outlet, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t } from './i18n.js'
@@ -51,9 +51,11 @@ export function createDraftSessions({ load, save, backTo }) {
       const bundle = bundleOf(s.store.getState().S, { ...ph.bundle, opengym_plan: 1, customEx: [] })
       s.program = { ...s.program, phases: s.program.phases.map(p => (p === ph ? { ...p, bundle } : p)) }
     }
+    // The view first: a phase that cannot be read throws before anything points at it.
     const show = id => {
+      const view = viewOf(id)
       s.phaseId = id; s.switching = true
-      try { s.store.getState().setPhase(viewOf(id), backTo(key, id)) } finally { s.switching = false }
+      try { s.store.getState().setPhase(view, backTo(key, id)) } finally { s.switching = false }
     }
     const setStatus = status => { s.status = status; emit() }
     const first = s.program.phases[0].id
@@ -64,12 +66,15 @@ export function createDraftSessions({ load, save, backTo }) {
       if (id === s.phaseId || !phaseOf(id)) return
       commit(); show(id); emit()
     }
+    // The program with the open phase's latest edits, for a screen that copies a phase out of it.
+    s.current = () => { commit(); return s.program }
     s.updateProgram = fn => {
       commit()
       const next = structuredClone(s.program)
       fn(next)
+      if (!next.phases?.length) return   // the server refuses a program with no phase, every time
       s.program = next
-      if (!phaseOf(s.phaseId) && next.phases.length) show(next.phases[0].id)
+      if (!phaseOf(s.phaseId)) show(next.phases[0].id)
       if (!s.stopped) { s.dirty = true; s.failed = false; s.schedule() }
       emit()
     }
@@ -187,12 +192,20 @@ export function createDraftSessions({ load, save, backTo }) {
   return { ensure, acquire, page, whenSaved, dropSession, watch, sessionOf, useSession }
 }
 
+// True inside the page an edge swipe back draws underneath the visible one (App's Page `under`).
+export const UnderPageContext = createContext(false)
+
 // The element of a route with a `:phase` param: opens that phase on the session above, and shows
-// the page once the store holds it (a parent layout cannot read a child route's params).
+// the page once the store holds it (a parent layout cannot read a child route's params). A page
+// drawn underneath shares the session with the visible one, so it opens its phase only once it is
+// the page; a phase the program does not have (deleted, a stale link) goes back to the program.
 export function PhaseGate() {
   const session = useContext(DraftSessionContext)
+  const under = useContext(UnderPageContext)
   const { phase } = useParams()
   const shown = useSyncExternalStore(session.watch, () => session.phaseId)
-  useEffect(() => { if (phase) session.openPhase(phase) }, [session, phase])
+  const known = useSyncExternalStore(session.watch, () => !phase || session.program.phases.some(ph => ph.id === phase))
+  useEffect(() => { if (phase && !under) session.openPhase(phase) }, [session, phase, under])
+  if (!known) return under ? null : createElement(Navigate, { to: '..', relative: 'path', replace: true })
   return !phase || shown === phase ? createElement(Outlet) : null
 }

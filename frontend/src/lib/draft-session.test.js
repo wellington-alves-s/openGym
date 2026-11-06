@@ -3,7 +3,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DraftSessionContext, PhaseGate, createDraftSessions } from './draft-session.js'
+import { DraftSessionContext, PhaseGate, UnderPageContext, createDraftSessions } from './draft-session.js'
 import { DEF, useStore } from '../store/useStore.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -117,6 +117,28 @@ describe('createDraftSessions', () => {
     expect(s.store.getState().S.routines[0].name).toBe('A')
     await wait(800)
     expect(save.mock.calls[0][1].phases.map(ph => ph.id)).toEqual(['a'])
+  })
+
+  it('a phase that cannot be read leaves the open phase and its edits where they were', async () => {
+    setup(5, program({ id: 'a', name: '', weeks: 4, bundle: bundle('A') }, { id: 'b', name: '', weeks: 4, bundle: { opengym_plan: 0 } }))
+    const s = await open()
+    rename(s, 'Kept')
+    expect(() => s.openPhase('b')).toThrow()
+    expect(s.phaseId).toBe('a')
+    rename(s, 'Kept again'); await wait(800)
+    const sent = save.mock.calls.at(-1)[1]
+    expect(sent.phases[0].bundle.routines[0].name).toBe('Kept again')
+    expect(sent.phases[1].bundle).toEqual({ opengym_plan: 0 })
+  })
+
+  it('a change that leaves no phase is ignored', async () => {
+    const s = await open()
+    const before = s.program
+    s.updateProgram(p => { p.phases = [] })
+    expect(s.program.phases.map(ph => ph.id)).toEqual(['a', 'b'])
+    expect(s.program).toEqual(before)
+    await wait(5000)
+    expect(save).not.toHaveBeenCalled()
   })
 
   it.each([['lb', 'kg', 220.46], ['kg', 'lb', 45.36]])('a trainer in %s sees a %s phase converted once, and saves with no drift', async (own, stored, shown) => {
@@ -235,6 +257,44 @@ describe('PhaseGate', () => {
             React.createElement(Route, { index: true, element: React.createElement(Page) })))))))
     expect(s.phaseId).toBe('b')
     expect(host.textContent).toBe('B')
+    act(() => root.unmount()); host.remove()
+  })
+
+  // An edge swipe back draws the page it returns to underneath the visible one, both on one session.
+  it('a page drawn underneath never takes the phase from the visible page, and opens its own once it is the page', async () => {
+    const s = await open()
+    const host = document.createElement('div'); document.body.appendChild(host)
+    const root = createRoot(host)
+    const Page = () => React.createElement('p', null, s.store.getState().S.routines[0].name)
+    const gate = (path, under) => React.createElement(UnderPageContext.Provider, { value: under },
+      React.createElement(MemoryRouter, { initialEntries: [path] },
+        React.createElement(Routes, null,
+          React.createElement(Route, { path: '/p/:phase', element: React.createElement(PhaseGate) },
+            React.createElement(Route, { index: true, element: React.createElement(Page) })))))
+    const render = underA => act(() => root.render(React.createElement(DraftSessionContext.Provider, { value: s },
+      React.createElement('div', { id: 'top' }, gate('/p/b', false)), React.createElement('div', { id: 'under' }, gate('/p/a', underA)))))
+    render(true)
+    expect(s.phaseId).toBe('b')
+    expect(host.querySelector('#top').textContent).toBe('B')
+    expect(host.querySelector('#under').textContent).toBe('')
+    render(false)
+    expect(s.phaseId).toBe('a')
+    expect(host.querySelector('#under').textContent).toBe('A')
+    act(() => root.unmount()); host.remove()
+  })
+
+  it('a phase the program does not have goes back to the program', async () => {
+    const s = await open()
+    const host = document.createElement('div'); document.body.appendChild(host)
+    const root = createRoot(host)
+    act(() => root.render(React.createElement(MemoryRouter, { initialEntries: ['/p/gone/r1'] },
+      React.createElement(DraftSessionContext.Provider, { value: s },
+        React.createElement(Routes, null,
+          React.createElement(Route, { path: '/p', element: React.createElement('p', null, 'program') }),
+          React.createElement(Route, { path: '/p/:phase', element: React.createElement(PhaseGate) },
+            React.createElement(Route, { path: ':id', element: React.createElement('p', null, 'editor') })))))))
+    expect(host.textContent).toBe('program')
+    expect(s.phaseId).toBe('a')
     act(() => root.unmount()); host.remove()
   })
 })
