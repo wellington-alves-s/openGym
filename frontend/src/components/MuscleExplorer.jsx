@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
-import { BODYPARTS, allExercises, equipmentOf, searchExercises } from '../lib/exercises.js'
+import { BODYPARTS, allExercises, equipmentOf, searchExercises, isCustomEx } from '../lib/exercises.js'
 import { activeProfile, exAvailable } from '../lib/equipment.js'
 import { bestWeightFor } from '../lib/history.js'
 import { fmtNum, exCount } from '../lib/format.js'
@@ -22,7 +22,7 @@ const FAV = '☆'
 
 // One explorer for the Library and every catalogue picker. Supplying `onPick` turns
 // a result into a selection; without it the explorer behaves like the normal Library.
-export default function MuscleExplorer({ onPick, onDetail, onPlan, pickIcon = 'plus', initial = null, labeled = false }) {
+export default function MuscleExplorer({ onPick, onDetail, onPlan, pickIcon = 'plus', initial = null, labeled = false, catalogueOnly = false }) {
   const S = useStore(s => s.S)
   // The muscles picked on the map. Only the Exercises tab (`labeled`) takes several at once; the
   // other explorers keep one, tapping it again clears it.
@@ -44,9 +44,9 @@ export default function MuscleExplorer({ onPick, onDetail, onPlan, pickIcon = 'p
   // (and the per-muscle counts) unless the user asks for everything.
   const profile = activeProfile(S)
   const catalog = useMemo(() => {
-    const all = allExercises(S)
+    const all = catalogueOnly ? allExercises(S).filter(e => !isCustomEx(e)) : allExercises(S)
     return (profile && !showAll) ? all.filter(e => exAvailable(S, e)) : all
-  }, [S.customEx, S.equipFilterOn, S.activeEquipId, S.equipProfiles, showAll])
+  }, [catalogueOnly, S.customEx,S.equipFilterOn, S.activeEquipId, S.equipProfiles, showAll])
   const counts = useMemo(() => Object.fromEntries(MUSCLES.map(m => [m,
     catalog.filter(e => musclesOf(e)[m]).length
   ])), [catalog])

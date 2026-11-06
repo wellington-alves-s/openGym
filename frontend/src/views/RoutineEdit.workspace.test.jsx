@@ -119,6 +119,24 @@ describe('the routine editor inside a workspace', () => {
     expect(draft().ex[0]).toEqual({ ...ex('0025'), id: DB_BENCH })
   })
 
+  it('opens the exercise picker on the catalogue only, to add and to replace', () => {
+    mount()
+    act(() => buttonWith('Add exercise').click())
+    expect(sheets.exercisePicker.mock.calls[0][1].catalogueOnly).toBe(true)
+    act(() => container.querySelector('.item-open').click())
+    act(() => sheets.exConfigSheet.mock.calls.at(-1)[6]())
+    expect(sheets.exercisePicker.mock.calls[1][1].catalogueOnly).toBe(true)
+  })
+
+  it('without a provider the picker is not catalogue only', () => {
+    mount({ provider: false })
+    act(() => buttonWith('Add exercise').click())
+    expect(sheets.exercisePicker.mock.calls[0][1].catalogueOnly).toBe(false)
+    act(() => container.querySelector('.item-open').click())
+    act(() => sheets.exConfigSheet.mock.calls.at(-1)[6]())
+    expect(sheets.exercisePicker.mock.calls[1][1].catalogueOnly).toBe(false)
+  })
+
   it('without a provider it edits the user’s own plan as always', () => {
     mount({ provider: false })
     expect(container.querySelector('[data-back]').getAttribute('data-back')).toBe('/plan')

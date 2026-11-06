@@ -425,7 +425,7 @@ export default function RoutineEdit() {
       if (quick) { commit(ex, current => replaceSlotExercise(current, ex.id, live, id)); return }
       const next = replaceSlotExercise(slot, ex.id, live, id)
       exConfigSheet(ex, next, cfg => commit(ex, current => ({ id: ex.id, sg: current.sg, ...cfg })), null, r, null, null, t('Replace'), { backups: true })
-    }, { title: t('Replace exercise'), like: openedOn, backups: r.ex[i]?.subs })
+    }, { title: t('Replace exercise'), like: openedOn, backups: r.ex[i]?.subs, catalogueOnly: !!store.getState().prescription })
   }
   // This routine on paper (#282): the weekly printout's page for one session, through the same
   // two print paths — the browser's print dialog (→ Save as PDF) on the web, the native Print
@@ -452,7 +452,7 @@ export default function RoutineEdit() {
     } else {
       exConfigSheet(ex, null, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) }), null, r, null, null, undefined, { backups: true })
     }
-  })
+  }, { catalogueOnly: !!store.getState().prescription })
 
   const units = supersetUnits(r.ex)
   const unitFirst = new Set(units.filter(u => u.length > 1).map(u => u[0]))

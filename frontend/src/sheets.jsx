@@ -1462,7 +1462,9 @@ function usageMap(st) {
 }
 // The swap pickers' own scope (#473): exercises sharing the swapped exercise's target muscle.
 const SAME = '≈'
-function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
+// `catalogueOnly`: nothing of the user's own is offered or counted, nor can one be made here (a
+// trainer building a student's plan: the student's app does not have the trainer's exercises).
+function ExercisePicker({ onPick, title, close, like, actionIcon, backups, catalogueOnly }) {
   const st = useStore(s => s.S)
   const isSwap = !!like || title === t('Swap exercise') || title === t('Replace exercise') || title === 'Swap exercise' || title === 'Replace exercise'
   const quickIcon = actionIcon || (isSwap ? 'swap' : 'plus')
@@ -1471,7 +1473,8 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
     : t('Add “{0}”', exerciseNameText(e))
   const usage = usageMap(st)
   const [q, setQ] = useState('')
-  const backupList = (Array.isArray(backups) ? backups : []).map(id => EXIDX[id]).filter(Boolean)
+  const own = id => !!catalogueOnly && isCustomEx(EXIDX[id] || (st.customEx || []).find(c => c.id === id))
+  const backupList = (Array.isArray(backups) ? backups : []).map(id => EXIDX[id]).filter(e => e && !own(e.id))
   // What a swap is away from: the picker opens on what trains the same muscle, if anything you
   // can use does, and "All" is one tap back to everything.
   const likeEx = like ? (EXIDX[like] || allExercises(st).find(e => e.id === like) || null) : null
@@ -1491,7 +1494,7 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
   const bpStrip = useRef(null), eqStrip = useRef(null), catStrip = useRef(null)
   const onSearchFocus = useSheetKeyboard(searchRef)
   const moreRef = useAutoMore(() => setShown(s => s + 50))
-  const all = allExercises(st)
+  const all = catalogueOnly ? allExercises(st).filter(e => !isCustomEx(e)) : allExercises(st)
   const profile = activeProfile(st)
   const inScope = e => bp === '★' ? usage[e.id] : bp === '☆' ? isFav(st, e.id) : (!bp || e.bp === bp)
   let inPart = searchExercises(bp === SAME ? sameMuscleFirst(all, likeEx) : all.filter(inScope), q)
@@ -1510,8 +1513,8 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
   const narrowedList = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
   const ranked = q.trim() ? sortYoursFirst(narrowedList, st, usage) : sortFavouritesFirst(narrowedList, st)
   const f = bp === SAME ? sameMuscleFirst(ranked, likeEx) : ranked
-  const chosenCount = Object.keys(usage).length
-  const favCount = (st.favEx || []).length
+  const chosenCount = Object.keys(usage).filter(id => !own(id)).length
+  const favCount = (st.favEx || []).filter(id => !own(id)).length
   const special = bp === '★' || bp === '☆'
   // The Library's live result count (GitLab !31), for the same reason: how many are left.
   const narrowed = !!(q.trim() || bp || eqOn || catOn)
@@ -1542,7 +1545,7 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
     <div className="row between" style={{ marginBottom: 10 }}><h3>{title || t('Add exercise')}</h3>
       <Button size="sm" variant="ghost" onClick={() => setByMuscle(false)}>{t('All')}</Button>
     </div>
-    <MuscleExplorer onPick={onPick} pickIcon={quickIcon} />
+    <MuscleExplorer onPick={onPick} pickIcon={quickIcon} catalogueOnly={catalogueOnly} />
   </>
 
   return <>
@@ -1583,7 +1586,7 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
     <div className={'list' + (st.exerciseView === 'cards' ? ' ex-grid' : '')}>
-      {!special && <div className="item ex-new" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
+      {!special && !catalogueOnly && <div className="item ex-new" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="plusCircle" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, and a photo or video if you like')}</div></div><Icon name="plus" className="chev" />
       </div>}
@@ -1606,7 +1609,7 @@ function ExercisePicker({ onPick, title, close, like, actionIcon, backups }) {
 // `like` is the exercise a swap or a replace is away from: the picker then opens on the ones that
 // train the same muscle, same equipment first (#473).
 // `backups`: the slot's planned substitutes (lib/routine-backups.js), listed first in a swap.
-export const exercisePicker = (onPick, { title, like, actionIcon, backups } = {}) => ui().openSheet(close => <ExercisePicker onPick={onPick} title={title} like={like} actionIcon={actionIcon} backups={backups} close={close} />)
+export const exercisePicker = (onPick, { title, like, actionIcon, backups, catalogueOnly } = {}) => ui().openSheet(close => <ExercisePicker onPick={onPick} title={title} like={like} actionIcon={actionIcon} backups={backups} catalogueOnly={catalogueOnly} close={close} />)
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {
