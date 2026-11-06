@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { auditCat, auditLabel, auditReason, auditLine, auditAct, fmtWhen } from './audit.js'
+import { _setLangState } from './i18n-core.js'
+import ptBR from '../locales/pt-BR.js'
 
 // Every event name and reason code the server can emit, read off api/server.js itself rather
 // than kept as a second list here: the hand-kept copy silently missed the three pairing events
@@ -183,5 +185,18 @@ describe('a failed proof of ownership', () => {
       .toEqual({ title: 'Confirming a change failed', sub: 'Ana · changing the sign-in e-mail · wrong current password' })
     expect(auditLine({ ev: 'auth.proof.fail', ok: false, name: 'Ana', act: 'passkey-remove', msg: 'step-up-failed' }).sub)
       .toBe('Ana · removing a passkey · the passkey confirming the change was rejected')
+  })
+})
+
+// The activity log is translated like the rest of the app: the tables hold t() calls that are read
+// when the row is drawn, so a language change reaches rows built after it.
+describe('in Brazilian Portuguese', () => {
+  afterEach(() => _setLangState('en', {}, null, null))
+  it('says the label, the reason and the clock word in the chosen language', () => {
+    _setLangState('pt-BR', ptBR, null, null)
+    expect(auditLine({ ev: 'auth.login.fail', ok: false, name: 'Ana', msg: 'bad-password' }))
+      .toEqual({ title: 'Falha ao entrar', sub: 'Ana · senha errada' })
+    expect(auditLabel(undefined)).toBe('Evento desconhecido')
+    expect(fmtWhen(Date.now(), Date.now())).toMatch(/^hoje /)
   })
 })
