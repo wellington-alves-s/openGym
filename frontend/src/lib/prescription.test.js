@@ -86,6 +86,61 @@ describe('applyPrescription', () => {
   })
 })
 
+describe('applyPrescription, a hostile bundle', () => {
+  it('clamps numbers, caps text and drops what is not finite', () => {
+    const S = stateOf()
+    const r = { id: 'h', name: 'x'.repeat(500), ex: [{ id: '0025', sets: 1e9, reps: -3, weight: Infinity, restSec: 'NaN', note: 'n'.repeat(5000), setsMax: 99 }] }
+    applyPrescription(S, bundleOf([r], {}), 1)
+    const got = S.routines.find(x => x.id === 'rx-h')
+    const e = got.ex[0]
+    expect(e.sets).toBe(20)
+    expect(e.reps).toBe(0)
+    expect('weight' in e).toBe(false)
+    expect('restSec' in e).toBe(false)
+    expect(e.note.length).toBe(500)
+    expect(e.setsMax).toBe(10)
+    expect(got.name.length).toBe(60)
+  })
+
+  it('keeps a valid prescription exactly as written', () => {
+    const S = stateOf()
+    const ex = { id: '0025', sets: 4, reps: 8, repsMin: 6, repsMax: 10, weight: 62.5, restSec: 90, note: 'Pause at the bottom' }
+    applyPrescription(S, bundleOf([{ id: 'v', name: 'Legs', ex: [ex] }], {}), 1)
+    expect(S.routines.find(x => x.id === 'rx-v').ex[0]).toMatchObject(ex)
+  })
+
+  it('strips the sync stamps a bundle carries', () => {
+    const S = stateOf()
+    const r = { id: 'h', name: 'H', _f: { ex: 9e15 }, _ts: 9e15, _u: 'x', ex: [{ id: '0025', sets: 3, _f: { sets: 9e15 }, _ts: 1, _u: 'y' }] }
+    applyPrescription(S, bundleOf([r], {}), 1)
+    const got = S.routines.find(x => x.id === 'rx-h')
+    for (const o of [got, got.ex[0]]) for (const k of ['_f', '_ts', '_u']) expect(k in o).toBe(false)
+  })
+
+  it('never overwrites or duplicates an own routine whose id looks prescribed', () => {
+    const S = { ...stateOf(), routines: [structuredClone(own), { id: 'rx-a', name: 'Mine', ex: [] }], week: { 1: ['own1'], 2: ['rx-a'] } }
+    const res = applyPrescription(S, bundleOf([{ id: 'a', name: 'Theirs', ex: [] }, r1], { 2: ['a'], 4: ['r1'] }), 1)
+    expect(S.routines.filter(x => x.id === 'rx-a')).toEqual([{ id: 'rx-a', name: 'Mine', ex: [] }])
+    expect(S.week).toEqual({ 1: ['own1'], 2: ['rx-a'], 4: ['rx-r1'] })
+    expect(res).toMatchObject({ added: 1, dropped: 1 })
+  })
+
+  it('writes only weekdays 0 to 6', () => {
+    const S = stateOf()
+    const week = JSON.parse('{"1":["r1"],"9":["r1"],"foo":["r1"],"__proto__":["r1"]}')
+    applyPrescription(S, bundleOf([r1], week), 1)
+    expect(Object.keys(S.week)).toEqual(['1'])
+    expect(Object.getPrototypeOf(S.week)).toBe(Object.prototype)
+  })
+
+  it('does not change the bundle it is given', () => {
+    const bundle = bundleOf([{ id: 'h', name: 'H', _f: { ex: 1 }, ex: [{ id: '0025', sets: 1e9, note: 'n'.repeat(900) }] }, r1], { 1: ['h'], 9: ['r1'] })
+    const before = structuredClone(bundle)
+    applyPrescription(stateOf(), bundle, 1)
+    expect(bundle).toEqual(before)
+  })
+})
+
 describe('removePrescription', () => {
   it('removes only the prescribed routines and their days', () => {
     const S = stateOf()

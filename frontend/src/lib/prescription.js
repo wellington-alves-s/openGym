@@ -5,8 +5,31 @@
 
 import { parsePlan } from './plan-share.js'
 import { deleteRoutine } from './routines.js'
+import { NOTE_MAX } from './history.js'
+import { MAX_TRIPLE_SETS } from './progression.js'
 
 export const RX_PREFIX = 'rx-'
+const NAME_MAX = 60
+const MAX_SETS = 20
+const NUMBERS = ['reps', 'repsMin', 'repsMax', 'sec', 'min', 'weight', 'restSec']
+const whole = (v, max) => Math.min(max, Math.max(1, Math.round(Number(v)) || 1))
+
+// The trainer's numbers reach the student's workout screen: a `sets: 1e9` would hang it on a
+// routine the student cannot edit. Sync stamps from the bundle would outrank every later edit.
+function cleanEx({ _f, _ts, _u, ...e }) {
+  if ('sets' in e) e.sets = whole(e.sets, MAX_SETS)
+  if ('setsMax' in e) e.setsMax = whole(e.setsMax, MAX_TRIPLE_SETS)
+  NUMBERS.forEach(k => {
+    if (!(k in e)) return
+    const n = Number(e[k])
+    if (Number.isFinite(n)) e[k] = Math.max(0, n); else delete e[k]
+  })
+  if ('note' in e) e.note = String(e.note).slice(0, NOTE_MAX)
+  return e
+}
+function cleanRoutine({ _f, _ts, _u, ...r }) {
+  return { ...r, ...(r.name != null ? { name: String(r.name).slice(0, NAME_MAX) } : {}), ex: r.ex.map(cleanEx) }
+}
 
 export const isPrescribed = r => !!r?.rx
 
@@ -16,11 +39,15 @@ export const appliedVersion = S => Math.max(0, ...(S.routines || []).filter(isPr
 /**
  * Apply plan bundle `bundle` (version `v`) to draft state `S`, in place. Idempotent: the same
  * version twice leaves the same state. Returns how many routines were added and removed, and how
- * many exercises the catalogue did not know (they are left out; the routine stays).
+ * many exercises the catalogue did not know (they are left out; the routine stays), plus any routine
+ * whose id an own routine already holds.
  */
 export function applyPrescription(S, bundle, v) {
   const parsed = parsePlan(bundle, S.unit === 'lb' ? 'lb' : 'kg')
-  const incoming = parsed.routines.map(r => ({ ...r, id: RX_PREFIX + r.id, rx: { v }, excludeFromProgression: true }))
+  // An own routine that happens to carry an `rx-` id is the student's: that one is skipped.
+  const own = new Set(S.routines.filter(r => !isPrescribed(r)).map(r => r.id))
+  const all = parsed.routines.map(r => ({ ...cleanRoutine(r), id: RX_PREFIX + r.id, rx: { v }, excludeFromProgression: true }))
+  const incoming = all.filter(r => !own.has(r.id))
   const keep = new Set(incoming.map(r => r.id))
 
   // What left the plan goes through deleteRoutine, which also cleans week and dayPlan.
@@ -41,10 +68,11 @@ export function applyPrescription(S, bundle, v) {
     if (rest.length) S.week[d] = rest; else delete S.week[d]
   })
   Object.entries(parsed.week).forEach(([d, val]) => {
+    if (!/^[0-6]$/.test(d)) return   // never a `__proto__` or a ninth day
     const ids = [...new Set([].concat(val).map(id => RX_PREFIX + id))].filter(id => keep.has(id))
     if (ids.length) S.week[d] = [...[].concat(S.week[d] || []), ...ids]
   })
-  return { added, removed: gone.length, dropped: parsed.dropped }
+  return { added, removed: gone.length, dropped: parsed.dropped + all.length - incoming.length }
 }
 
 /** Delete every prescribed routine (and its place in the week); returns how many. */
