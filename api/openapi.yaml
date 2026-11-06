@@ -3559,8 +3559,9 @@ paths:
         Replaces the draft with a program: a start date and up to 24 phases, each phase a plan
         bundle (at most 30 routines, 60 exercises in each and 128 KB; no custom exercises) and
         the whole program at most 256 KB. The body carries `program`, or, for the stage 2a app,
-        a bare `bundle`, which is kept as a program of one phase `p1`; when both come,
-        `program` wins. Published versions are not touched. `_rev` is the revision the caller
+        a bare `bundle`, which replaces the bundle of a one-phase draft (its id, name, weeks
+        and the start date stay) and otherwise becomes a program of one phase `p1`; when both
+        come, `program` wins. Published versions are not touched. `_rev` is the revision the caller
         last read: if someone saved since, the answer is a 409 with the current plan and
         nothing is written.
       requestBody:
@@ -3568,7 +3569,7 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
+              anyOf:
                 - type: object
                   required: [program, _rev]
                   properties:
@@ -4589,8 +4590,9 @@ components:
     TrainerHidden:
       description: >-
         No such route for this caller. The caller is not an approved trainer (or, on a student
-        route, not a student), or the student is not theirs, does not exist or is a malformed
-        id: one answer for all of them, so nothing says who another trainer's students are.
+        route, not a student), or the student or model the path names is not theirs, does not
+        exist or is a malformed id: one answer for all of them, so nothing says who another
+        trainer's students are or which models they keep.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -4708,6 +4710,9 @@ components:
           type: object
           properties:
             program: { $ref: '#/components/schemas/RxProgram' }
+            bundle:
+              $ref: '#/components/schemas/RxBundle'
+              description: Only when the program has exactly one phase, the bundle of that phase (what a stage 2a app reads). Absent with several phases.
             updated: { type: integer, description: 'Epoch milliseconds; 0 for a draft nobody saved.' }
         current: { oneOf: [{ type: integer }, { type: 'null' }], description: The published version the student has, if any. }
         versions:

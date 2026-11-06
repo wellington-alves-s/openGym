@@ -326,8 +326,13 @@ export function trainerRoutes({
     },
 
     'PUT /api/trainer/students/{id}/rx/draft': async (req, res) => {
-      // `program` wins; the stage 2a app still sends a bare `bundle`, kept as the one phase p1.
-      const done = await rxChange(req, res, (rx, body) => saveDraft(rx, body.program !== undefined ? body.program : body.bundle !== undefined ? programOf({ bundle: body.bundle }) : undefined, Date.now())); if (!done) return;
+      // `program` wins; the stage 2a app still sends a bare `bundle`: it replaces the bundle of a one-phase
+      // draft (its id, name, weeks and the start stay) and otherwise becomes the one phase p1.
+      const fromBundle = (rx, bundle) => {
+        const cur = programOf(rx.draft);
+        return cur.phases?.length === 1 ? { ...cur, phases: [{ ...cur.phases[0], bundle }] } : programOf({ bundle });
+      };
+      const done = await rxChange(req, res, (rx, body) => saveDraft(rx, body.program !== undefined ? body.program : body.bundle !== undefined ? fromBundle(rx, body.bundle) : undefined, Date.now())); if (!done) return;
       json(res, 200, { rx: rxView(done.rx) });
     },
 

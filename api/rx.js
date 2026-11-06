@@ -51,7 +51,7 @@ const copy = o => (o === undefined ? o : clone(o));   // a draft with no bundle 
 export const programOf = x => (isObj(x?.program) ? clone(x.program) : { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: copy(x?.bundle) }] });
 
 const PHASE_ID = /^[\w-]{1,64}$/;
-const isDate = s => { const d = new Date(s + 'T00:00:00Z'); return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(d) && d.toISOString().slice(0, 10) === s; };   // 2026-02-30 rolls over, so it differs
+const isDate = s => { if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false; const d = new Date(s + 'T00:00:00Z'); return !isNaN(d) && d.toISOString().slice(0, 10) === s; };   // 2026-02-30 rolls over, so it differs
 
 // → null when the program is fine, else the reason (a checkBundle code for a bad phase bundle).
 export function checkProgram(p) {
@@ -102,5 +102,10 @@ export function restoreVersion(rx, v, now) {
 export const versionOf = (rx, v) => { const x = rx.versions.find(y => y.v === v); return x ? { v: x.v, at: x.at, note: x.note, program: programOf(x) } : null; };
 export const currentOf = rx => (rx.current == null ? null : versionOf(rx, rx.current));
 
-// What the routes send: the draft as a program, and only the list of versions (no programs).
-export const rxView = rx => ({ _rev: rx._rev, draft: { program: programOf(rx.draft), updated: rx.draft.updated }, current: rx.current, versions: rx.versions.map(({ v, at, note }) => ({ v, at, note })) });
+// What the routes send: the draft as a program, and only the list of versions (no programs). A one-phase
+// draft also carries that phase's `bundle`, which is what a stage 2a trainer app reads.
+export const rxView = rx => {
+  const program = programOf(rx.draft);
+  const draft = { program, ...(program.phases?.length === 1 ? { bundle: program.phases[0].bundle } : {}), updated: rx.draft.updated };
+  return { _rev: rx._rev, draft, current: rx.current, versions: rx.versions.map(({ v, at, note }) => ({ v, at, note })) };
+};

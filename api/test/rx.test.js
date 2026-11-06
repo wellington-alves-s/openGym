@@ -156,7 +156,7 @@ describe('restoreVersion, versionOf, currentOf, rxView', () => {
     const view = rxView(rx);
     assert.equal(view._rev, 4);
     assert.equal(view.current, 2);
-    assert.deepEqual(view.draft, rx.draft);
+    assert.deepEqual(view.draft.program, rx.draft.program);
     assert.deepEqual(view.versions, [{ v: 1, at: 2, note: 'one' }, { v: 2, at: 4, note: 'two' }]);
     view.draft.program.phases[0].bundle.routines[0].name = 'changed';
     assert.equal(rx.draft.program.phases[0].bundle.routines[0].name, 'Push');   // a copy, not the document's own
@@ -299,15 +299,18 @@ describe('the program in the document', () => {
     assert.equal(currentOf(rx).v, 2);
   });
 
-  it('rxView has a program in the draft, no bundle, and versions without programs', () => {
+  it('rxView has a program in the draft, the bundle too for one phase (a stage 2a app reads it), and versions without programs', () => {
     const old = { _rev: 1, draft: { bundle: bundle(), updated: 4 }, versions: [{ v: 1, at: 2, note: 'o', bundle: bundle() }], current: 1 };
     for (const rx of [old, publishDraft(saveDraft(emptyRx(), prog(bundle()), 1), 'n', 2)]) {
       const view = rxView(rx);
-      assert.equal('bundle' in view.draft, false);
-      assert.ok(Array.isArray(view.draft.program.phases));
+      assert.deepEqual(view.draft.bundle, bundle());
+      assert.deepEqual(view.draft.program.phases[0].bundle, view.draft.bundle);
       assert.equal(view.versions.every(v => !('program' in v) && !('bundle' in v)), true);
     }
     assert.deepEqual(rxView(old).draft.program, programOf({ bundle: bundle() }));
+    const many = rxView(publishDraft(saveDraft(emptyRx(), prog(bundle(), bundle()), 1), 'n', 2));
+    assert.equal('bundle' in many.draft, false);
+    assert.equal(many.draft.program.phases.length, 2);
   });
 
   it('no function mutates its argument', () => {

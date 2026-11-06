@@ -213,10 +213,44 @@ test('a stage 2a file on disk reads as a one-phase program, and saving rewrites 
   const v = await s.call(base + '/versions/1', { as: 'trainer01' });
   assert.equal(v.body.version.program.phases[0].bundle.routines[0].ex[0].id, 'old-v1');
   assert.equal(v.body.version.bundle, undefined);
+  assert.equal(r.body.rx.draft.bundle.routines[0].ex[0].id, 'old-draft');   // a stage 2a app reads this
   const w = await put(s, bundle('new'), 3);
   assert.equal(w.status, 200);
   assert.equal(onDisk(s).draft.bundle, undefined);
   assert.equal(onDisk(s).draft.program.phases[0].bundle.routines[0].ex[0].id, 'new');
+});
+
+test('GET rx of a one-phase program carries program and bundle; of a several-phase one, program only', async t => {
+  const s = await startServer(t, ON);
+  const one = await put(s, bundle('ex1'), 0);
+  const r1 = await s.call(base, { as: 'trainer01' });
+  assert.deepEqual(r1.body.rx.draft.bundle, bundle('ex1'));
+  assert.deepEqual(r1.body.rx.draft.program.phases[0].bundle, bundle('ex1'));
+  await s.call(base + '/draft', { method: 'PUT', body: { program: prog(bundle('ex1'), bundle('ex2')), _rev: one.body.rx._rev }, as: 'trainer01' });
+  const r2 = await s.call(base, { as: 'trainer01' });
+  assert.equal(r2.body.rx.draft.program.phases.length, 2);
+  assert.equal('bundle' in r2.body.rx.draft, false);
+});
+
+test('a stage 2a app saving { bundle } over a one-phase program keeps its id, name, weeks and the start', async t => {
+  const s = await startServer(t, ON);
+  const p = { start: '2026-11-09', phases: [{ id: 'base', name: 'Base', weeks: 6, bundle: bundle('ex1') }] };
+  const w = await s.call(base + '/draft', { method: 'PUT', body: { program: p, _rev: 0 }, as: 'trainer01' });
+  const r = await putOld(s, bundle('ex9'), w.body.rx._rev);
+  assert.equal(r.status, 200);
+  assert.deepEqual(onDisk(s).draft.program, { ...p, phases: [{ ...p.phases[0], bundle: bundle('ex9') }] });
+  assert.equal(r.body.rx.draft.bundle.routines[0].ex[0].id, 'ex9');
+});
+
+test('a bare bundle on a several-phase draft: a stale _rev is a 409, a current one becomes the one phase p1', async t => {
+  const s = await startServer(t, ON);
+  const w = await s.call(base + '/draft', { method: 'PUT', body: { program: { ...prog(bundle('ex1'), bundle('ex2')), start: '2026-11-09' }, _rev: 0 }, as: 'trainer01' });
+  const stale = await putOld(s, bundle('ex9'), 0);
+  assert.equal(stale.status, 409);
+  assert.equal(onDisk(s).draft.program.phases.length, 2);
+  const r = await putOld(s, bundle('ex9'), w.body.rx._rev);
+  assert.equal(r.status, 200);
+  assert.deepEqual(onDisk(s).draft.program, { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: bundle('ex9') }] });
 });
 
 test('publishing a two-phase program numbers the version and keeps both phases', async t => {
