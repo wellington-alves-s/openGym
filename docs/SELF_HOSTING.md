@@ -518,6 +518,10 @@ TRAINER_MODE=1             # personal trainers and their students
   If the trainer and the student unlink, the prescribed routines leave the student's plan and their
   own routines stay. Plans can only use catalogue exercises (not custom ones), and editing a plan
   needs the server to be reachable, since the draft lives on the server.
+- **Updating and switching off.** Update the api before the web image. Turning `TRAINER_MODE` off,
+  or rolling the api back to a version without it, removes the prescribed routines from the
+  students' devices the next time their app checks; turning it back on brings them back. Make sure
+  every student has an up-to-date app: an older build lets them edit the prescribed routines.
 - **For developers.** The routes are in [`api/openapi.yaml`](../api/openapi.yaml) under the
   `trainer` tag and the `admin` routes that mention trainers.
 

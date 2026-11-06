@@ -56,6 +56,15 @@ describe('PublishSheet', () => {
     expect(close).not.toHaveBeenCalled()
   })
 
+  it('a double tap publishes once', async () => {
+    let release
+    mocks.publishRx.mockReturnValue(new Promise(r => { release = r }))
+    mount(<PublishSheet sid="abc" empty={false} latestRev={async () => 1} close={vi.fn()} />)
+    await press('Publish'); await press('Publish')
+    await act(async () => { release({ rx: { _rev: 2 }, v: 1 }) })
+    expect(mocks.publishRx).toHaveBeenCalledTimes(1)
+  })
+
   it('a 409 says the plan changed, and the screen behind reloads', async () => {
     mocks.publishRx.mockRejectedValue(Object.assign(new Error('x'), { status: 409, data: { code: 'conflict' } }))
     const close = vi.fn(), onDone = vi.fn()

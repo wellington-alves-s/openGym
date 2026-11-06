@@ -46,7 +46,7 @@ export default function MuscleExplorer({ onPick, onDetail, onPlan, pickIcon = 'p
   const catalog = useMemo(() => {
     const all = catalogueOnly ? allExercises(S).filter(e => !isCustomEx(e)) : allExercises(S)
     return (profile && !showAll) ? all.filter(e => exAvailable(S, e)) : all
-  }, [catalogueOnly, S.customEx,S.equipFilterOn, S.activeEquipId, S.equipProfiles, showAll])
+  }, [catalogueOnly, S.customEx, S.equipFilterOn, S.activeEquipId, S.equipProfiles, showAll])
   const counts = useMemo(() => Object.fromEntries(MUSCLES.map(m => [m,
     catalog.filter(e => musclesOf(e)[m]).length
   ])), [catalog])

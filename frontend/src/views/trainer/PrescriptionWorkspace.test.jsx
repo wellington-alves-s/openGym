@@ -114,6 +114,18 @@ describe('PrescriptionWorkspace', () => {
     expect(mocks.saveRxDraft.mock.calls[1][2]).toBe(9)
   })
 
+  it('a save that fails for another reason offers Try again, which saves', async () => {
+    mocks.getRx.mockResolvedValue(rxOf(5))
+    mocks.saveRxDraft.mockRejectedValueOnce(Object.assign(new Error('boom'), { status: 500 })).mockResolvedValueOnce(rxOf(6))
+    mount(); await flush()
+    rename('Retry me'); await wait(800); await flush()
+    expect(host.querySelector('[role="status"]').textContent).toContain('Could not save. Try again.')
+    await act(async () => button('Try again').click()); await flush()
+    expect(mocks.saveRxDraft).toHaveBeenCalledTimes(2)
+    expect(mocks.saveRxDraft.mock.calls[1][1].routines[0].name).toBe('Retry me')
+    expect(host.textContent).toContain('Saved')
+  })
+
   it('keeps one store across renders, and edits survive a re-render', async () => {
     mocks.getRx.mockResolvedValue(rxOf(5))
     mocks.saveRxDraft.mockResolvedValue(rxOf(6))
