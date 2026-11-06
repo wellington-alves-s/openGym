@@ -87,6 +87,25 @@ describe('StudentDetail', () => {
     expect(host.textContent).toContain('the plan')
   })
 
+  it('says how many months the program has, and Publish knows when no month has an exercise', async () => {
+    mocks.listStudents.mockResolvedValue([bia])
+    const two = ex => { const r = rx({ ex: 0 }); r.rx.draft.program.phases.push({ id: 'p2', name: '', weeks: 4, bundle: bundle(ex) }); return r }
+    mocks.getRx.mockResolvedValue(two(0))
+    mount(); await settle()
+    expect(host.textContent).toContain('2 months')
+    press('Publish')
+    expect(mocks.openSheet.mock.calls[0][0](() => {}).props.empty).toBe(true)
+    act(() => root.unmount()); host.remove()
+    mocks.getRx.mockResolvedValue(two(1))
+    mount(); await settle()
+    press('Publish')
+    expect(mocks.openSheet.mock.calls[1][0](() => {}).props.empty).toBe(false)
+    act(() => root.unmount()); host.remove()
+    mocks.getRx.mockResolvedValue(rx())
+    mount(); await settle()
+    expect(host.textContent).toContain('1 month')
+  })
+
   it('an open sheet asks for the revision read last, so a retry after a 409 does not conflict again', async () => {
     mocks.listStudents.mockResolvedValue([bia])
     mocks.getRx.mockResolvedValue(rx())

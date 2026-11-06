@@ -1,24 +1,34 @@
-// The routines of a student's draft plan (spec section 5.1), kept lean: make one, delete one, put it
-// on weekdays, and a tap opens it in the routine editor. Reads and writes the workspace store
-// PrescriptionWorkspace provides, never the trainer's own plan.
+// The routines of one month of a student's program (spec sections 5.1 and 5), kept lean: make one,
+// delete one, put it on weekdays, and a tap opens it in the routine editor. Reads and writes the
+// workspace store PrescriptionWorkspace provides (the open month), never the trainer's own plan.
+import { useContext, useSyncExternalStore } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { t } from '../../lib/i18n.js'
 import { DAYN, DAYS, uid, weekOrder, weekStartOf, exCount } from '../../lib/format.js'
 import { useWorkspaceStore } from '../../lib/workspace.js'
+import { DraftSessionContext } from '../../lib/draft-session.js'
 import { deleteRoutine } from '../../lib/routines.js'
 import { glyphOf, DEFAULT_GLYPH } from '../../lib/glyphs.js'
 import { tappable } from '../../lib/use-sheet-keyboard.js'
 import { confirmSheet } from '../../sheets.jsx'
 import { Button } from '../../components/ui.jsx'
 import Icon from '../../components/Icon.jsx'
+import { monthName } from './ProgramView.jsx'
+
+const NO_SESSION = { watch: () => () => {} }
 
 export default function PrescriptionPlan() {
-  const { sid } = useParams()
+  const { sid, phase } = useParams()
   const nav = useNavigate()
+  const session = useContext(DraftSessionContext) || NO_SESSION
+  const title = useSyncExternalStore(session.watch, () => {
+    const i = session.program?.phases.findIndex(ph => ph.id === phase) ?? -1
+    return i < 0 ? t('Plan') : monthName(session.program.phases[i], i)
+  })
   const store = useWorkspaceStore()
   const S = store(s => s.S)
   const update = store(s => s.update)
-  const open = id => nav('/students/' + sid + '/plan/' + id)
+  const open = id => nav('/students/' + sid + '/plan/' + phase + '/' + id)
 
   const add = () => {
     const r = { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] }
@@ -40,8 +50,8 @@ export default function PrescriptionPlan() {
 
   return <div className="narrow">
     <div className="row between" style={{ margin: '8px 0 16px', gap: 8 }}>
-      <button className="iconbtn" data-back={'/students/' + sid} onClick={() => nav('/students/' + sid)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
-      <h2 className="grow" style={{ margin: 0 }}>{t('Plan')}</h2>
+      <button className="iconbtn" data-back={'/students/' + sid + '/plan'} onClick={() => nav('/students/' + sid + '/plan')} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <h2 className="grow" style={{ margin: 0 }}>{title}</h2>
       <Button size="sm" variant="tinted" icon="plus" onClick={add}>{t('New routine')}</Button>
     </div>
     {!S.routines.length ? <div className="card muted">{t('No routines yet.')}</div>

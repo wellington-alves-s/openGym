@@ -15,8 +15,10 @@ vi.mock('./lib/sound.js', () => ({
 vi.mock('./lib/api.js', async importOriginal => ({
   ...await importOriginal(), api: vi.fn(() => Promise.resolve({})), beacon: vi.fn(),
 }))
-const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, program: { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
-  routines: [{ id: 'r1', name: 'Draft push day', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } }] } } }
+// Two months with a routine of the same id each: the editor must open the one of the month in the path.
+const month = (id, name) => ({ id, name: '', weeks: 4, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
+  routines: [{ id: 'r1', name, emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } })
+const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, program: { start: null, phases: [month('p1', 'Draft push day'), month('p2', 'Draft pull day')] } } }
 vi.mock('./lib/trainer-api.js', () => ({
   listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn(),
   getRx: vi.fn(async () => ({ rx: draftRx })), saveRxDraft: vi.fn(async () => ({ rx: draftRx })),
@@ -62,13 +64,13 @@ describe('an approved trainer', () => {
     expect(window.location.hash).toBe('#/settings/units')
   })
 
-  it('reaches a student’s draft routine in the editor, with Students lit in the bar', async () => {
+  it('reaches a routine of a month of a student’s draft in the editor, with Students lit in the bar', async () => {
     signIn(approved)
-    await open('#/students/abc/plan/r1')
+    await open('#/students/abc/plan/p2/r1')
     // The draft, then the lazy editor chunk.
-    const nameField = () => [...host.querySelectorAll('input')].find(i => i.value === 'Draft push day')
+    const nameField = () => [...host.querySelectorAll('input')].find(i => i.value === 'Draft pull day')
     for (let i = 0; i < 40 && !nameField(); i++) await act(async () => { await new Promise(r => setTimeout(r, 50)) })
-    expect(window.location.hash).toBe('#/students/abc/plan/r1')
+    expect(window.location.hash).toBe('#/students/abc/plan/p2/r1')
     expect(nameField()).toBeTruthy()
     expect(host.querySelector('#tabbar button.on').textContent).toBe('Students')
     expect(useStore.getState().S.routines.some(r => r.id === 'r1')).toBe(false)
@@ -110,33 +112,48 @@ describe('an approved trainer and the admin dashboard', () => {
   })
 })
 
-/* App keys each page on its path, so the list and the editor are separate mounts of the plan's
-   layout. The draft, and edits not yet on the server, must survive the trip between them. */
+/* App keys each page on its path, so the program, a month and the editor are separate mounts of the
+   plan's layout. The draft, and edits not yet on the server, must survive the trip between them. */
 describe('an approved trainer moving through a student plan', () => {
   const until = async ok => { for (let i = 0; i < 60 && !ok(); i++) await act(async () => { await new Promise(r => setTimeout(r, 25)) }) }
   const nameField = () => [...host.querySelectorAll('input.input')].find(i => /day/.test(i.value))
   const routineRow = () => host.querySelector('.card [role="button"]')
-  const backToList = () => act(async () => host.querySelector('button[data-back="/students/abc/plan"]').click())
+  const monthRow = n => host.querySelectorAll('ul.months [role="button"]')[n]
+  const back = to => act(async () => host.querySelector(`button[data-back="${to}"]`).click())
+  const backToList = () => back('/students/abc/plan/p1')
   const type = (el, value) => act(() => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value)
     el.dispatchEvent(new Event('input', { bubbles: true }))
   })
 
-  it('keeps the draft and unsent edits between the list and the editor, and saves them once it can', async () => {
+  it('keeps the draft and unsent edits between the program, the months and the editor, and saves them once it can', async () => {
     getRx.mockClear()
     saveRxDraft.mockReset()
     saveRxDraft.mockRejectedValue(Object.assign(new Error('offline'), { status: 0 }))
     signIn(approved)
     await open('#/students/abc/plan')
+    await until(() => monthRow(1))
+    expect([...host.querySelectorAll('ul.months .tt')].map(e => e.textContent)).toEqual(['Month 1', 'Month 2'])
+    await act(async () => monthRow(0).click())
     await until(() => host.textContent.includes('Draft push day'))
+    expect(window.location.hash).toBe('#/students/abc/plan/p1')
     await act(async () => routineRow().click())
     await until(nameField)
-    expect(window.location.hash).toBe('#/students/abc/plan/r1')
+    expect(window.location.hash).toBe('#/students/abc/plan/p1/r1')
     type(nameField(), 'Edited day')
     await backToList()
     // The list has the edit at once, from the same store: no second read, no blank page.
-    expect(window.location.hash).toBe('#/students/abc/plan')
+    expect(window.location.hash).toBe('#/students/abc/plan/p1')
     expect(host.textContent).toContain('Edited day')
+    // Another month, then the program: the first month keeps its edit.
+    await back('/students/abc/plan')
+    await act(async () => monthRow(1).click())
+    await until(() => host.textContent.includes('Draft pull day'))
+    expect(host.textContent).not.toContain('Edited day')
+    await back('/students/abc/plan')
+    expect(window.location.hash).toBe('#/students/abc/plan')
+    await act(async () => monthRow(0).click())
+    await until(() => host.textContent.includes('Edited day'))
     await until(() => saveRxDraft.mock.calls.length > 0)
     expect(getRx).toHaveBeenCalledTimes(1)
     // The save failed (offline); the edit is still there after another round trip.
@@ -149,8 +166,16 @@ describe('an approved trainer moving through a student plan', () => {
     await until(() => saveRxDraft.mock.calls.length > 0)
     const [sid, program, rev] = saveRxDraft.mock.calls[0]
     expect(sid).toBe('abc')
-    expect(program.phases[0].bundle.routines[0].name).toBe('Edited day')
+    expect(program.phases.map(ph => ph.bundle.routines[0].name)).toEqual(['Edited day', 'Draft pull day'])
     expect(rev).toBe(3)
     expect(getRx).toHaveBeenCalledTimes(1)
+  })
+
+  it('a month the program does not have goes to the program', async () => {
+    signIn(approved)
+    await open('#/students/abc/plan/gone/r1')
+    await until(() => window.location.hash === '#/students/abc/plan' && monthRow(0))
+    expect(window.location.hash).toBe('#/students/abc/plan')
+    expect(monthRow(0)).toBeTruthy()
   })
 })

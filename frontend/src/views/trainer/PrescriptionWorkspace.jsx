@@ -9,11 +9,10 @@ import { WorkspaceContext } from '../../lib/workspace.js'
 import { DraftSessionContext, createDraftSessions } from '../../lib/draft-session.js'
 import { Button } from '../../components/ui.jsx'
 
-// shortcut: every phase goes back to the plan list, until the routes name the phase (stage 2b, Task 8).
 const students = createDraftSessions({
   load: async sid => { const { rx } = await getRx(sid); return { program: rx.draft.program, rev: rx._rev } },
   save: async (sid, program, rev) => ({ rev: (await saveRxDraft(sid, program, rev)).rx._rev }),
-  backTo: sid => '/students/' + sid + '/plan',
+  backTo: (sid, phase) => '/students/' + sid + '/plan/' + phase,
 })
 
 // Reload: drops the session and what it did not send; the page reads the plan again.

@@ -48,6 +48,8 @@ import Students from './views/trainer/Students.jsx'
 import StudentDetail from './views/trainer/StudentDetail.jsx'
 import PrescriptionWorkspace from './views/trainer/PrescriptionWorkspace.jsx'
 import PrescriptionPlan from './views/trainer/PrescriptionPlan.jsx'
+import ProgramView from './views/trainer/ProgramView.jsx'
+import { PhaseGate, UnderPageContext } from './lib/draft-session.js'
 import { isPendingTrainer, isApprovedTrainer, isStudent, homeFor } from './lib/roles.js'
 import PrescriptionSync from './components/PrescriptionSync.jsx'
 import { isPrescribed } from './lib/prescription.js'
@@ -326,10 +328,14 @@ function Shell() {
     <Routes location={l}>
       <Route path="/students" element={<Students />} />
       <Route path="/students/:sid" element={<StudentDetail />} />
-      {/* A student's draft plan: the list and the routine editor, on the workspace store. */}
+      {/* A student's draft program: the months, then a month's routines and the routine editor,
+          on the workspace store of that month. */}
       <Route path="/students/:sid/plan" element={<PrescriptionWorkspace />}>
-        <Route index element={<PrescriptionPlan />} />
-        <Route path=":id" element={<RoutineEdit />} />
+        <Route index element={<ProgramView />} />
+        <Route path=":phase" element={<PhaseGate />}>
+          <Route index element={<PrescriptionPlan />} />
+          <Route path=":id" element={<RoutineEdit />} />
+        </Route>
       </Route>
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
@@ -419,7 +425,7 @@ function Page({ loc, render, under = false, scrollY = 0, motion = 'fade' }) {
     data-path={loc.pathname} data-promoted={promoted ? '' : undefined}
     aria-hidden={under || undefined} inert={under || undefined}>
     <div className="page-in" style={under && scrollY ? { transform: `translateY(${-scrollY}px)` } : undefined}>
-      <ErrorBoundary>{render(loc)}</ErrorBoundary>
+      <UnderPageContext.Provider value={under}><ErrorBoundary>{render(loc)}</ErrorBoundary></UnderPageContext.Provider>
     </div>
   </div>
 }

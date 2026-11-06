@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useUI } from '../../store/useUI.js'
-import { t } from '../../lib/i18n.js'
+import { t, tn } from '../../lib/i18n.js'
 import { getRx, listStudents } from '../../lib/trainer-api.js'
 import { Button } from '../../components/ui.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -64,6 +64,7 @@ export default function StudentDetail() {
       : <div className="card">
         <strong>{t('Training')}</strong>
         <div className="small muted" style={{ marginTop: 4 }}>{current ? t('Version {0}, published {1}', current.v, dateOf(current.at)) : t('Not published yet')}</div>
+        <div className="small muted">{tn('{0} month', '{0} months', rx.draft.program.phases.length)}</div>
         {draftChanged(rx) && <div className="small" style={{ marginTop: 4 }}>{t('Draft has changes')}</div>}
         <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           <Button size="sm" variant="primary" onClick={() => nav('/students/' + sid + '/plan')}>{t('Edit plan')}</Button>
