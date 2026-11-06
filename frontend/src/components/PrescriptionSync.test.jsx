@@ -117,6 +117,14 @@ describe('who gets it in App', () => {
     expect(rev).toHaveBeenCalledTimes(1)
   })
 
+  it('an account still holding prescribed routines asks, and a 404 takes them away', async () => {
+    rev.mockRejectedValue(Object.assign(new Error('nope'), { status: 404 }))
+    useStore.setState({ S: { ...structuredClone(DEF), routines: [{ id: 'rx-r1', name: 'Push', rx: { v: 2 }, ex: [] }] } })
+    await open(user(null)); await flush()
+    expect(rev).toHaveBeenCalledTimes(1)
+    expect(useStore.getState().S.routines.some(r => r.id === 'rx-r1')).toBe(false)
+  })
+
   it('an account with no role and a trainer do not', async () => {
     await open(user(null))
     expect(rev).not.toHaveBeenCalled()

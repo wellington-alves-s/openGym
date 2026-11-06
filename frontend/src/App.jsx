@@ -50,6 +50,7 @@ import PrescriptionWorkspace from './views/trainer/PrescriptionWorkspace.jsx'
 import PrescriptionPlan from './views/trainer/PrescriptionPlan.jsx'
 import { isPendingTrainer, isApprovedTrainer, isStudent, homeFor } from './lib/roles.js'
 import PrescriptionSync from './components/PrescriptionSync.jsx'
+import { isPrescribed } from './lib/prescription.js'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
@@ -134,6 +135,9 @@ function Shell() {
   // the figure shown (components/Animations.jsx). Nothing on the web.
   useAnimPacksBoot()
   const isGuest = useStore(s => s.isGuest())
+  // Prescribed routines left on an account that is no longer a student (or with TRAINER_MODE off)
+  // still need the sync: its 404 is what takes them away.
+  const holdsRx = useStore(s => (s.S.routines || []).some(isPrescribed))
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const permSteps = useStore(s => s.permSteps)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
@@ -384,7 +388,7 @@ function Shell() {
       <Modals />
       <Toast />
       <TimerFlash />
-      {user && isStudent(user) && <PrescriptionSync />}
+      {user && (isStudent(user) || holdsRx) && <PrescriptionSync />}
       {/* Seasonal decoration (lib/seasonal.js): nothing, and nothing loaded, out of season. Never
           over a running workout or the first-launch screens. */}
       {authed && !needsMobileOnboarding && !permSteps && <SeasonalLayer hidden={inWorkout || loc.pathname === '/workout'} />}
