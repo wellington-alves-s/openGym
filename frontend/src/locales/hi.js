@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'आप पहले से साइन इन हैं। यह आमंत्रण स्वीकार करने के लिए पहले साइन आउट करें।',
   'You are not linked to a trainer.': 'आप किसी ट्रेनर से जुड़े नहीं हैं।',
   'Your trainer updated your training': 'आपके ट्रेनर ने आपकी ट्रेनिंग अपडेट की है',
+  'Your plan moved to {0}': 'आपका प्लान {0} पर चला गया है',
+  'Month {0}': 'महीना {0}',
   'Prescribed by your trainer': 'आपके ट्रेनर ने तय की है',
   'Version {0}': 'संस्करण {0}',
   'Prescribed': 'तय की गई',

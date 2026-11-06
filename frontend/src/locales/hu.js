@@ -67,6 +67,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Már be vagy jelentkezve. A meghívó elfogadásához előbb jelentkezz ki.',
   'You are not linked to a trainer.': 'Nem vagy edzőhöz kapcsolva.',
   'Your trainer updated your training': 'Az edződ frissítette az edzésedet',
+  'Your plan moved to {0}': 'A terved átlépett ide: {0}',
+  'Month {0}': '{0}. hónap',
   'Prescribed by your trainer': 'Az edződ írta elő',
   'Version {0}': '{0}. verzió',
   'Prescribed': 'Előírt',

@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Ты уже вошёл в аккаунт. Чтобы принять это приглашение, сначала выйди.',
   'You are not linked to a trainer.': 'Ты не привязан к тренеру.',
   'Your trainer updated your training': 'Твой тренер обновил твою тренировку',
+  'Your plan moved to {0}': 'Твой план перешёл на {0}',
+  'Month {0}': 'Месяц {0}',
   'Prescribed by your trainer': 'Назначено твоим тренером',
   'Version {0}': 'Версия {0}',
   'Prescribed': 'Назначено',

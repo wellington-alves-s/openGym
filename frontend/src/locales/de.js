@@ -66,6 +66,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Du bist bereits angemeldet. Melde dich zuerst ab, um diese Einladung anzunehmen.',
   'You are not linked to a trainer.': 'Du bist keinem Trainer zugeordnet.',
   'Your trainer updated your training': 'Dein Trainer hat dein Training aktualisiert',
+  'Your plan moved to {0}': 'Dein Plan ist jetzt bei {0}',
+  'Month {0}': 'Monat {0}',
   'Prescribed by your trainer': 'Von deinem Trainer vorgegeben',
   'Version {0}': 'Version {0}',
   'Prescribed': 'Vorgegeben',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { RX_PREFIX, isPrescribed, appliedVersion, applyPrescription, removePrescription } from './prescription.js'
+import { RX_PREFIX, isPrescribed, appliedVersion, appliedKey, applyPrescription, removePrescription } from './prescription.js'
 import { convertWeight } from './units.js'
 
 const own = { id: 'own1', name: 'Push', ex: [] }
@@ -159,5 +159,50 @@ describe('appliedVersion / isPrescribed', () => {
     expect(isPrescribed({ rx: { v: 1 } })).toBe(true)
     expect(isPrescribed(own)).toBe(false)
     expect(RX_PREFIX).toBe('rx-')
+  })
+})
+
+describe('phases: rx.p and appliedKey', () => {
+  const phase2 = bundleOf([{ ...r1, name: 'Push B' }, r2], { 1: ['r1'], 3: ['r2'] })
+  const phase1 = bundleOf([r1, { id: 'r3', name: 'Legs', ex: [] }], { 1: ['r1'], 2: ['r3'] })
+
+  it('the phase id goes into the marker and the key reads v:p', () => {
+    const S = stateOf()
+    applyPrescription(S, phase2, 1, 'p2')
+    expect(S.routines.slice(1).every(r => r.rx.v === 1 && r.rx.p === 'p2')).toBe(true)
+    expect(appliedKey(S)).toBe('1:p2')
+  })
+
+  it('without a phase id the marker stays { v } and the key ends in a colon', () => {
+    const S = stateOf()
+    applyPrescription(S, phase2, 4)
+    expect(S.routines[1].rx).toEqual({ v: 4 })
+    expect(appliedKey(S)).toBe('4:')
+  })
+
+  it('is empty with no prescribed routine', () => {
+    expect(appliedKey(stateOf())).toBe('')
+  })
+
+  it('phase 2 over phase 1 replaces in place, drops what left and cleans the days', () => {
+    const S = stateOf()
+    applyPrescription(S, phase1, 1, 'p1')
+    S.dayPlan['2026-11-10'] = 'rx-r3'
+    const at = S.routines.findIndex(r => r.id === 'rx-r1')
+    applyPrescription(S, phase2, 1, 'p2')
+    expect(S.routines.findIndex(r => r.id === 'rx-r1')).toBe(at)
+    expect(S.routines[at].name).toBe('Push B')
+    expect(S.routines.map(r => r.id)).toEqual(['own1', 'rx-r1', 'rx-r2'])
+    expect(S.week).toEqual({ 1: ['own1', 'rx-r1'], 3: ['rx-r2'] })
+    expect(S.dayPlan['2026-11-10']).toBeUndefined()
+    expect(appliedKey(S)).toBe('1:p2')
+  })
+
+  it('applying the same phase twice is idempotent', () => {
+    const S = stateOf()
+    applyPrescription(S, phase2, 1, 'p2')
+    const once = structuredClone(S)
+    applyPrescription(S, phase2, 1, 'p2')
+    expect(S).toEqual(once)
   })
 })

@@ -1181,6 +1181,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'أنت مسجّل الدخول بالفعل. سجّل الخروج أولًا لقبول هذه الدعوة.',
   'You are not linked to a trainer.': 'أنت غير مرتبط بمدرب.',
   'Your trainer updated your training': 'حدّث مدربك تدريبك',
+  'Your plan moved to {0}': 'انتقلت خطتك إلى {0}',
+  'Month {0}': 'الشهر {0}',
   'Prescribed by your trainer': 'وصفه مدربك',
   'Version {0}': 'الإصدار {0}',
   'Prescribed': 'موصوف',

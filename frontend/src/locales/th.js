@@ -67,6 +67,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'คุณเข้าสู่ระบบอยู่แล้ว ออกจากระบบก่อนเพื่อตอบรับคำเชิญนี้',
   'You are not linked to a trainer.': 'คุณยังไม่ได้เชื่อมโยงกับเทรนเนอร์',
   'Your trainer updated your training': 'เทรนเนอร์ของคุณอัปเดตการฝึกของคุณแล้ว',
+  'Your plan moved to {0}': 'แผนของคุณเปลี่ยนไปที่ {0}',
+  'Month {0}': 'เดือนที่ {0}',
   'Prescribed by your trainer': 'กำหนดโดยเทรนเนอร์ของคุณ',
   'Version {0}': 'เวอร์ชัน {0}',
   'Prescribed': 'กำหนดแล้ว',

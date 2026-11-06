@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': '이미 로그인되어 있습니다. 이 초대를 수락하려면 먼저 로그아웃하세요.',
   'You are not linked to a trainer.': '연결된 트레이너가 없습니다.',
   'Your trainer updated your training': '트레이너가 운동 계획을 업데이트했습니다',
+  'Your plan moved to {0}': '운동 계획이 {0}(으)로 넘어갔습니다',
+  'Month {0}': '{0}개월 차',
   'Prescribed by your trainer': '트레이너가 지정한 루틴',
   'Version {0}': '버전 {0}',
   'Prescribed': '지정됨',

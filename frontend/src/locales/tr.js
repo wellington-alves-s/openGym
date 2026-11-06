@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Zaten giriş yaptın. Bu daveti kabul etmek için önce çıkış yap.',
   'You are not linked to a trainer.': 'Bir antrenöre bağlı değilsin.',
   'Your trainer updated your training': 'Antrenörün antrenmanını güncelledi',
+  'Your plan moved to {0}': 'Planın {0} bölümüne geçti',
+  'Month {0}': '{0}. ay',
   'Prescribed by your trainer': 'Antrenörün tarafından verildi',
   'Version {0}': 'Sürüm {0}',
   'Prescribed': 'Verilen',

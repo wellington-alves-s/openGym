@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
+import { addDays } from '../lib/program.js'
+import { todayISO } from '../lib/format.js'
 
 const rev = vi.fn()
 const rx = vi.fn()
@@ -134,5 +136,73 @@ describe('who gets it in App', () => {
     act(() => root.unmount()); root = createRoot(host)
     await open(user('trainer'))
     expect(rev).not.toHaveBeenCalled()
+  })
+})
+
+describe('the month of a program', () => {
+  const routine = id => ({ id, name: id, ex: [] })
+  const plan = ids => ({ opengym_plan: 1, unit: 'kg', week: {}, routines: ids.map(routine), customEx: [] })
+  // Two weeks in: phase 1 lasted one week, so today is inside phase 2.
+  const program = name => ({
+    start: addDays(todayISO(), -14),
+    phases: [{ id: 'p1', name: 'Base', weeks: 1, bundle: plan(['a']) }, { id: 'p2', name, weeks: 52, bundle: plan(['b']) }]
+  })
+  const signIn = () => useStore.setState({ user: { id: 'u1', role: 'student' } })
+  const prescribed = (id, p) => ({ ...routine('rx-' + id), rx: { v: 1, p } })
+  const seed = () => {
+    useStore.setState({ S: { ...structuredClone(DEF), routines: [prescribed('a', 'p1')] } })
+    localStorage.setItem('gym_rx_v1:u1', JSON.stringify({ v: 1, program: program('Strength') }))
+  }
+  const toast = () => useUI.getState().toastMsg
+
+  it('switches month on its own while offline, and names the new phase', async () => {
+    signIn(); seed(); useUI.setState({ toastMsg: null })
+    rev.mockRejectedValue(new TypeError('Failed to fetch'))
+    await mount(); await flush()
+    expect(rx).not.toHaveBeenCalled()
+    expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['rx-b'])
+    expect(toast()).toBe('Your plan moved to Strength')
+  })
+
+  it('a phase without a name is called Month n', async () => {
+    signIn(); seed(); useUI.setState({ toastMsg: null })
+    localStorage.setItem('gym_rx_v1:u1', JSON.stringify({ v: 1, program: program('') }))
+    rev.mockResolvedValue({ v: 1 })
+    await mount(); await flush()
+    expect(toast()).toBe('Your plan moved to Month 2')
+  })
+
+  it('a new version keeps the stage 2a message and fills the cache of this account', async () => {
+    signIn(); useUI.setState({ toastMsg: null })
+    rev.mockResolvedValue({ v: 2 })
+    rx.mockResolvedValue({ v: 2, program: program('Strength') })
+    await mount(); await flush()
+    expect(toast()).toBe('Your trainer updated your training')
+    expect(JSON.parse(localStorage.getItem('gym_rx_v1:u1')).v).toBe(2)
+    expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['rx-b'])
+  })
+
+  it('another account on the same device does not read this cache', async () => {
+    seed()
+    useStore.setState({ user: { id: 'u2', role: 'student' }, S: structuredClone(DEF) })
+    rev.mockRejectedValue(new TypeError('Failed to fetch'))
+    await mount(); await flush()
+    expect(rx).not.toHaveBeenCalled()
+    expect(useStore.getState().S.routines).toEqual([])
+  })
+
+  it('an account that is not linked any more loses the cache', async () => {
+    signIn(); seed()
+    rev.mockRejectedValue(Object.assign(new Error('nope'), { status: 404 }))
+    await mount(); await flush()
+    expect(localStorage.getItem('gym_rx_v1:u1')).toBeNull()
+    expect(useStore.getState().S.routines).toEqual([])
+  })
+
+  it('nothing happens, and nothing is stored, for an account with no role and no prescribed routines', async () => {
+    useStore.setState({ user: { id: 'u1' } })
+    await act(async () => root.render(<App />)); await flush()
+    expect(rev).not.toHaveBeenCalled()
+    expect(localStorage.length).toBe(0)
   })
 })

@@ -66,6 +66,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Du är redan inloggad. Logga ut först för att ta emot inbjudan.',
   'You are not linked to a trainer.': 'Du är inte kopplad till någon tränare.',
   'Your trainer updated your training': 'Din tränare uppdaterade din träning',
+  'Your plan moved to {0}': 'Din plan har gått vidare till {0}',
+  'Month {0}': 'Månad {0}',
   'Prescribed by your trainer': 'Ordinerat av din tränare',
   'Version {0}': 'Version {0}',
   'Prescribed': 'Ordinerat',

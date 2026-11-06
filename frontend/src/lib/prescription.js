@@ -36,17 +36,23 @@ export const isPrescribed = r => !!r?.rx
 /** The highest version among the prescribed routines, 0 when there are none. */
 export const appliedVersion = S => Math.max(0, ...(S.routines || []).filter(isPrescribed).map(r => Number(r.rx.v) || 0))
 
+/** '<version>:<phase id>' of what is applied, '' with nothing prescribed, '<v>:' for a plan the stage 2a app applied. */
+export function appliedKey(S) {
+  const first = (S.routines || []).find(isPrescribed)
+  return first ? `${appliedVersion(S)}:${first.rx.p || ''}` : ''
+}
+
 /**
- * Apply plan bundle `bundle` (version `v`) to draft state `S`, in place. Idempotent: the same
+ * Apply plan bundle `bundle` (version `v`, of phase `phaseId` when the plan is a program) to draft state `S`, in place. Idempotent: the same
  * version twice leaves the same state. Returns how many routines were added and removed, and how
  * many exercises the catalogue did not know (they are left out; the routine stays), plus any routine
  * whose id an own routine already holds.
  */
-export function applyPrescription(S, bundle, v) {
+export function applyPrescription(S, bundle, v, phaseId) {
   const parsed = parsePlan(bundle, S.unit === 'lb' ? 'lb' : 'kg')
   // An own routine that happens to carry an `rx-` id is the student's: that one is skipped.
   const own = new Set(S.routines.filter(r => !isPrescribed(r)).map(r => r.id))
-  const all = parsed.routines.map(r => ({ ...cleanRoutine(r), id: RX_PREFIX + r.id, rx: { v }, excludeFromProgression: true }))
+  const all = parsed.routines.map(r => ({ ...cleanRoutine(r), id: RX_PREFIX + r.id, rx: phaseId ? { v, p: phaseId } : { v }, excludeFromProgression: true }))
   const incoming = all.filter(r => !own.has(r.id))
   const keep = new Set(incoming.map(r => r.id))
 

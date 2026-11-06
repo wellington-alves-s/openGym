@@ -64,6 +64,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': '你已經登入。請先登出再接受這個邀請。',
   'You are not linked to a trainer.': '你還沒有關聯教練。',
   'Your trainer updated your training': '你的教練更新了你的訓練',
+  'Your plan moved to {0}': '你的計畫已進入{0}',
+  'Month {0}': '第 {0} 個月',
   'Prescribed by your trainer': '教練指定',
   'Version {0}': '版本 {0}',
   'Prescribed': '已指定',

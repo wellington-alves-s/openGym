@@ -831,6 +831,8 @@ export const PT_BR_OVERRIDES = {
   'You are already signed in. Sign out first to accept this invite.': 'Você já está conectado. Saia primeiro para aceitar este convite.',
   'You are not linked to a trainer.': 'Você não está vinculado a nenhum personal trainer.',
   'Your trainer updated your training': 'Seu personal trainer atualizou o seu treino',
+  'Your plan moved to {0}': 'Seu plano passou para {0}',
+  'Month {0}': 'Mês {0}',
   'Prescribed by your trainer': 'Prescrita pelo seu personal trainer',
   'Version {0}': 'Versão {0}',
   'Prescribed': 'Prescrita',

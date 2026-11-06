@@ -4,6 +4,8 @@ import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
 import { studentRx, studentRxRev } from '../lib/trainer-api.js'
 import { syncPrescription } from '../lib/prescription-sync.js'
+import { readCache, writeCache, clearCache } from '../lib/prescription-cache.js'
+import { todayISO } from '../lib/format.js'
 
 // No interface: keeps a student's prescribed routines current when the app opens, comes back to
 // the foreground or the network returns.
@@ -22,7 +24,14 @@ export default function PrescriptionSync() {
           fetchRev: studentRxRev, fetchRx: studentRx,
           getS: () => useStore.getState().S,
           update: fn => { if (current()) useStore.getState().update(fn) },
-          notify: () => { if (current()) useUI.getState().toast(t('Your trainer updated your training')) }
+          cache: { read: () => readCache(uid), write: rec => writeCache(uid, rec), clear: () => clearCache(uid) },
+          today: todayISO,
+          notify: (v, phase) => {
+            if (!current()) return
+            useUI.getState().toast(phase
+              ? t('Your plan moved to {0}', phase.name || t('Month {0}', phase.index + 1))
+              : t('Your trainer updated your training'))
+          }
         })
       } catch (e) { console.warn('prescription sync', e) } finally { busy = false }
     }

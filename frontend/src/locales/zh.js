@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': '你已经登录。请先退出登录再接受这个邀请。',
   'You are not linked to a trainer.': '你还没有关联教练。',
   'Your trainer updated your training': '你的教练更新了你的训练',
+  'Your plan moved to {0}': '你的计划已进入{0}',
+  'Month {0}': '第 {0} 个月',
   'Prescribed by your trainer': '教练指定',
   'Version {0}': '版本 {0}',
   'Prescribed': '已指定',

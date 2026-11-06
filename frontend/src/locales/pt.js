@@ -65,6 +65,8 @@ export default {
   'You are already signed in. Sign out first to accept this invite.': 'Já tens sessão iniciada. Termina a sessão primeiro para aceitar este convite.',
   'You are not linked to a trainer.': 'Não estás ligado a nenhum personal trainer.',
   'Your trainer updated your training': 'O teu personal trainer atualizou o teu treino',
+  'Your plan moved to {0}': 'O teu plano passou para {0}',
+  'Month {0}': 'Mês {0}',
   'Prescribed by your trainer': 'Prescrita pelo teu personal trainer',
   'Version {0}': 'Versão {0}',
   'Prescribed': 'Prescrita',
