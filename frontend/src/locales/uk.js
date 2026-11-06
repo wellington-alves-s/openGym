@@ -1131,6 +1131,7 @@ export default {
   'Waiting for the owner to approve your account': 'Очікування схвалення акаунта власником',
   'You are already signed in. Sign out first to accept this invite.': 'Ти вже ввійшов в акаунт. Щоб прийняти це запрошення, спочатку вийди.',
   'You are not linked to a trainer.': 'Ти не прив’язаний до тренера.',
+  'Your trainer updated your training': 'Твій тренер оновив твоє тренування',
   'You can also share': 'Ще можна поділитися',
   'You will no longer see their workouts. They keep their own account and data.': 'Ти більше не бачитимеш його тренувань. Його акаунт і дані залишаються в нього.',
   '{0} sees your workouts. You choose what else to share.': '{0} бачить твої тренування. Решту ти обираєш сам.',

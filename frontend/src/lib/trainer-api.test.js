@@ -143,3 +143,14 @@ describe('joining with a passkey', () => {
     expect(lastCall()[0]).toBe('/api/join/AB-12/options')
   })
 })
+
+describe('the plan a student reads', () => {
+  it('asks for the version, then for the plan', async () => {
+    api.mockResolvedValueOnce({ v: 3 })
+    expect(await t.studentRxRev()).toEqual({ v: 3 })
+    expect(lastCall()[0]).toBe('/api/student/rx/rev')
+    api.mockResolvedValueOnce({ v: 3, at: 1, note: '', bundle: {} })
+    expect((await t.studentRx()).v).toBe(3)
+    expect(lastCall()[0]).toBe('/api/student/rx')
+  })
+})

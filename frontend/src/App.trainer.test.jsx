@@ -13,7 +13,7 @@ vi.mock('./lib/sound.js', () => ({
 vi.mock('./lib/api.js', async importOriginal => ({
   ...await importOriginal(), api: vi.fn(() => Promise.resolve({})), beacon: vi.fn(),
 }))
-vi.mock('./lib/trainer-api.js', () => ({ listStudents: vi.fn(async () => []) }))
+vi.mock('./lib/trainer-api.js', () => ({ listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn() }))
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 let host, root, original
 

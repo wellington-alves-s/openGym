@@ -64,6 +64,7 @@ export default {
   'Waiting for the owner to approve your account': '소유자가 계정을 승인하기를 기다리는 중입니다',
   'You are already signed in. Sign out first to accept this invite.': '이미 로그인되어 있습니다. 이 초대를 수락하려면 먼저 로그아웃하세요.',
   'You are not linked to a trainer.': '연결된 트레이너가 없습니다.',
+  'Your trainer updated your training': '트레이너가 운동 계획을 업데이트했습니다',
   'You can also share': '이것도 공유할 수 있습니다',
   'You will no longer see their workouts. They keep their own account and data.': '더 이상 이 회원의 운동을 볼 수 없습니다. 회원은 자신의 계정과 데이터를 그대로 유지합니다.',
   '{0} sees your workouts. You choose what else to share.': '{0}님이 내 운동을 볼 수 있습니다. 그 외에 공유할 항목은 직접 선택하세요.',

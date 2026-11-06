@@ -63,6 +63,7 @@ export default {
   'Waiting for the owner to approve your account': '等待擁有者核准你的帳號',
   'You are already signed in. Sign out first to accept this invite.': '你已經登入。請先登出再接受這個邀請。',
   'You are not linked to a trainer.': '你還沒有關聯教練。',
+  'Your trainer updated your training': '你的教練更新了你的訓練',
   'You can also share': '你還可以分享',
   'You will no longer see their workouts. They keep their own account and data.': '你將不再看到他的訓練紀錄。他保留自己的帳號和資料。',
   '{0} sees your workouts. You choose what else to share.': '{0} 可以看到你的訓練紀錄。其他內容由你決定是否分享。',

@@ -45,7 +45,8 @@ import Join from './views/Join.jsx'
 import { joinTokenFromSearch, stripJoinFromUrl } from './lib/student-link.js'
 import TrainerPending from './views/TrainerPending.jsx'
 import Students from './views/trainer/Students.jsx'
-import { isPendingTrainer, isApprovedTrainer, homeFor } from './lib/roles.js'
+import { isPendingTrainer, isApprovedTrainer, isStudent, homeFor } from './lib/roles.js'
+import PrescriptionSync from './components/PrescriptionSync.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
@@ -374,6 +375,7 @@ function Shell() {
       <Modals />
       <Toast />
       <TimerFlash />
+      {user && isStudent(user) && <PrescriptionSync />}
       {/* Seasonal decoration (lib/seasonal.js): nothing, and nothing loaded, out of season. Never
           over a running workout or the first-launch screens. */}
       {authed && !needsMobileOnboarding && !permSteps && <SeasonalLayer hidden={inWorkout || loc.pathname === '/workout'} />}

@@ -26,6 +26,8 @@ export async function joinWithPasskey(code, { name, consent }) {
 export const myTrainer = () => api('/api/student/trainer')   // → { trainer, since, consent }
 export const setConsent = consent => send('PUT', '/api/student/consent', consent)
 export const leaveTrainer = () => send('POST', '/api/student/unlink')
+export const studentRxRev = () => api('/api/student/rx/rev')   // → { v: number | null }
+export const studentRx = () => api('/api/student/rx')   // → { v, at, note, bundle }
 
 // The owner's side.
 export const listTrainers = async () => (await api('/api/admin/trainers')).trainers || []

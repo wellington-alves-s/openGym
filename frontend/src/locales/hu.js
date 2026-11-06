@@ -66,6 +66,7 @@ export default {
   'Waiting for the owner to approve your account': 'Várakozás a tulajdonos jóváhagyására',
   'You are already signed in. Sign out first to accept this invite.': 'Már be vagy jelentkezve. A meghívó elfogadásához előbb jelentkezz ki.',
   'You are not linked to a trainer.': 'Nem vagy edzőhöz kapcsolva.',
+  'Your trainer updated your training': 'Az edződ frissítette az edzésedet',
   'You can also share': 'Ezt is megoszthatod',
   'You will no longer see their workouts. They keep their own account and data.': 'Többé nem látod az edzéseit. A saját fiókja és adatai megmaradnak.',
   '{0} sees your workouts. You choose what else to share.': '{0} látja az edzéseidet. Te döntöd el, mi mást osztasz meg.',

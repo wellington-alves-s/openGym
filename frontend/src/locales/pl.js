@@ -64,6 +64,7 @@ export default {
   'Waiting for the owner to approve your account': 'Czekam, aż właściciel zatwierdzi twoje konto',
   'You are already signed in. Sign out first to accept this invite.': 'Jesteś już zalogowany. Aby przyjąć to zaproszenie, najpierw się wyloguj.',
   'You are not linked to a trainer.': 'Nie jesteś połączony z żadnym trenerem.',
+  'Your trainer updated your training': 'Twój trener zaktualizował twój trening',
   'You can also share': 'Możesz też udostępnić',
   'You will no longer see their workouts. They keep their own account and data.': 'Nie zobaczysz już jego treningów. Jego konto i dane zostają przy nim.',
   '{0} sees your workouts. You choose what else to share.': '{0} widzi twoje treningi. Resztę udostępniasz według własnego wyboru.',

@@ -64,6 +64,7 @@ export default {
   'Waiting for the owner to approve your account': 'Ожидание одобрения аккаунта владельцем',
   'You are already signed in. Sign out first to accept this invite.': 'Ты уже вошёл в аккаунт. Чтобы принять это приглашение, сначала выйди.',
   'You are not linked to a trainer.': 'Ты не привязан к тренеру.',
+  'Your trainer updated your training': 'Твой тренер обновил твою тренировку',
   'You can also share': 'Ещё можно поделиться',
   'You will no longer see their workouts. They keep their own account and data.': 'Ты больше не будешь видеть его тренировки. Его аккаунт и данные остаются у него.',
   '{0} sees your workouts. You choose what else to share.': '{0} видит твои тренировки. Остальное ты выбираешь сам.',

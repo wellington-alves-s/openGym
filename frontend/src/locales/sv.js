@@ -65,6 +65,7 @@ export default {
   'Waiting for the owner to approve your account': 'Väntar på att ägaren ska godkänna ditt konto',
   'You are already signed in. Sign out first to accept this invite.': 'Du är redan inloggad. Logga ut först för att ta emot inbjudan.',
   'You are not linked to a trainer.': 'Du är inte kopplad till någon tränare.',
+  'Your trainer updated your training': 'Din tränare uppdaterade din träning',
   'You can also share': 'Du kan också dela',
   'You will no longer see their workouts. They keep their own account and data.': 'Du ser inte längre elevens pass. Eleven behåller sitt eget konto och sina data.',
   '{0} sees your workouts. You choose what else to share.': '{0} ser dina pass. Du väljer vad mer du vill dela.',

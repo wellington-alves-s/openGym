@@ -64,6 +64,7 @@ export default {
   'Waiting for the owner to approve your account': '等待所有者批准你的账号',
   'You are already signed in. Sign out first to accept this invite.': '你已经登录。请先退出登录再接受这个邀请。',
   'You are not linked to a trainer.': '你还没有关联教练。',
+  'Your trainer updated your training': '你的教练更新了你的训练',
   'You can also share': '你还可以分享',
   'You will no longer see their workouts. They keep their own account and data.': '你将不再看到 TA 的训练记录。TA 保留自己的账号和数据。',
   '{0} sees your workouts. You choose what else to share.': '{0} 可以看到你的训练记录。其他内容由你决定是否分享。',

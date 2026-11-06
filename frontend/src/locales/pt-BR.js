@@ -830,6 +830,7 @@ export const PT_BR_OVERRIDES = {
   'Waiting for the owner to approve your account': 'Aguardando o proprietário aprovar sua conta',
   'You are already signed in. Sign out first to accept this invite.': 'Você já está conectado. Saia primeiro para aceitar este convite.',
   'You are not linked to a trainer.': 'Você não está vinculado a nenhum personal trainer.',
+  'Your trainer updated your training': 'Seu personal trainer atualizou o seu treino',
   'You can also share': 'Você também pode compartilhar',
   'You will no longer see their workouts. They keep their own account and data.': 'Você deixará de ver os treinos dele. Ele mantém a própria conta e os dados.',
   '{0} sees your workouts. You choose what else to share.': '{0} vê seus treinos. Você escolhe o que mais compartilhar.',

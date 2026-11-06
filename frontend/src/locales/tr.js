@@ -64,6 +64,7 @@ export default {
   'Waiting for the owner to approve your account': 'Hesabının sahip tarafından onaylanması bekleniyor',
   'You are already signed in. Sign out first to accept this invite.': 'Zaten giriş yaptın. Bu daveti kabul etmek için önce çıkış yap.',
   'You are not linked to a trainer.': 'Bir antrenöre bağlı değilsin.',
+  'Your trainer updated your training': 'Antrenörün antrenmanını güncelledi',
   'You can also share': 'Şunları da paylaşabilirsin',
   'You will no longer see their workouts. They keep their own account and data.': 'Artık onun antrenmanlarını görmeyeceksin. Kendi hesabı ve verileri ona kalır.',
   '{0} sees your workouts. You choose what else to share.': '{0} antrenmanlarını görüyor. Başka neleri paylaşacağını sen seçersin.',
