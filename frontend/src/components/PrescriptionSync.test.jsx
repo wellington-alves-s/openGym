@@ -96,11 +96,14 @@ describe('PrescriptionSync', () => {
       expect(rx).toHaveBeenCalledTimes(1)
       await act(async () => leave())
       await act(async () => { release({ v: 1, bundle }) }); await flush()
-      expect(useStore.getState().S.routines.some(r => r.id === 'rx-r1')).toBe(false)
-      expect(useUI.getState().toastMsg).toBeFalsy()
+      return { applied: useStore.getState().S.routines.some(r => r.id === 'rx-r1'), toast: useUI.getState().toastMsg }
     }
-    it('leaves the signed-out copy alone when the user is gone', () => slow(() => useStore.setState({ user: null })))
-    it('leaves it alone once unmounted', () => slow(() => { root.unmount(); root = createRoot(host) }))
+    it('leaves the signed-out copy alone when the user is gone', async () => {
+      expect(await slow(() => useStore.setState({ user: null }))).toEqual({ applied: false, toast: null })
+    })
+    it('leaves it alone once unmounted', async () => {
+      expect(await slow(() => { root.unmount(); root = createRoot(host) })).toEqual({ applied: false, toast: null })
+    })
   })
 })
 
