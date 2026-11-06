@@ -47,22 +47,22 @@ beforeEach(() => {
 afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
 
 describe('exercise list or cards', () => {
-  it('Library: a list until the button beside the search turns the cards on, and back', () => {
+  it('Library: cards until the button beside the search turns the list on, and back', () => {
     const host = render(<Library />)
-    expect(isCards(host)).toBe(false)
+    expect(isCards(host)).toBe(true)
     expect(besideSearch(toggle(host))).toBe(true)
     expect(toggle(host).closest('.hdr')).toBeNull()
-    expect(toggle(host).getAttribute('aria-pressed')).toBe('false')
-    act(() => toggle(host).click())
-    expect(view()).toBe('cards')
-    expect(isCards(host)).toBe(true)
     expect(toggle(host).getAttribute('aria-pressed')).toBe('true')
     act(() => toggle(host).click())
     expect(view()).toBe('list')
     expect(isCards(host)).toBe(false)
+    expect(toggle(host).getAttribute('aria-pressed')).toBe('false')
+    act(() => toggle(host).click())
+    expect(view()).toBe('cards')
+    expect(isCards(host)).toBe(true)
   })
 
-  it('reads a profile saved before the setting existed as the list', () => {
+  it('reads a state with no setting at all as the list (the store fills in the cards on load)', () => {
     useStore.setState(s => { const S = { ...s.S }; delete S.exerciseView; return { S } })
     expect(isCards(render(<Library />))).toBe(false)
   })
@@ -76,18 +76,18 @@ describe('exercise list or cards', () => {
   it('picker: follows the same setting and switches it beside its own search, by muscle too', () => {
     exercisePicker(vi.fn())
     const host = renderTop()
-    expect(isCards(host)).toBe(false)
+    expect(isCards(host)).toBe(true)
     expect(besideSearch(toggle(host))).toBe(true)
     act(() => toggle(host).click())
-    expect(view()).toBe('cards')
-    expect(isCards(host)).toBe(true)
+    expect(view()).toBe('list')
+    expect(isCards(host)).toBe(false)
     act(() => [...host.querySelectorAll('button')].find(b => b.textContent === 'By muscle').click())
     pickMuscle(host)
-    expect(isCards(host)).toBe(true)
-    expect(besideSearch(toggle(host))).toBe(true)
-    expect(toggle(host).getAttribute('aria-pressed')).toBe('true')
-    act(() => toggle(host).click())
     expect(isCards(host)).toBe(false)
+    expect(besideSearch(toggle(host))).toBe(true)
+    expect(toggle(host).getAttribute('aria-pressed')).toBe('false')
+    act(() => toggle(host).click())
+    expect(isCards(host)).toBe(true)
   })
 
   it('Muscles page: the results follow the setting, with the button beside their search', () => {

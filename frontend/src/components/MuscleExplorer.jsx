@@ -82,7 +82,7 @@ export default function MuscleExplorer({ onPick, onDetail, onPlan, pickIcon = 'p
         {showAll ? t('Filter by "{0}"', profile.name) : t('Show all equipment')}
       </button>
     </div>}
-    <div className="card">
+    <div className={'card' + (labeled ? ' bm-card' : '')}>
       {labeled ? <BodyMapLabeled body={S.body} selected={picked} onMuscle={pick} /> : <>
         <BodyMap className="tappable" body={S.body} selected={selected} onMuscle={pick} />
         <div className="chips" style={{ marginTop: 10 }}>

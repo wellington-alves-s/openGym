@@ -125,8 +125,8 @@ export const DEF = {
   collapseCompleted: false,
   // How the Library, the exercise picker and the muscle explorer show exercises — 'list' (rows
   // with a small thumbnail) or 'cards' (a grid of pictures with the name underneath). Switched
-  // by the button in those headers (ExerciseViewToggle); older profiles overlay onto the list.
-  exerciseView: 'list',
+  // by the button in those headers (ExerciseViewToggle); a profile that never chose gets the cards.
+  exerciseView: 'cards',
   // Which controls the workout screen shows besides the sets themselves. The default is the
   // lean layout: one "more" button per exercise and a menu on each set number. Every switch
   // brings one of the old always-visible button groups back (Settings → During a workout).
