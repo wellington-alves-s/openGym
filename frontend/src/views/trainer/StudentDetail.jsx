@@ -51,7 +51,7 @@ export default function StudentDetail() {
   // Saves what the workspace still holds first; a save made after this page read the plan is newer.
   const latestRev = async () => Math.max(rev.current, (await whenSaved(sid)) ?? -1)
   const publish = () => useUI.getState().openSheet(close => <PublishSheet sid={sid} close={close} onDone={load} latestRev={latestRev}
-    empty={!rx.draft.bundle.routines.some(r => r.ex.length)} />)
+    empty={!rx.draft.program.phases.some(ph => ph.bundle.routines.some(r => r.ex.length))} />)
   const versions = () => useUI.getState().openSheet(close => <VersionsSheet sid={sid} close={close} onDone={load} latestRev={latestRev}
     versions={rx.versions} />)
 

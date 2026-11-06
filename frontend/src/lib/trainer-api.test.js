@@ -165,10 +165,11 @@ describe('the plan a trainer prescribes', () => {
 
   it('saves the draft, publishes and restores, each with the revision it last saw', async () => {
     const bundle = { opengym_plan: 1, unit: 'kg', week: {}, routines: [], customEx: [] }
-    await t.saveRxDraft('s1', bundle, 2)
+    const program = { start: null, phases: [{ id: 'p1', name: '', weeks: 4, bundle }] }
+    await t.saveRxDraft('s1', program, 2)
     expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx/draft')
     expect(lastCall()[1].method).toBe('PUT')
-    expect(sent()).toEqual({ bundle, _rev: 2 })
+    expect(sent()).toEqual({ program, _rev: 2 })
     api.mockResolvedValueOnce({ rx: { _rev: 4 }, v: 1 })
     expect((await t.publishRx('s1', 'week one', 3)).v).toBe(1)
     expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx/publish')
@@ -183,5 +184,38 @@ describe('the plan a trainer prescribes', () => {
   it('lets a 409 through with the current plan on it', async () => {
     api.mockRejectedValueOnce(Object.assign(new Error('the plan changed elsewhere'), { status: 409, data: { code: 'conflict', rx: { _rev: 9 } } }))
     await expect(t.saveRxDraft('s1', {}, 1)).rejects.toMatchObject({ status: 409, data: { rx: { _rev: 9 } } })
+  })
+})
+
+describe('the trainer models', () => {
+  const bundle = { opengym_plan: 1, unit: 'kg', week: {}, routines: [], customEx: [] }
+
+  it('lists, reads, creates and deletes, with the id as one path segment', async () => {
+    api.mockResolvedValueOnce({ models: [{ id: 'm1' }] })
+    expect(await t.listModels()).toEqual([{ id: 'm1' }])
+    expect(lastCall()[0]).toBe('/api/trainer/models')
+    api.mockResolvedValueOnce({})
+    expect(await t.listModels()).toEqual([])
+    api.mockResolvedValueOnce({ model: { id: 'a/b' } })
+    expect(await t.getModel('a/b')).toEqual({ model: { id: 'a/b' } })
+    expect(lastCall()[0]).toBe('/api/trainer/models/a%2Fb')
+    await t.createModel({ name: 'Month 1', bundle })
+    expect(lastCall()[0]).toBe('/api/trainer/models')
+    expect(lastCall()[1].method).toBe('POST')
+    expect(sent()).toEqual({ name: 'Month 1', bundle })
+    await t.deleteModel('m1')
+    expect(lastCall()[0]).toBe('/api/trainer/models/m1')
+    expect(lastCall()[1].method).toBe('DELETE')
+  })
+
+  it('saves a model with the revision it last saw, and lets a 409 through with the current model', async () => {
+    await t.saveModel('m1', { name: 'Month 2', _rev: 1 })
+    expect(lastCall()[0]).toBe('/api/trainer/models/m1')
+    expect(lastCall()[1].method).toBe('PUT')
+    expect(sent()).toEqual({ name: 'Month 2', _rev: 1 })
+    await t.saveModel('m1', { bundle, _rev: 2 })
+    expect(sent()).toEqual({ bundle, _rev: 2 })
+    api.mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409, data: { code: 'conflict', model: { _rev: 5 } } }))
+    await expect(t.saveModel('m1', { bundle, _rev: 2 })).rejects.toMatchObject({ status: 409, data: { model: { _rev: 5 } } })
   })
 })

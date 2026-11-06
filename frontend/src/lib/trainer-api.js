@@ -12,12 +12,19 @@ export const newInvite = async id => (await send('POST', `/api/trainer/students/
 export const removeStudent = id => send('DELETE', `/api/trainer/students/${seg(id)}`)
 export const unlinkStudent = id => send('POST', `/api/trainer/students/${seg(id)}/unlink`)
 
-// A student's prescribed plan: a draft and its published versions. Each change carries the _rev it
-// last saw; a stale one rejects with status 409 and the current plan on `data.rx`.
-export const getRx = id => api(`/api/trainer/students/${seg(id)}/rx`)   // → { rx }
-export const saveRxDraft = (id, bundle, rev) => send('PUT', `/api/trainer/students/${seg(id)}/rx/draft`, { bundle, _rev: rev })   // → { rx }
+// A student's prescribed plan: a draft program and its published versions. Each change carries the
+// _rev it last saw; a stale one rejects with status 409 and the current plan on `data.rx`.
+export const getRx = id => api(`/api/trainer/students/${seg(id)}/rx`)   // → { rx }, the draft as rx.draft.program
+export const saveRxDraft = (id, program, rev) => send('PUT', `/api/trainer/students/${seg(id)}/rx/draft`, { program, _rev: rev })   // → { rx }
 export const publishRx = (id, note, rev) => send('POST', `/api/trainer/students/${seg(id)}/rx/publish`, { note, _rev: rev })   // → { rx, v }
 export const restoreRx = (id, v, rev) => send('POST', `/api/trainer/students/${seg(id)}/rx/restore`, { v, _rev: rev })   // → { rx }
+
+// A trainer's models: one plan bundle under a name. A stale _rev rejects with 409 and `data.model`.
+export const listModels = async () => (await api('/api/trainer/models')).models || []
+export const getModel = id => api(`/api/trainer/models/${seg(id)}`)   // → { model }
+export const createModel = ({ name, bundle }) => send('POST', '/api/trainer/models', { name, bundle })   // → { model }
+export const saveModel = (id, { name, bundle, _rev }) => send('PUT', `/api/trainer/models/${seg(id)}`, { name, bundle, _rev })   // → { model }
+export const deleteModel = id => send('DELETE', `/api/trainer/models/${seg(id)}`)
 
 // Joining with an invite code (public).
 export const joinInfo = code => api(`/api/join/${seg(code)}`)   // → { trainerName, studentName, shares }

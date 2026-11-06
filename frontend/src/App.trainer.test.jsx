@@ -15,8 +15,8 @@ vi.mock('./lib/sound.js', () => ({
 vi.mock('./lib/api.js', async importOriginal => ({
   ...await importOriginal(), api: vi.fn(() => Promise.resolve({})), beacon: vi.fn(),
 }))
-const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
-  routines: [{ id: 'r1', name: 'Draft push day', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } } }
+const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, program: { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
+  routines: [{ id: 'r1', name: 'Draft push day', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } }] } } }
 vi.mock('./lib/trainer-api.js', () => ({
   listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn(),
   getRx: vi.fn(async () => ({ rx: draftRx })), saveRxDraft: vi.fn(async () => ({ rx: draftRx })),
@@ -144,12 +144,12 @@ describe('an approved trainer moving through a student plan', () => {
     await until(nameField)
     expect(nameField().value).toBe('Edited day')
     saveRxDraft.mockReset()
-    saveRxDraft.mockImplementation(async (sid, bundle, rev) => ({ rx: { ...draftRx, _rev: rev + 1 } }))
+    saveRxDraft.mockImplementation(async (sid, program, rev) => ({ rx: { ...draftRx, _rev: rev + 1 } }))
     await backToList()
     await until(() => saveRxDraft.mock.calls.length > 0)
-    const [sid, bundle, rev] = saveRxDraft.mock.calls[0]
+    const [sid, program, rev] = saveRxDraft.mock.calls[0]
     expect(sid).toBe('abc')
-    expect(bundle.routines[0].name).toBe('Edited day')
+    expect(program.phases[0].bundle.routines[0].name).toBe('Edited day')
     expect(rev).toBe(3)
     expect(getRx).toHaveBeenCalledTimes(1)
   })

@@ -27,7 +27,7 @@ const bia = { id: 'b2', name: 'Bia', status: 'active', created: T, linkedAt: T }
 const ana = { id: 'a1', name: 'Ana', status: 'invited', created: T, linkedAt: null }
 const bundle = (ex = 1) => ({ opengym_plan: 1, unit: 'kg', week: {}, routines: [{ id: 'r1', name: 'Push', ex: Array.from({ length: ex }, () => ({ id: '0025' })) }], customEx: [] })
 const rx = ({ updated = T + 1000, current = 2, ex = 1 } = {}) => ({ rx: {
-  _rev: 4, draft: { bundle: bundle(ex), updated }, current,
+  _rev: 4, draft: { program: { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle: bundle(ex) }] }, updated }, current,
   versions: current ? [{ v: 1, at: T - 1000, note: '' }, { v: 2, at: T, note: 'x' }] : [],
 } })
 

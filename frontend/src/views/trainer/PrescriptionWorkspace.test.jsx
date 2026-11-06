@@ -17,7 +17,7 @@ vi.mock('../../lib/trainer-api.js', () => ({
 }))
 
 const draft = (extra = {}) => ({ opengym_plan: 1, unit: 'kg', week: { 1: ['r1'] }, routines: [{ id: 'r1', name: 'Push', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 100 }] }], customEx: [], ...extra })
-const rxOf = (rev, bundle = draft()) => ({ rx: { _rev: rev, draft: { bundle, updated: 1 }, current: null, versions: [] } })
+const rxOf = (rev, bundle = draft()) => ({ rx: { _rev: rev, draft: { program: { start: null, phases: [{ id: 'p1', name: '', weeks: 0, bundle }] }, updated: 1 }, current: null, versions: [] } })
 const conflict = () => Object.assign(new Error('the plan changed elsewhere'), { status: 409, data: { code: 'conflict', rx: rxOf(9).rx } })
 
 let store, host, root
@@ -59,7 +59,8 @@ describe('PrescriptionWorkspace', () => {
     expect(mocks.saveRxDraft).not.toHaveBeenCalled()
     await wait(1)
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
-    const [sid, bundle, rev] = mocks.saveRxDraft.mock.calls[0]
+    const [sid, program, rev] = mocks.saveRxDraft.mock.calls[0]
+    const bundle = program.phases[0].bundle
     expect(sid).toBe('abc'); expect(rev).toBe(5)
     expect(bundle).toMatchObject({ opengym_plan: 1, unit: 'kg', week: { 1: ['r1'] }, customEx: [] })
     expect(bundle.routines[0].name).toBe('B')
@@ -81,7 +82,7 @@ describe('PrescriptionWorkspace', () => {
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
     await act(async () => { release(rxOf(6)) }); await flush()
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(2)
-    expect(mocks.saveRxDraft.mock.calls[1][1].routines[0].name).toBe('B')
+    expect(mocks.saveRxDraft.mock.calls[1][1].phases[0].bundle.routines[0].name).toBe('B')
     expect(mocks.saveRxDraft.mock.calls[1][2]).toBe(6)
     await flush()
     expect(host.textContent).toContain('Saved')
@@ -122,7 +123,7 @@ describe('PrescriptionWorkspace', () => {
     expect(host.querySelector('[role="status"]').textContent).toContain('Could not save. Try again.')
     await act(async () => button('Try again').click()); await flush()
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(2)
-    expect(mocks.saveRxDraft.mock.calls[1][1].routines[0].name).toBe('Retry me')
+    expect(mocks.saveRxDraft.mock.calls[1][1].phases[0].bundle.routines[0].name).toBe('Retry me')
     expect(host.textContent).toContain('Saved')
   })
 
@@ -144,7 +145,7 @@ describe('PrescriptionWorkspace', () => {
     expect(store.getState().S.unit).toBe('kg')
     expect(store.getState().S.routines[0].ex[0].weight).toBeCloseTo(45, 0)
     rename('X'); await wait(800)
-    const bundle = mocks.saveRxDraft.mock.calls[0][1]
+    const bundle = mocks.saveRxDraft.mock.calls[0][1].phases[0].bundle
     expect(bundle.unit).toBe('kg')
     expect(bundle.routines[0].ex[0].weight).toBeCloseTo(45, 0)
   })
@@ -156,7 +157,7 @@ describe('PrescriptionWorkspace', () => {
     rename('Late'); await wait(100)
     act(() => root.unmount())
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
-    expect(mocks.saveRxDraft.mock.calls[0][1].routines[0].name).toBe('Late')
+    expect(mocks.saveRxDraft.mock.calls[0][1].phases[0].bundle.routines[0].name).toBe('Late')
     await act(async () => { await whenSaved('abc') })
     root = createRoot(host)   // afterEach unmounts again
   })
@@ -197,7 +198,7 @@ describe('PrescriptionWorkspace, one session per student', () => {
     await wait(800); await flush()
     expect(mocks.getRx).toHaveBeenCalledTimes(1)
     expect(mocks.saveRxDraft).toHaveBeenCalledTimes(3)
-    expect(mocks.saveRxDraft.mock.calls[2][1].routines[0].name).toBe('Offline edit')
+    expect(mocks.saveRxDraft.mock.calls[2][1].phases[0].bundle.routines[0].name).toBe('Offline edit')
     expect(mocks.saveRxDraft.mock.calls[2][2]).toBe(5)
     expect(host.textContent).toContain('Saved')
   })
