@@ -78,6 +78,16 @@ describe('copyRoutine', () => {
   })
 })
 
+describe('copyRoutine of a prescribed routine', () => {
+  it('drops the prescription marks, but keeps them on the student\'s own routine', () => {
+    const rx = copyRoutine({ ...routine, id: 'rx-r1', rx: { v: 2 }, excludeFromProgression: true })
+    expect(rx).not.toHaveProperty('rx')
+    expect(rx).not.toHaveProperty('excludeFromProgression')
+    const mine = copyRoutine({ ...routine, excludeFromProgression: true })
+    expect(mine.excludeFromProgression).toBe(true)
+  })
+})
+
 describe('copyRoutine of a copy', () => {
   it('numbers the copies instead of stacking suffixes', () => {
     const first = copyRoutine({ id: 'r', name: 'Push', ex: [] })

@@ -12,6 +12,9 @@ import { ownExerciseRest } from './supersetFlow.js'
 export function copyRoutine(routine, suffix = 'Copy') {
   const copy = structuredClone(routine)
   copy.id = uid()
+  // A copy of a trainer's routine is the student's own: not replaced by the next version, and
+  // it progresses like any other (the exclusion belongs to the prescription, not to the copy).
+  if (copy.rx) { delete copy.rx; delete copy.excludeFromProgression }
   // "Push (Copy)" copied again becomes "Push (Copy 2)", not "Push (Copy) (Copy)".
   const esc = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const m = new RegExp('^(.*) \\(' + esc + '(?: (\\d+))?\\)$').exec(routine.name || '')
