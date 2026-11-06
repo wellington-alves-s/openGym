@@ -2432,7 +2432,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Trainer: read a student's plan</span>
   </summary>
   <div class="ep-body">
-<p>The plan a trainer keeps for one student: the draft being edited and the list of published versions. The version bundles are left out (the document can be large); read one with <code>GET /api/trainer/students/{id}/rx/versions/{v}</code>. A student who never had a plan gets an empty draft, <code>_rev</code> 0 and no current version. Only for a student who has joined; another trainer's student, an unknown id and a malformed one all answer the same 404.</p>
+<p>The plan a trainer keeps for one student: the draft program being edited and the list of published versions. The version programs are left out (the document can be large); read one with <code>GET /api/trainer/students/{id}/rx/versions/{v}</code>. A student who never had a plan gets an empty draft, <code>_rev</code> 0 and no current version. Only for a student who has joined; another trainer's student, an unknown id and a malformed one all answer the same 404.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 <p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
@@ -2476,7 +2476,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Trainer: save a student's draft</span>
   </summary>
   <div class="ep-body">
-<p>Replaces the draft with a plan bundle (at most 30 routines, 60 exercises in each and 128 KB; no custom exercises). Published versions are not touched. <code>_rev</code> is the revision the caller last read: if someone saved since, the answer is a 409 with the current plan and nothing is written.</p>
+<p>Replaces the draft with a program: a start date and up to 24 phases, each phase a plan bundle (at most 30 routines, 60 exercises in each and 128 KB; no custom exercises) and the whole program at most 256 KB. The body carries <code>program</code>, or, for the stage 2a app, a bare <code>bundle</code>, which is kept as a program of one phase <code>p1</code>; when both come, <code>program</code> wins. Published versions are not touched. <code>_rev</code> is the revision the caller last read: if someone saved since, the answer is a 409 with the current plan and nothing is written.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 <p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
@@ -2485,18 +2485,39 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc">The student id from <code>GET /api/trainer/students</code>.</span>
   </div>
 </div>
-<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
-  <div class="prow">
-    <span class="p-name">bundle<em class="p-req" title="required">required</em></span>
-    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
-    <span class="p-desc"></span>
-  </div>
-  <div class="prow">
-    <span class="p-name">_rev<em class="p-req" title="required">required</em></span>
-    <span class="p-type">integer</span>
-    <span class="p-desc">The <code>_rev</code> of the plan as last read; 0 when there is none yet.</span>
-  </div>
-</div>
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p>
+<pre><code>{
+  &quot;program&quot;: {
+    &quot;start&quot;: &quot;2026-11-09&quot;,
+    &quot;phases&quot;: [
+      {
+        &quot;id&quot;: &quot;base&quot;,
+        &quot;name&quot;: &quot;Base&quot;,
+        &quot;weeks&quot;: 4,
+        &quot;bundle&quot;: {
+          &quot;opengym_plan&quot;: 1,
+          &quot;unit&quot;: &quot;kg&quot;,
+          &quot;week&quot;: {
+            &quot;1&quot;: &quot;rx-a1b2c3d4&quot;
+          },
+          &quot;routines&quot;: [
+            {
+              &quot;id&quot;: &quot;rx-a1b2c3d4&quot;,
+              &quot;name&quot;: &quot;Legs&quot;,
+              &quot;ex&quot;: [
+                {
+                  &quot;id&quot;: &quot;back_squat&quot;
+                }
+              ]
+            }
+          ],
+          &quot;customEx&quot;: []
+        }
+      }
+    ]
+  },
+  &quot;_rev&quot;: 0
+}</code></pre>
     <p class="ep-h">Responses</p>
     <div class="ptab">
   <div class="prow rrow">
@@ -2505,7 +2526,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc"><code>not-linked</code>; <code>bad-rev</code>; or the bundle is refused: <code>bad-bundle</code>, <code>too-big</code>, <code>too-many-routines</code>, <code>too-many-exercises</code> or <code>bad-week</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many routines&quot;}</code></span></span>
+    <span class="p-desc"><code>not-linked</code>; <code>bad-rev</code>; or the program is refused: <code>bad-program</code> (neither a program nor a bundle came, or it is not a program), <code>too-many-phases</code>, <code>bad-phase</code> (id, name or weeks), <code>bad-start</code> (not a real <code>YYYY-MM-DD</code> date or null), or a phase bundle: <code>bad-bundle</code>, <code>too-big</code>, <code>too-many-routines</code>, <code>too-many-exercises</code> or <code>bad-week</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many routines&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
@@ -2535,7 +2556,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Trainer: publish the draft as a new version</span>
   </summary>
   <div class="ep-body">
-<p>Copies the draft into the next numbered version and makes it the current one. At most 50 versions are kept; the oldest goes first, never the current one. A draft with no exercise cannot be published. <code>_rev</code> as in <code>PUT .../rx/draft</code>.</p>
+<p>Copies the draft program into the next numbered version and makes it the current one. At most 50 versions are kept; the oldest goes first, never the current one. A draft with no exercise in any phase cannot be published. <code>_rev</code> as in <code>PUT .../rx/draft</code>.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 <p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
@@ -2564,7 +2585,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc"><code>not-linked</code>; <code>bad-rev</code>; <code>empty-draft</code> (no exercise in the draft); or a draft that no longer passes the bundle checks.<span class="r-sig"><code>{&quot;error&quot;:&quot;empty draft&quot;}</code></span></span>
+    <span class="p-desc"><code>not-linked</code>; <code>bad-rev</code>; <code>empty-draft</code> (no exercise in the draft); or a draft that no longer passes the program checks (the codes of <code>PUT .../rx/draft</code>).<span class="r-sig"><code>{&quot;error&quot;:&quot;empty draft&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
@@ -2594,7 +2615,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Trainer: copy a published version back into the draft</span>
   </summary>
   <div class="ep-body">
-<p>Writes the bundle of version <code>v</code> into the draft. Nothing is published and the current version does not change. <code>_rev</code> as in <code>PUT .../rx/draft</code>.</p>
+<p>Writes the program of version <code>v</code> into the draft. Nothing is published and the current version does not change. <code>_rev</code> as in <code>PUT .../rx/draft</code>.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 <p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
@@ -2653,7 +2674,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Trainer: read one published version</span>
   </summary>
   <div class="ep-body">
-<p>One version with its bundle, the only place the bundles are served.</p>
+<p>One version with its program, the only place the programs are served.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 <p class="ep-h">Parameters</p><div class="ptab">
   <div class="prow">
@@ -2979,7 +3000,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Student: read the plan my trainer published</span>
   </summary>
   <div class="ep-body">
-<p>The current published version with its bundle, never the draft and never an older version. <code>{ v: null }</code> when nothing is published. The plan is always the caller's own. For a student account whose trainer is approved and active; any other caller gets the same 404 as a path that does not exist.</p>
+<p>The current published version with its program, never the draft and never an older version. A program of exactly one phase also carries that phase's <code>bundle</code>, for the stage 2a app; with several phases there is no <code>bundle</code> key. <code>{ v: null }</code> when nothing is published. The plan is always the caller's own. For a student account whose trainer is approved and active; any other caller gets the same 404 as a path that does not exist.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 
@@ -2987,7 +3008,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <div class="ptab">
   <div class="prow rrow">
     <span class="r-code s2">200</span>
-    <span class="p-desc">The current version, or <code>{ v: null }</code>.<span class="r-sig"><a href="#schema-RxVersion">RxVersion</a> | object</span></span>
+    <span class="p-desc">The current version, or <code>{ v: null }</code>.<span class="r-sig">object | object</span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
@@ -4644,6 +4665,62 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
 </details>
 
+<details class="ep sch" id="schema-RxPhase">
+  <summary>
+    <span class="sch-name"><code>RxPhase</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum"></span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Unique in the program.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">weeks<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer <span class="p-hint">(0&ndash;52)</span></span>
+    <span class="p-desc">How many weeks the phase lasts, 1 to 52. 0 only for the single phase of a program migrated from stage 2a, which has no length.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">bundle<em class="p-req" title="required">required</em></span>
+    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-RxProgram">
+  <summary>
+    <span class="sch-name"><code>RxProgram</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A start date and phases in order.</span>
+  </summary>
+  <div class="ep-body">
+<p>Week 1 starts on <code>start</code> and weeks count from there, seven days each; <code>null</code> means no date yet.</p>
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">start<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc">A real calendar date</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">phases<em class="p-req" title="required">required</em></span>
+    <span class="p-type"><a href="#schema-RxPhase">RxPhase</a>[]</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
 <details class="ep sch" id="schema-RxVersion">
   <summary>
     <span class="sch-name"><code>RxVersion</code></span>
@@ -4669,8 +4746,8 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc"></span>
   </div>
   <div class="prow">
-    <span class="p-name">bundle</span>
-    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
+    <span class="p-name">program</span>
+    <span class="p-type"><a href="#schema-RxProgram">RxProgram</a></span>
     <span class="p-desc"></span>
   </div>
 </div>
@@ -4684,7 +4761,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">The plan as the routes answer it.</span>
   </summary>
   <div class="ep-body">
-<p>The bundles of the versions are not in it.</p>
+<p>The programs of the versions are not in it.</p>
 <div class="ptab">
   <div class="prow">
     <span class="p-name">_rev</span>
@@ -4697,8 +4774,8 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc"></span>
   </div>
   <div class="prow">
-    <span class="p-name">draft.bundle</span>
-    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
+    <span class="p-name">draft.program</span>
+    <span class="p-type"><a href="#schema-RxProgram">RxProgram</a></span>
     <span class="p-desc"></span>
   </div>
   <div class="prow">

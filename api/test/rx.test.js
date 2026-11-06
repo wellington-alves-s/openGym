@@ -8,6 +8,8 @@ const bundle = (over = {}) => ({ ...EMPTY_BUNDLE(), routines: [routine()], week:
 const prog = (...bundles) => ({ start: null, phases: bundles.map((b, i) => ({ id: 'p' + (i + 1), name: 'Phase ' + (i + 1), weeks: 4, bundle: b })) });
 const code = fn => { try { fn(); } catch (e) { return e.code; } return null; };
 
+const saveBundle = (rx, b, now) => saveDraft(rx, programOf({ bundle: b }), now);   // saveDraft takes programs only; the routes wrap a 2a bundle
+
 describe('rx limits and empty values', () => {
   it('exposes the limits and empty shapes verbatim', () => {
     assert.deepEqual(RX_LIMITS, { routines: 30, exercises: 60, bytes: 131072, versions: 50, phases: 24, programBytes: 262144, weeks: 52 });
@@ -56,7 +58,7 @@ describe('saveDraft', () => {
     const rx = emptyRx();
     const snap = JSON.stringify(rx);
     const b = bundle();
-    const next = saveDraft(rx, b, 500);
+    const next = saveBundle(rx, b, 500);
     assert.equal(JSON.stringify(rx), snap);
     assert.deepEqual(next.draft, { program: programOf({ bundle: b }), updated: 500 });
     next.draft.program.phases[0].bundle.routines[0].name = 'changed';
@@ -64,13 +66,13 @@ describe('saveDraft', () => {
   });
 
   it('refuses an invalid bundle with its code', () => {
-    assert.equal(code(() => saveDraft(emptyRx(), bundle({ unit: 'st' }), 1)), 'bad-bundle');
-    assert.equal(code(() => saveDraft(emptyRx(), bundle({ week: { 1: ['zz'] } }), 1)), 'bad-week');
+    assert.equal(code(() => saveBundle(emptyRx(), bundle({ unit: 'st' }), 1)), 'bad-bundle');
+    assert.equal(code(() => saveBundle(emptyRx(), bundle({ week: { 1: ['zz'] } }), 1)), 'bad-week');
   });
 });
 
 describe('publishDraft', () => {
-  const publish = (rx, note, now) => publishDraft(saveDraft(rx, bundle({ routines: [routine('r1', 1 + (now % 3))] }), now), note, now);
+  const publish = (rx, note, now) => publishDraft(saveBundle(rx, bundle({ routines: [routine('r1', 1 + (now % 3))] }), now), note, now);
 
   it('numbers 1, 2, 3 and sets current', () => {
     let rx = emptyRx();
@@ -85,15 +87,15 @@ describe('publishDraft', () => {
 
   it('refuses a draft with no routine that has an exercise', () => {
     assert.equal(code(() => publishDraft(emptyRx(), '', 1)), 'empty-draft');
-    const rx = saveDraft(emptyRx(), bundle({ routines: [routine('r1', 0)], week: {} }), 1);
+    const rx = saveBundle(emptyRx(), bundle({ routines: [routine('r1', 0)], week: {} }), 1);
     assert.equal(code(() => publishDraft(rx, '', 2)), 'empty-draft');
   });
 
   it('trims the note and cuts it at 200; the draft stays equal to the published version', () => {
-    const rx = publishDraft(saveDraft(emptyRx(), bundle(), 5), '  ' + 'a'.repeat(300) + '  ', 6);
+    const rx = publishDraft(saveBundle(emptyRx(), bundle(), 5), '  ' + 'a'.repeat(300) + '  ', 6);
     assert.equal(rx.versions[0].note, 'a'.repeat(200));
-    assert.equal(publishDraft(saveDraft(emptyRx(), bundle(), 5), '  hi  ', 6).versions[0].note, 'hi');
-    assert.equal(publishDraft(saveDraft(emptyRx(), bundle(), 5), undefined, 6).versions[0].note, '');
+    assert.equal(publishDraft(saveBundle(emptyRx(), bundle(), 5), '  hi  ', 6).versions[0].note, 'hi');
+    assert.equal(publishDraft(saveBundle(emptyRx(), bundle(), 5), undefined, 6).versions[0].note, '');
     assert.deepEqual(rx.draft.program, rx.versions[0].program);
     rx.versions[0].program.phases[0].bundle.routines[0].name = 'changed';
     assert.equal(rx.draft.program.phases[0].bundle.routines[0].name, 'Push');   // the version is its own copy
@@ -109,7 +111,7 @@ describe('publishDraft', () => {
   });
 
   it('does not mutate its argument', () => {
-    const rx = saveDraft(emptyRx(), bundle(), 1);
+    const rx = saveBundle(emptyRx(), bundle(), 1);
     const snap = JSON.stringify(rx);
     publishDraft(rx, 'x', 2);
     assert.equal(JSON.stringify(rx), snap);
@@ -118,8 +120,8 @@ describe('publishDraft', () => {
 
 describe('restoreVersion, versionOf, currentOf, rxView', () => {
   const two = () => {
-    let rx = publishDraft(saveDraft(emptyRx(), bundle({ unit: 'kg' }), 1), 'one', 2);
-    rx = publishDraft(saveDraft(rx, bundle({ unit: 'lb' }), 3), 'two', 4);
+    let rx = publishDraft(saveBundle(emptyRx(), bundle({ unit: 'kg' }), 1), 'one', 2);
+    rx = publishDraft(saveBundle(rx, bundle({ unit: 'lb' }), 3), 'two', 4);
     return rx;
   };
 
@@ -253,9 +255,10 @@ describe('the program in the document', () => {
     assert.equal(code(() => saveDraft(emptyRx(), prog(bundle({ unit: 'st' })), 1)), 'bad-bundle');
   });
 
-  it('saveDraft still takes a bare bundle (what the routes pass until they speak program)', () => {
-    assert.deepEqual(saveDraft(emptyRx(), bundle(), 1).draft.program, programOf({ bundle: bundle() }));
-    assert.equal(code(() => saveDraft(emptyRx(), 'nope', 1)), 'bad-bundle');
+  it('saveDraft reads a malformed program as bad-program, never as a bundle', () => {
+    assert.equal(code(() => saveDraft(emptyRx(), bundle(), 1)), 'bad-program');
+    assert.equal(code(() => saveDraft(emptyRx(), 'nope', 1)), 'bad-program');
+    assert.equal(code(() => saveDraft(emptyRx(), { start: null, phases: [] }, 1)), 'bad-program');
   });
 
   it('publishDraft numbers 1, 2 and keeps the program', () => {

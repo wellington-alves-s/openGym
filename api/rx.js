@@ -71,12 +71,11 @@ export function checkProgram(p) {
   return null;
 }
 
-// `program` is a program; a bare bundle is still read as one phase (routes that have not moved yet pass that).
+// `program` must be a program; a 2a bare bundle is wrapped by the route (programOf) before it gets here.
 export function saveDraft(rx, program, now) {
-  const p = isObj(program) && Array.isArray(program.phases) ? clone(program) : programOf({ bundle: program });
-  const bad = checkProgram(p);
+  const bad = checkProgram(program);
   if (bad) throw fail(bad);
-  return { ...clone(rx), draft: { program: p, updated: now } };
+  return { ...clone(rx), draft: { program: clone(program), updated: now } };
 }
 
 export function publishDraft(rx, note, now) {

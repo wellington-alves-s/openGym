@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from './trainer-access.js';
 import { validId, readStudent, listStudents, writeStudent, removeStudent, readRx, writeRx } from './trainer-store.js';
-import { emptyRx, saveDraft, publishDraft, restoreVersion, rxView, versionOf, currentOf } from './rx.js';
+import { emptyRx, programOf, saveDraft, publishDraft, restoreVersion, rxView, versionOf, currentOf } from './rx.js';
 import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
 const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink|\/rx(?:\/draft|\/publish|\/restore|\/versions\/(\d{1,9}))?)?$/;
@@ -296,7 +296,8 @@ export function trainerRoutes({
     },
 
     'PUT /api/trainer/students/{id}/rx/draft': async (req, res) => {
-      const done = await rxChange(req, res, (rx, body) => saveDraft(rx, body.bundle, Date.now())); if (!done) return;
+      // `program` wins; the stage 2a app still sends a bare `bundle`, kept as the one phase p1.
+      const done = await rxChange(req, res, (rx, body) => saveDraft(rx, body.program !== undefined ? body.program : body.bundle !== undefined ? programOf({ bundle: body.bundle }) : undefined, Date.now())); if (!done) return;
       json(res, 200, { rx: rxView(done.rx) });
     },
 
@@ -319,7 +320,7 @@ export function trainerRoutes({
       const g = rxGuard(req, res); if (!g) return;
       const ver = versionOf(rxOf(g), req.rxVersion);
       if (!ver) return json(res, 404, { error: 'no such version', code: 'no-such-version' });
-      json(res, 200, { version: { v: ver.v, at: ver.at, note: ver.note, bundle: ver.bundle } });
+      json(res, 200, { version: ver });
     },
 
     /* ---------- the student's side ---------- */
@@ -341,7 +342,10 @@ export function trainerRoutes({
 
     'GET /api/student/rx': async (req, res) => {
       const cur = studentRx(req, res); if (!cur) return;
-      json(res, 200, cur.v == null ? { v: null } : { v: cur.v, at: cur.at, note: cur.note, bundle: cur.bundle });
+      if (cur.v == null) return json(res, 200, { v: null });
+      const { v, at, note, program } = cur;
+      // The stage 2a app reads `bundle`: a single-phase program still carries it.
+      json(res, 200, { v, at, note, program, ...(program.phases.length === 1 ? { bundle: program.phases[0].bundle } : {}) });
     },
 
     'PUT /api/student/consent': async (req, res) => {

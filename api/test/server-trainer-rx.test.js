@@ -29,7 +29,9 @@ const bundle = (...exIds) => ({
 });
 const rxFile = s => path.join(s.dir, 'trainers/trainer01/rx/student01.json');
 const onDisk = s => JSON.parse(fs.readFileSync(rxFile(s), 'utf8'));
-const put = (s, b, _rev, as = 'trainer01') => s.call(base + '/draft', { method: 'PUT', body: { bundle: b, _rev }, as });
+const prog = (...bundles) => ({ start: null, phases: bundles.map((b, i) => ({ id: 'p' + (i + 1), name: 'Phase ' + (i + 1), weeks: 4, bundle: b })) });
+const put = (s, b, _rev, as = 'trainer01') => s.call(base + '/draft', { method: 'PUT', body: { program: prog(b), _rev }, as });
+const putOld = (s, b, _rev) => s.call(base + '/draft', { method: 'PUT', body: { bundle: b, _rev }, as: 'trainer01' });
 const publish = (s, _rev, note = '') => s.call(base + '/publish', { method: 'POST', body: { note, _rev }, as: 'trainer01' });
 
 test('a student who never had a plan reads an empty draft and no current version', async t => {
@@ -38,7 +40,7 @@ test('a student who never had a plan reads an empty draft and no current version
   assert.equal(r.status, 200);
   assert.equal(r.body.rx._rev, 0);
   assert.equal(r.body.rx.current, null);
-  assert.deepEqual(r.body.rx.draft.bundle.routines, []);
+  assert.deepEqual(r.body.rx.draft.program.phases[0].bundle.routines, []);
   assert.deepEqual(r.body.rx.versions, []);
 });
 
@@ -47,13 +49,13 @@ test('saving the draft needs the revision it was read at; a stale one is a 409 w
   const a = await put(s, bundle('ex1'), 0);
   assert.equal(a.status, 200);
   assert.equal(a.body.rx._rev, 1);
-  assert.equal(onDisk(s).draft.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal(onDisk(s).draft.program.phases[0].bundle.routines[0].ex[0].id, 'ex1');
   const before = fs.readFileSync(rxFile(s), 'utf8');
   const b = await put(s, bundle('ex2'), 0);
   assert.equal(b.status, 409);
   assert.equal(b.body.code, 'conflict');
   assert.equal(b.body.rx._rev, 1);
-  assert.equal(b.body.rx.draft.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal(b.body.rx.draft.program.phases[0].bundle.routines[0].ex[0].id, 'ex1');
   assert.equal(fs.readFileSync(rxFile(s), 'utf8'), before);
 });
 
@@ -65,7 +67,8 @@ test('a bundle that breaks the limits is a 400 with its code and changes nothing
   const r = await put(s, many, 0);
   assert.deepEqual([r.status, r.body.code], [400, 'too-many-routines']);
   assert.equal(fs.existsSync(rxFile(s)), false);
-  assert.equal((await put(s, 'nope', 0)).body.code, 'bad-bundle');
+  assert.equal((await put(s, 'nope', 0)).body.code, 'bad-bundle');   // a phase whose bundle is not one
+  assert.equal((await putOld(s, 'nope', 0)).body.code, 'bad-bundle');
   assert.equal((await put(s, bundle('ex1'), 'x')).status, 400);   // _rev has to be a number
 });
 
@@ -96,7 +99,7 @@ test('restoring a version writes only the draft; versions/{v} serves the bundle,
   rev = (await put(s, bundle('ex9'), rev)).body.rx._rev;
   const r = await s.call(base + '/restore', { method: 'POST', body: { v: 1, _rev: rev }, as: 'trainer01' });
   assert.equal(r.status, 200);
-  assert.equal(r.body.rx.draft.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal(r.body.rx.draft.program.phases[0].bundle.routines[0].ex[0].id, 'ex1');
   assert.equal(r.body.rx.current, 1);
   assert.equal(r.body.rx.versions.length, 1);
   assert.equal(onDisk(s).versions.length, 1);
@@ -106,8 +109,8 @@ test('restoring a version writes only the draft; versions/{v} serves the bundle,
   assert.equal((await s.call(base + '/restore', { method: 'POST', body: { v: 'x', _rev: r.body.rx._rev }, as: 'trainer01' })).status, 400);
   const v1 = await s.call(base + '/versions/1', { as: 'trainer01' });
   assert.equal(v1.status, 200);
-  assert.deepEqual(Object.keys(v1.body.version).sort(), ['at', 'bundle', 'note', 'v']);
-  assert.equal(v1.body.version.bundle.routines[0].ex[0].id, 'ex1');
+  assert.deepEqual(Object.keys(v1.body.version).sort(), ['at', 'note', 'program', 'v']);
+  assert.equal(v1.body.version.program.phases[0].bundle.routines[0].ex[0].id, 'ex1');
   assert.equal((await s.call(base + '/versions/9', { as: 'trainer01' })).status, 404);
   assert.equal((await s.call(base + '/versions/abc', { as: 'trainer01' })).status, 404);
 });
@@ -127,7 +130,7 @@ test('a stale publish or restore is a 409 and leaves the file as it was', async 
 const ROUTES = [
   ['GET', base], ['PUT', base + '/draft'], ['POST', base + '/publish'], ['POST', base + '/restore'], ['GET', base + '/versions/1']
 ];
-const bodyFor = p => p.endsWith('/draft') ? { bundle: bundle('ex1'), _rev: 0 } : { v: 1, note: '', _rev: 0 };
+const bodyFor = p => p.endsWith('/draft') ? { program: prog(bundle('ex1')), _rev: 0 } : { v: 1, note: '', _rev: 0 };
 
 test('who may touch the plan: another trainer and a student get 404, nobody 401, an unlinked-yet student 400', async t => {
   const s = await startServer(t, ON);
@@ -158,4 +161,70 @@ test('with trainer mode off every plan route is a plain 404', async t => {
     const r = await s.call(p, { method, body: method === 'GET' ? undefined : bodyFor(p), as: 'trainer01' });
     assert.equal(r.status, 404, `${method} ${p}`);
   }
+});
+
+test('PUT draft takes a program and answers with it', async t => {
+  const s = await startServer(t, ON);
+  const p = { start: '2026-11-09', phases: [{ id: 'base', name: 'Base', weeks: 4, bundle: bundle('ex1') }, { id: 'peak', name: 'Peak', weeks: 2, bundle: bundle('ex2') }] };
+  const r = await s.call(base + '/draft', { method: 'PUT', body: { program: p, _rev: 0 }, as: 'trainer01' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.rx.draft.program, p);
+  assert.deepEqual(onDisk(s).draft.program, p);
+});
+
+test('the stage 2a body { bundle } is wrapped as a one-phase program p1; program wins when both come', async t => {
+  const s = await startServer(t, ON);
+  const r = await putOld(s, bundle('ex1'), 0);
+  assert.equal(r.status, 200);
+  const ph = r.body.rx.draft.program.phases;
+  assert.deepEqual(ph.map(x => x.id), ['p1']);
+  assert.equal(ph[0].bundle.routines[0].ex[0].id, 'ex1');
+  const both = await s.call(base + '/draft', { method: 'PUT', body: { program: prog(bundle('exP')), bundle: bundle('exB'), _rev: r.body.rx._rev }, as: 'trainer01' });
+  assert.equal(both.status, 200);
+  assert.equal(both.body.rx.draft.program.phases[0].bundle.routines[0].ex[0].id, 'exP');
+});
+
+test('a body with neither program nor bundle, or a bad program, is a 400 with its code and writes nothing', async t => {
+  const s = await startServer(t, ON);
+  const send = body => s.call(base + '/draft', { method: 'PUT', body, as: 'trainer01' });
+  const code = async body => { const r = await send(body); assert.equal(r.status, 400); return r.body.code; };
+  assert.equal(await code({ _rev: 0 }), 'bad-program');
+  assert.equal(await code({ program: 'x', _rev: 0 }), 'bad-program');
+  assert.equal(await code({ program: { start: null, phases: [] }, _rev: 0 }), 'bad-program');
+  const many = prog(...Array.from({ length: 25 }, () => bundle('ex1')));
+  assert.equal(await code({ program: many, _rev: 0 }), 'too-many-phases');
+  assert.equal(await code({ program: { ...prog(bundle('ex1')), start: '2026-02-30' }, _rev: 0 }), 'bad-start');
+  const dup = prog(bundle('ex1'), bundle('ex1')); dup.phases[1].id = 'p1';
+  assert.equal(await code({ program: dup, _rev: 0 }), 'bad-phase');
+  assert.equal(fs.existsSync(rxFile(s)), false);
+});
+
+const oldDoc = (current) => JSON.stringify({
+  _rev: 3, draft: { bundle: bundle('old-draft'), updated: 5 }, current,
+  versions: [{ v: 1, at: 10, note: 'one', bundle: bundle('old-v1') }]
+});
+
+test('a stage 2a file on disk reads as a one-phase program, and saving rewrites it in the new shape', async t => {
+  const s = await startServer(t, { ...ON, files: { ...files, 'trainers/trainer01/rx/student01.json': oldDoc(1) } });
+  const r = await s.call(base, { as: 'trainer01' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.rx.draft.program.phases.length, 1);
+  assert.equal(r.body.rx.draft.program.phases[0].bundle.routines[0].ex[0].id, 'old-draft');
+  const v = await s.call(base + '/versions/1', { as: 'trainer01' });
+  assert.equal(v.body.version.program.phases[0].bundle.routines[0].ex[0].id, 'old-v1');
+  assert.equal(v.body.version.bundle, undefined);
+  const w = await put(s, bundle('new'), 3);
+  assert.equal(w.status, 200);
+  assert.equal(onDisk(s).draft.bundle, undefined);
+  assert.equal(onDisk(s).draft.program.phases[0].bundle.routines[0].ex[0].id, 'new');
+});
+
+test('publishing a two-phase program numbers the version and keeps both phases', async t => {
+  const s = await startServer(t, ON);
+  const w = await s.call(base + '/draft', { method: 'PUT', body: { program: prog(bundle('ex1'), bundle('ex2')), _rev: 0 }, as: 'trainer01' });
+  const p = await publish(s, w.body.rx._rev);
+  assert.deepEqual([p.status, p.body.v], [200, 1]);
+  assert.equal(onDisk(s).versions[0].program.phases.length, 2);
+  const v = await s.call(base + '/versions/1', { as: 'trainer01' });
+  assert.equal(v.body.version.program.phases.length, 2);
 });
