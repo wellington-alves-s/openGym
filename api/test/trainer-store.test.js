@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validId, readStudent, listStudents, writeStudent, removeStudent, removeTrainerDir } from '../trainer-store.js';
+import { validId, readStudent, listStudents, writeStudent, removeStudent, removeTrainerDir, readRx, writeRx, removeRx } from '../trainer-store.js';
 
 const T = 'trainer-0001';
 const rec = (over = {}) => ({ id: 'student-0001', name: 'Ana', status: 'invited', created: 1000, ...over });
@@ -58,6 +58,47 @@ describe('trainer store', () => {
     assert.equal(removeStudent(dir, T, 'student-0001'), true);
     assert.equal(readStudent(dir, T, 'student-0001'), null);
     assert.equal(removeStudent(dir, T, 'student-0001'), false);
+  });
+
+  it('writeRx creates rx/, readRx gives the same document back, and _rev goes up on every write', () => {
+    const doc = { draft: { bundle: { routines: [] }, updated: 1 }, versions: [], current: null };
+    const a = writeRx(dir, T, 'student-0001', doc);
+    assert.equal(a._rev, 1);
+    assert.deepEqual(readRx(dir, T, 'student-0001'), a);
+    assert.ok(fs.existsSync(path.join(dir, 'trainers', T, 'rx', 'student-0001.json')));
+    assert.equal(writeRx(dir, T, 'student-0001', { ...a, current: 3 })._rev, 2);
+    assert.equal(readRx(dir, T, 'student-0001').current, 3);
+    assert.equal(readRx(dir, T, 'student-0002'), null);
+  });
+
+  it('hostile ids read null from rx, throw on write, and touch nothing outside', () => {
+    for (const id of ['..', '../x', 'a/b', '', 'short', null, {}]) {
+      assert.equal(readRx(dir, T, id), null, String(id));
+      assert.equal(readRx(dir, id, 'student-0001'), null, String(id));
+      assert.throws(() => writeRx(dir, T, id, {}), String(id));
+      assert.throws(() => writeRx(dir, id, 'student-0001', {}), String(id));
+      assert.equal(removeRx(dir, T, id), false, String(id));
+    }
+    assert.deepEqual(allFiles(dir), []);
+  });
+
+  it('removeRx deletes and answers true, then false; removeStudent takes the rx too', () => {
+    writeRx(dir, T, 'student-0001', {});
+    assert.equal(removeRx(dir, T, 'student-0001'), true);
+    assert.equal(readRx(dir, T, 'student-0001'), null);
+    assert.equal(removeRx(dir, T, 'student-0001'), false);
+    writeStudent(dir, T, rec());
+    writeRx(dir, T, 'student-0001', {});
+    writeRx(dir, T, 'student-0002', {});
+    removeStudent(dir, T, 'student-0001');
+    assert.equal(readRx(dir, T, 'student-0001'), null);
+    assert.notEqual(readRx(dir, T, 'student-0002'), null);
+  });
+
+  it('removeTrainerDir also takes the rx folder', () => {
+    writeRx(dir, T, 'student-0001', {});
+    assert.equal(removeTrainerDir(dir, T), true);
+    assert.equal(readRx(dir, T, 'student-0001'), null);
   });
 
   it('removeTrainerDir takes the whole trainer folder, and nothing for a hostile id', () => {

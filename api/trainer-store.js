@@ -48,8 +48,33 @@ export function removeTrainerDir(dir, trainerId) {
   return true;
 }
 
+// The prescription document, one file per student: `<dir>/trainers/<trainerId>/rx/<studentId>.json`.
+const rxDir = (dir, trainerId) => path.join(dir, 'trainers', trainerId, 'rx');
+
+export function readRx(dir, trainerId, studentId) {
+  if (!validId(trainerId) || !validId(studentId)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(rxDir(dir, trainerId), studentId + '.json'), 'utf8')); }
+  catch { return null; }
+}
+
+export function writeRx(dir, trainerId, studentId, rx) {
+  if (!validId(trainerId) || !validId(studentId)) throw new Error('bad-id');
+  const folder = rxDir(dir, trainerId);
+  fs.mkdirSync(folder, { recursive: true });
+  const next = { ...rx, _rev: (readRx(dir, trainerId, studentId)?._rev || 0) + 1 };
+  atomicWrite(path.join(folder, studentId + '.json'), JSON.stringify(next), 0o600);
+  return next;
+}
+
+export function removeRx(dir, trainerId, studentId) {
+  if (!validId(trainerId) || !validId(studentId)) return false;
+  try { fs.unlinkSync(path.join(rxDir(dir, trainerId), studentId + '.json')); return true; }
+  catch { return false; }
+}
+
 export function removeStudent(dir, trainerId, studentId) {
   if (!validId(trainerId) || !validId(studentId)) return false;
+  removeRx(dir, trainerId, studentId);
   try { fs.unlinkSync(path.join(studentsDir(dir, trainerId), studentId + '.json')); return true; }
   catch { return false; }
 }
