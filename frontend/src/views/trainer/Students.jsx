@@ -1,6 +1,7 @@
 // The trainer's students: who was invited, who is linked, who left. A new invite link is shown by a
 // sheet (components/NewStudentSheet.jsx) and is not kept here.
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUI } from '../../store/useUI.js'
 import { t } from '../../lib/i18n.js'
 import { fmtDate, isoOf } from '../../lib/format.js'
@@ -9,8 +10,9 @@ import { confirmSheet } from '../../sheets.jsx'
 import { Button } from '../../components/ui.jsx'
 import NewStudentSheet, { InviteLinkSheet } from '../../components/NewStudentSheet.jsx'
 import { joinLinkUrl } from '../../lib/student-link.js'
+import { tappable } from '../../lib/use-sheet-keyboard.js'
 
-const STATUS = {
+export const STATUS = {
   invited: () => t('Invite pending'),
   active: () => t('Active'),
   unlinked: () => t('Unlinked'),
@@ -19,6 +21,7 @@ const when = s => fmtDate(isoOf(new Date(s.linkedAt || s.created)), false, true)
 const say = e => useUI.getState().toast(e?.data?.error || e?.message || t('Could not save. Try again.'))
 
 export default function Students() {
+  const nav = useNavigate()
   // null while loading, 'failed' when the list could not be read, else the students.
   const [list, setList] = useState(null)
   const load = useCallback(async () => {
@@ -67,11 +70,14 @@ export default function Students() {
       : !list.length ? <div className="card muted">{t('No students yet. Add your first student to send them an invite link.')}</div>
       : <ul className="card" style={{ listStyle: 'none', margin: 0, padding: 0 }} aria-label={t('Students')}>
         {list.map((s, i) => <li key={s.id} style={{ padding: '12px 14px', borderTop: i ? '1px solid var(--separator, rgba(128,128,128,.2))' : 'none' }}>
-          <div className="row between">
-            <strong>{s.name}</strong>
-            <span className="small dim">{STATUS[s.status]?.() || ''}</span>
+          {/* A linked student's name opens their page (the plan); the buttons below keep their own taps. */}
+          <div {...(s.status === 'active' ? tappable(() => nav('/students/' + s.id)) : {})}>
+            <div className="row between">
+              <strong>{s.name}</strong>
+              <span className="small dim">{STATUS[s.status]?.() || ''}</span>
+            </div>
+            <div className="small dim">{when(s)}</div>
           </div>
-          <div className="small dim">{when(s)}</div>
           {(s.status === 'invited' || s.status === 'active') && <div className="row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
             {s.status === 'invited' && <>
               <Button size="sm" aria-label={t('New link for {0}', s.name)} aria-disabled={making === s.id} onClick={() => newLink(s)}>{t('New link')}</Button>

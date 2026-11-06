@@ -45,6 +45,9 @@ import Join from './views/Join.jsx'
 import { joinTokenFromSearch, stripJoinFromUrl } from './lib/student-link.js'
 import TrainerPending from './views/TrainerPending.jsx'
 import Students from './views/trainer/Students.jsx'
+import StudentDetail from './views/trainer/StudentDetail.jsx'
+import PrescriptionWorkspace from './views/trainer/PrescriptionWorkspace.jsx'
+import PrescriptionPlan from './views/trainer/PrescriptionPlan.jsx'
 import { isPendingTrainer, isApprovedTrainer, isStudent, homeFor } from './lib/roles.js'
 import PrescriptionSync from './components/PrescriptionSync.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
@@ -318,6 +321,12 @@ function Shell() {
     // the lifter's first-launch steps, which are not theirs.
     <Routes location={l}>
       <Route path="/students" element={<Students />} />
+      <Route path="/students/:sid" element={<StudentDetail />} />
+      {/* A student's draft plan: the list and the routine editor, on the workspace store. */}
+      <Route path="/students/:sid/plan" element={<PrescriptionWorkspace />}>
+        <Route index element={<PrescriptionPlan />} />
+        <Route path=":id" element={<RoutineEdit />} />
+      </Route>
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
       {/* The owner can be a trainer too and keeps the dashboard that approves the others. */}

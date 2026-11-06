@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Students from './Students.jsx'
 
@@ -35,7 +36,12 @@ function mount(el) {
   document.body.appendChild(host)
   const root = createRoot(host)
   mounted.push({ root, host })
-  act(() => root.render(el))
+  act(() => root.render(<MemoryRouter initialEntries={['/students']}>
+    <Routes>
+      <Route path="/students" element={el} />
+      <Route path="/students/:sid" element={<p>student page</p>} />
+    </Routes>
+  </MemoryRouter>))
   return host
 }
 const settle = () => act(() => new Promise(r => setTimeout(r, 0)))
@@ -115,6 +121,16 @@ describe('Students', () => {
     expect(mocks.unlinkStudent).toHaveBeenCalledWith('b2')
     await settle()
     expect(mocks.listStudents).toHaveBeenCalledTimes(2)
+  })
+
+  it('a linked student row opens their page; the others do not open anything', async () => {
+    mocks.listStudents.mockResolvedValue([ana, bia, caio])
+    const host = mount(<Students />)
+    await settle()
+    expect(row(host, 'Ana').querySelector('[role="button"]')).toBeNull()
+    expect(row(host, 'Caio').querySelector('[role="button"]')).toBeNull()
+    act(() => row(host, 'Bia').querySelector('[role="button"]').click())
+    expect(host.textContent).toContain('student page')
   })
 
   it('says what the server said when an action fails', async () => {

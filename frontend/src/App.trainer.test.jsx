@@ -13,7 +13,12 @@ vi.mock('./lib/sound.js', () => ({
 vi.mock('./lib/api.js', async importOriginal => ({
   ...await importOriginal(), api: vi.fn(() => Promise.resolve({})), beacon: vi.fn(),
 }))
-vi.mock('./lib/trainer-api.js', () => ({ listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn() }))
+const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
+  routines: [{ id: 'r1', name: 'Draft push day', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } } }
+vi.mock('./lib/trainer-api.js', () => ({
+  listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn(),
+  getRx: vi.fn(async () => ({ rx: draftRx })), saveRxDraft: vi.fn(async () => ({ rx: draftRx })),
+}))
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 let host, root, original
 
@@ -52,6 +57,18 @@ describe('an approved trainer', () => {
     expect(window.location.hash).toBe('#/settings')
     await open('#/settings/units')
     expect(window.location.hash).toBe('#/settings/units')
+  })
+
+  it('reaches a student’s draft routine in the editor, with Students lit in the bar', async () => {
+    signIn(approved)
+    await open('#/students/abc/plan/r1')
+    // The draft, then the lazy editor chunk.
+    const nameField = () => [...host.querySelectorAll('input')].find(i => i.value === 'Draft push day')
+    for (let i = 0; i < 40 && !nameField(); i++) await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(window.location.hash).toBe('#/students/abc/plan/r1')
+    expect(nameField()).toBeTruthy()
+    expect(host.querySelector('#tabbar button.on').textContent).toBe('Students')
+    expect(useStore.getState().S.routines.some(r => r.id === 'r1')).toBe(false)
   })
 
   it('has the two-tab bar, and skips the lifter onboarding and permission steps', async () => {

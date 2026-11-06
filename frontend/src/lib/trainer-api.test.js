@@ -154,3 +154,34 @@ describe('the plan a student reads', () => {
     expect(lastCall()[0]).toBe('/api/student/rx')
   })
 })
+
+describe('the plan a trainer prescribes', () => {
+  it('reads the draft and the versions', async () => {
+    api.mockResolvedValueOnce({ rx: { _rev: 2 } })
+    expect(await t.getRx('s1')).toEqual({ rx: { _rev: 2 } })
+    expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx')
+    expect(lastCall()[1]?.method || 'GET').toBe('GET')
+  })
+
+  it('saves the draft, publishes and restores, each with the revision it last saw', async () => {
+    const bundle = { opengym_plan: 1, unit: 'kg', week: {}, routines: [], customEx: [] }
+    await t.saveRxDraft('s1', bundle, 2)
+    expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx/draft')
+    expect(lastCall()[1].method).toBe('PUT')
+    expect(sent()).toEqual({ bundle, _rev: 2 })
+    api.mockResolvedValueOnce({ rx: { _rev: 4 }, v: 1 })
+    expect((await t.publishRx('s1', 'week one', 3)).v).toBe(1)
+    expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx/publish')
+    expect(lastCall()[1].method).toBe('POST')
+    expect(sent()).toEqual({ note: 'week one', _rev: 3 })
+    await t.restoreRx('s1', 1, 4)
+    expect(lastCall()[0]).toBe('/api/trainer/students/s1/rx/restore')
+    expect(lastCall()[1].method).toBe('POST')
+    expect(sent()).toEqual({ v: 1, _rev: 4 })
+  })
+
+  it('lets a 409 through with the current plan on it', async () => {
+    api.mockRejectedValueOnce(Object.assign(new Error('the plan changed elsewhere'), { status: 409, data: { code: 'conflict', rx: { _rev: 9 } } }))
+    await expect(t.saveRxDraft('s1', {}, 1)).rejects.toMatchObject({ status: 409, data: { rx: { _rev: 9 } } })
+  })
+})
