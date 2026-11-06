@@ -22,6 +22,10 @@ export function createWorkspaceStore(ownS, bundle, { backTo } = {}) {
       fn(draft)
       set({ S: { ...cur, routines: draft.routines, week: draft.week } })
     },
+    // Another phase of a program in the same store (lib/draft-session.js): the editor holds this store.
+    setPhase(next, backTo) {
+      set({ S: { ...get().S, routines: structuredClone(next.routines), week: structuredClone(next.week), unit: next.unit }, backTo })
+    },
     autoBackupNow() {},
   }))
 }

@@ -40,6 +40,20 @@ describe('createWorkspaceStore', () => {
     expect(ownS.routines.map(r => r.id)).toEqual(['mine'])
     expect(() => store.getState().autoBackupNow()).not.toThrow()
   })
+
+  it('setPhase shows another plan in the same store, keeping the trainer settings', () => {
+    const store = createWorkspaceStore(own(), bundle(), { backTo: '/a' })
+    const next = { ...bundle(), unit: 'lb', week: { 4: ['b'] }, routines: [{ id: 'b', name: 'B', ex: [] }] }
+    store.getState().setPhase(next, '/b')
+    const { S, backTo } = store.getState()
+    expect(backTo).toBe('/b')
+    expect(S.routines).toEqual(next.routines)
+    expect(S.routines).not.toBe(next.routines)
+    expect(S.week).toEqual({ 4: ['b'] })
+    expect(S.unit).toBe('lb')
+    expect(S.workouts).toEqual([])
+    expect(S.wc).toEqual({ swipeSets: true })
+  })
 })
 
 describe('bundleOf', () => {
