@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.jsx'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { getRx, saveRxDraft } from './lib/trainer-api.js'
+import { getModel, getRx, saveRxDraft } from './lib/trainer-api.js'
 import { dropSession } from './views/trainer/PrescriptionWorkspace.jsx'
+import { dropSession as dropModel } from './views/trainer/ModelWorkspace.jsx'
 
 vi.mock('./lib/sound.js', () => ({
   setPlayOnSilent: vi.fn(), setVibrate: vi.fn(), setAlarmBuzzer: vi.fn(),
@@ -22,6 +23,9 @@ const draftRx = { _rev: 3, current: null, versions: [], draft: { updated: 1, pro
 vi.mock('./lib/trainer-api.js', () => ({
   listStudents: vi.fn(async () => []), studentRxRev: vi.fn(async () => ({ v: null })), studentRx: vi.fn(),
   getRx: vi.fn(async () => ({ rx: draftRx })), saveRxDraft: vi.fn(async () => ({ rx: draftRx })),
+  getModel: vi.fn(async () => ({ model: { id: 'm1', name: 'Base', _rev: 1, updated: 1, bundle: { opengym_plan: 1, unit: 'kg', week: {}, customEx: [],
+    routines: [{ id: 'r1', name: 'Model day', emoji: 'dumbbell', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }] } } })),
+  saveModel: vi.fn(), listModels: vi.fn(async () => []),
 }))
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 let host, root, original
@@ -40,6 +44,7 @@ afterEach(() => {
   useStore.setState(original)
   localStorage.clear()
   dropSession('abc')
+  dropModel('m1')
 })
 
 const signIn = (user, extra = {}) => useStore.setState({ S: structuredClone(DEF), user, ready: true, boot: vi.fn(), ...extra })
@@ -76,10 +81,21 @@ describe('an approved trainer', () => {
     expect(useStore.getState().S.routines.some(r => r.id === 'r1')).toBe(false)
   })
 
-  it('has the two-tab bar, and skips the lifter onboarding and permission steps', async () => {
+  it('reaches a routine of a model in the editor, with Models lit in the bar', async () => {
+    signIn(approved)
+    await open('#/models/m1/plan/r1')
+    const nameField = () => [...host.querySelectorAll('input')].find(i => i.value === 'Model day')
+    for (let i = 0; i < 40 && !nameField(); i++) await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(window.location.hash).toBe('#/models/m1/plan/r1')
+    expect(nameField()).toBeTruthy()
+    expect(getModel).toHaveBeenCalledWith('m1')
+    expect(host.querySelector('#tabbar button.on').textContent).toBe('Models')
+  })
+
+  it('has the three-tab bar, and skips the lifter onboarding and permission steps', async () => {
     signIn(approved, { needsMobileOnboarding: true, permSteps: true })
     await open('#/students')
-    expect([...host.querySelectorAll('#tabbar button')].map(b => b.textContent)).toEqual(['Students', 'Profile'])
+    expect([...host.querySelectorAll('#tabbar button')].map(b => b.textContent)).toEqual(['Students', 'Models', 'Profile'])
     expect(host.textContent).toContain('No students yet.')
   })
 })
@@ -93,6 +109,16 @@ describe('everyone else', () => {
     await open('#/students')
     expect(window.location.hash).toBe('#/home')
     expect(host.querySelectorAll('#tabbar button')).toHaveLength(5)
+  })
+
+  it.each([
+    ['a student', { id: 's1', name: 'Lee', role: 'student' }],
+    ['an account without a role', { id: 'u1', name: 'Lee' }],
+    ['a pending trainer', { id: 't2', name: 'Lee', role: 'trainer', trainerStatus: 'pending' }],
+  ])('%s never reaches /models', async (_, user) => {
+    signIn(user)
+    await open('#/models/m1/plan')
+    expect(window.location.hash).not.toMatch(/models/)
   })
 })
 

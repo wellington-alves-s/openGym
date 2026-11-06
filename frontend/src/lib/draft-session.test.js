@@ -2,9 +2,10 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { DraftSessionContext, PhaseGate, UnderPageContext, createDraftSessions } from './draft-session.js'
 import { DEF, useStore } from '../store/useStore.js'
+import { useUI } from '../store/useUI.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -75,6 +76,25 @@ describe('createDraftSessions', () => {
     expect(load).toHaveBeenCalledTimes(2)
     expect(next).not.toBe(s)
     expect(next.store.getState().S.routines[0].name).toBe('A')
+  })
+
+  it.each([
+    ['the plan wording by default', undefined, 'The plan changed somewhere else'],
+    ['the wording the registry was given', () => 'The model changed somewhere else', 'The model changed somewhere else'],
+  ])('leaving after a 409 says so in %s', async (_, changedText, said) => {
+    const toast = vi.fn()
+    const real = useUI.getState().toast
+    useUI.setState({ toast })
+    onTestFinished(() => useUI.setState({ toast: real }))
+    reg = createDraftSessions({ load: (...a) => load(...a), save: (...a) => save(...a), backTo: () => '/x', changedText })
+    let reject
+    save.mockImplementationOnce(() => new Promise((_, no) => { reject = no }))
+    const s = await open()
+    rename(s, 'Mine'); await wait(800)
+    rename(s, 'Mine again')   // waits behind the save the 409 answers
+    reject(Object.assign(new Error('conflict'), { status: 409 })); await tick()
+    pages.splice(0).reverse().forEach(f => f()); await tick()
+    expect(toast).toHaveBeenCalledWith(said)
   })
 
   it('openPhase keeps the open phase edits in the program, shows the other phase, and changes nothing', async () => {

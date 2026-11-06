@@ -19,6 +19,7 @@ export function tabsFor(user) {
   if (!isApprovedTrainer(user)) return []
   return [
     { key: 'students', path: '/students', icon: 'person', label: 'Students' },
+    { key: 'models', path: '/models', icon: 'clipboard', label: 'Models' },
     { key: 'profile', path: '/settings', icon: 'gear', label: 'Profile' }
   ]
 }

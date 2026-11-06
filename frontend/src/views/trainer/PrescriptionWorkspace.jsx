@@ -22,17 +22,22 @@ export const dropSession = students.dropSession
 export const whenSaved = students.whenSaved
 
 export default function PrescriptionWorkspace() {
-  const { sid } = useParams()
-  const { session, status, failed, retry: load } = students.useSession(sid)
+  return <DraftLayout registry={students} id={useParams().sid} loadFailed={t('Could not load the plan. Check your connection and try again.')} />
+}
+
+// The layout around a draft of any registry (a student's program, a model): the conflict banner, the
+// save status and the editor's contexts.
+export function DraftLayout({ registry, id, loadFailed }) {
+  const { session, status, failed, retry: load } = registry.useSession(id)
 
   if (!session) return failed ? <div className="narrow"><div className="card" role="alert" style={{ marginTop: 16 }}>
-    <div className="small muted" style={{ marginBottom: 10 }}>{t('Could not load the plan. Check your connection and try again.')}</div>
+    <div className="small muted" style={{ marginBottom: 10 }}>{loadFailed}</div>
     <Button size="sm" icon="reset" onClick={load}>{t('Try again')}</Button>
   </div></div> : null
   return <DraftSessionContext.Provider value={session}><WorkspaceContext.Provider value={session.store}>
     {status === 'conflict' && <div className="narrow"><div className="card" role="alert" style={{ marginTop: 8 }}>
-      <div className="small" style={{ marginBottom: 10 }}>{t('The plan changed somewhere else')}</div>
-      <Button size="sm" icon="reset" onClick={() => dropSession(sid)}>{t('Reload')}</Button>
+      <div className="small" style={{ marginBottom: 10 }}>{registry.changedText()}</div>
+      <Button size="sm" icon="reset" onClick={() => registry.dropSession(id)}>{t('Reload')}</Button>
     </div></div>}
     {/* Always there, empty when idle, so a screen reader hears each change. */}
     <div className="narrow small dim" role="status" style={{ textAlign: 'end', marginTop: 4 }}>

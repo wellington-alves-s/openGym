@@ -18,8 +18,11 @@ import { monthName } from './ProgramView.jsx'
 const NO_SESSION = { watch: () => () => {} }
 
 export default function PrescriptionPlan() {
-  const { sid, phase } = useParams()
+  const { sid, mid, phase = mid && 'm' } = useParams()
   const nav = useNavigate()
+  // A model (ModelWorkspace) is one phase `m` under /models/<mid>/plan, its back the models list.
+  const base = mid ? '/models/' + mid + '/plan' : '/students/' + sid + '/plan/' + phase
+  const back = mid ? '/models' : '/students/' + sid + '/plan'
   const session = useContext(DraftSessionContext) || NO_SESSION
   const title = useSyncExternalStore(session.watch, () => {
     const i = session.program?.phases.findIndex(ph => ph.id === phase) ?? -1
@@ -28,7 +31,7 @@ export default function PrescriptionPlan() {
   const store = useWorkspaceStore()
   const S = store(s => s.S)
   const update = store(s => s.update)
-  const open = id => nav('/students/' + sid + '/plan/' + phase + '/' + id)
+  const open = id => nav(base + '/' + id)
 
   const add = () => {
     const r = { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] }
@@ -50,7 +53,7 @@ export default function PrescriptionPlan() {
 
   return <div className="narrow">
     <div className="row between" style={{ margin: '8px 0 16px', gap: 8 }}>
-      <button className="iconbtn" data-back={'/students/' + sid + '/plan'} onClick={() => nav('/students/' + sid + '/plan')} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back={back} onClick={() => nav(back)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <h2 className="grow" style={{ margin: 0 }}>{title}</h2>
       <Button size="sm" variant="tinted" icon="plus" onClick={add}>{t('New routine')}</Button>
     </div>

@@ -49,6 +49,8 @@ import StudentDetail from './views/trainer/StudentDetail.jsx'
 import PrescriptionWorkspace from './views/trainer/PrescriptionWorkspace.jsx'
 import PrescriptionPlan from './views/trainer/PrescriptionPlan.jsx'
 import ProgramView from './views/trainer/ProgramView.jsx'
+import Models from './views/trainer/Models.jsx'
+import ModelWorkspace from './views/trainer/ModelWorkspace.jsx'
 import { PhaseGate, UnderPageContext } from './lib/draft-session.js'
 import { isPendingTrainer, isApprovedTrainer, isStudent, homeFor } from './lib/roles.js'
 import PrescriptionSync from './components/PrescriptionSync.jsx'
@@ -336,6 +338,12 @@ function Shell() {
           <Route index element={<PrescriptionPlan />} />
           <Route path=":id" element={<RoutineEdit />} />
         </Route>
+      </Route>
+      {/* The trainer's models: the list, then a model's routines and the routine editor. */}
+      <Route path="/models" element={<Models />} />
+      <Route path="/models/:mid/plan" element={<ModelWorkspace />}>
+        <Route index element={<PrescriptionPlan />} />
+        <Route path=":id" element={<RoutineEdit />} />
       </Route>
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />

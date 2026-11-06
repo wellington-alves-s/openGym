@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// An approved trainer's bar is two tabs (lib/roles.js tabsFor) and no start-workout button; every
+// An approved trainer's bar is three tabs (lib/roles.js tabsFor) and no start-workout button; every
 // other account keeps the bar it has (TabBar.test.jsx).
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -39,19 +39,22 @@ const as = user => { useStore.setState({ user }); act(() => { root.render(<TabBa
 const approved = { id: 't1', name: 'Carla', role: 'trainer', trainerStatus: 'approved' }
 
 describe('the approved trainer bar', () => {
-  it('has Students and Profile and no start button', () => {
+  it('has Students, Models and Profile and no start button', () => {
     as(approved)
-    expect(tabs().map(b => b.textContent)).toEqual(['Students', 'Profile'])
+    expect(tabs().map(b => b.textContent)).toEqual(['Students', 'Models', 'Profile'])
     expect(host.querySelector('#tabbar .start')).toBeNull()
-    expect(tabs().map(b => b.querySelector('svg')?.getAttribute('data-icon'))).toEqual(['person', 'gear'])
+    expect(tabs().map(b => b.querySelector('svg')?.getAttribute('data-icon'))).toEqual(['person', 'clipboard', 'gear'])
   })
 
-  it('lights Students on /students and Profile on every settings page', () => {
+  it('lights Students on /students, Models on a model and Profile on every settings page', () => {
     as(approved)
-    expect(tabs().map(b => b.className)).toEqual(['on', ''])
+    expect(tabs().map(b => b.className)).toEqual(['on', '', ''])
     where.loc = { pathname: '/settings/units' }
     as(approved)
-    expect(tabs().map(b => b.className)).toEqual(['', 'on'])
+    expect(tabs().map(b => b.className)).toEqual(['', '', 'on'])
+    where.loc = { pathname: '/models/m1/plan/r1' }
+    as(approved)
+    expect(tabs().map(b => b.className)).toEqual(['', 'on', ''])
   })
 
   it('goes to the tab path', () => {

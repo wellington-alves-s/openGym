@@ -25,8 +25,8 @@ const DEBOUNCE_MS = 800
 export const DraftSessionContext = createContext(null)
 
 // load(key) → { program, rev }; save(key, program, rev) → { rev }; backTo(key, phaseId) → the path
-// the editor goes back to.
-export function createDraftSessions({ load, save, backTo }) {
+// the editor goes back to; changedText() → what leaving says after a 409 (the layout's banner too).
+export function createDraftSessions({ load, save, backTo, changedText = () => t('The plan changed somewhere else') }) {
   const sessions = new Map()   // key → session, only while the document is open or holds unsaved edits
   const loading = new Map()    // key → the load under way, so two copies of the page fetch once
   const lastRev = new Map()    // key → the newest revision a save returned
@@ -143,7 +143,7 @@ export function createDraftSessions({ load, save, backTo }) {
       s.flush().then(ok => {
         if (sessions.get(s.key) !== s || s.users > 0) return
         if (ok) dispose(s)
-        else useUI.getState().toast(s.stopped ? t('The plan changed somewhere else') : t('Could not save. Try again.'))
+        else useUI.getState().toast(s.stopped ? changedText() : t('Could not save. Try again.'))
       })
     }
   }
@@ -189,7 +189,7 @@ export function createDraftSessions({ load, save, backTo }) {
   })
 
   const sessionOf = key => sessions.get(key) || null
-  return { ensure, acquire, page, whenSaved, dropSession, watch, sessionOf, useSession }
+  return { ensure, acquire, page, whenSaved, dropSession, watch, sessionOf, useSession, changedText }
 }
 
 // True inside the page an edge swipe back draws underneath the visible one (App's Page `under`).

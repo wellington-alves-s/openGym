@@ -41,7 +41,7 @@ export default function TabBar({ onStart }) {
     if (loc.pathname !== path || loc.search) nav(path, { replace: true })
   }
 
-  // An approved trainer has no workout to start: two tabs, and the bar of everyone else is untouched.
+  // An approved trainer has no workout to start: their own tabs, and the bar of everyone else is untouched.
   if (isApprovedTrainer(user)) return (
     <nav id="tabbar">
       {tabsFor(user).map(tab => <Tab key={tab.key} active={cur === tab.path.split('/')[1]} icon={tab.icon} label={t(tab.label)} onClick={() => switchTab(tab.path)} />)}

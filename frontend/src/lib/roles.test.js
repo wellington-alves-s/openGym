@@ -45,9 +45,10 @@ describe('homeFor', () => {
 })
 
 describe('tabsFor', () => {
-  it('gives an approved trainer a students tab and a profile tab', () => {
+  it('gives an approved trainer a students tab, a models tab and a profile tab, in that order', () => {
     expect(tabsFor(users.approved)).toEqual([
       { key: 'students', path: '/students', icon: 'person', label: 'Students' },
+      { key: 'models', path: '/models', icon: 'clipboard', label: 'Models' },
       { key: 'profile', path: '/settings', icon: 'gear', label: 'Profile' }
     ])
   })
