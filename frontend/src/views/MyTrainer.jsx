@@ -9,6 +9,7 @@ import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { fmtDate, isoOf } from '../lib/format.js'
 import { myTrainer, setConsent, leaveTrainer } from '../lib/trainer-api.js'
+import { appliedVersion } from '../lib/prescription.js'
 import { confirmSheet } from '../sheets.jsx'
 import { Button, Switch } from '../components/ui.jsx'
 
@@ -20,6 +21,7 @@ export default function MyTrainer() {
   const [info, setInfo] = useState(null)
   const [saving, setSaving] = useState(false)
   const inFlight = useRef(false)
+  const planVersion = useStore(s => appliedVersion(s.S || {}))
   const load = useCallback(async () => {
     setInfo(null)
     try { setInfo(await myTrainer()) } catch { setInfo('failed') }
@@ -66,6 +68,7 @@ export default function MyTrainer() {
     <div className="card">
       <div><strong>{info.trainer.name}</strong></div>
       {info.since && <div className="small dim">{fmtDate(isoOf(new Date(info.since)), false, true)}</div>}
+      {planVersion > 0 && <div className="small dim">{t('Training plan: version {0}', planVersion)}</div>}
     </div>
     <p className="small muted">{t('{0} sees your workouts. You choose what else to share.', info.trainer.name)}</p>
     <div className="card">

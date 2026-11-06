@@ -13,6 +13,7 @@ import { SeasonDeco } from '../components/Seasonal.jsx'
 import { Button, Row, Section, Segmented } from '../components/ui.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
 import { copyRoutine, deleteRoutine, restoreRoutine, routineSnapshot } from '../lib/routines.js'
+import { isPrescribed } from '../lib/prescription.js'
 import MiniBodyMap from '../components/MiniBodyMap.jsx'
 import { workoutControls } from '../lib/workout-controls.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
@@ -45,7 +46,7 @@ const readView = () => {
 export function deleteRoutineWithUndo(id) {
   const st = useStore.getState()
   const snap = routineSnapshot(st.S, id)
-  if (!snap) return false
+  if (!snap || isPrescribed(snap.routine)) return false   // the trainer's routine is not the student's to delete
   const before = st.S
   st.update(s => { deleteRoutine(s, id) })
   // What the removal moved (weekdays, reschedules, the loop), for the Undo to mark as put back:
@@ -457,9 +458,12 @@ function Routines({ S, update, nav }) {
       {edit
         ? <div className="list routine-list plan-routines is-editing" ref={reorder.listRef}>{routines.map((r, i) =>
           <div key={r.id} data-reorder-row className="item plan-routine" style={reorder.rowStyle(i)}>
-            <button className="plan-minus" aria-label={t('Delete {0}', r.name)} title={t('Delete routine')} onClick={() => remove(r)}><Icon name="minus" /></button>
+            {isPrescribed(r)
+              ? <span className="plan-minus-gap" aria-hidden="true" />
+              : <button className="plan-minus" aria-label={t('Delete {0}', r.name)} title={t('Delete routine')} onClick={() => remove(r)}><Icon name="minus" /></button>}
             <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
+            {isPrescribed(r) && <span className="tag">{t('Prescribed')}</span>}
             {routines.length > 1 && <button className="plan-handle" aria-label={t('Move {0}', r.name)} title={t('Drag to reorder')}
               {...reorder.handle(i)}><Icon name="chevronsUpDown" /></button>}
           </div>)}</div>
@@ -467,13 +471,14 @@ function Routines({ S, update, nav }) {
           const row = <div key={r.id} className="item plan-routine" {...tappable(() => nav('/plan/r/' + r.id))}>
             <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
+            {isPrescribed(r) && <span className="tag">{t('Prescribed')}</span>}
             <MiniBodyMap routines={[r]} body={S.body} />
             <Icon name="chevronRight" className="chev" /></div>
           // Swipe (v1.3.11, Settings → Swipe actions): toward the start deletes with an Undo,
           // toward the end duplicates. Edit's minus and the routine's own page stay the way in
           // for a keyboard and a screen reader.
           return swipe
-            ? <SwipeRow key={r.id} className="swrow-item" copyLabel={t('Duplicate')}
+            ? <SwipeRow key={r.id} className="swrow-item" copyLabel={t('Duplicate')} noDelete={isPrescribed(r)}
               onDelete={() => remove(r)} onCopy={() => duplicate(r)}
               flash={flash?.id === r.id ? flash.n : 0}>{row}</SwipeRow>
             : row

@@ -16,8 +16,9 @@ vi.mock('../lib/trainer-api.js', () => ({
   myTrainer: (...a) => mocks.myTrainer(...a), setConsent: (...a) => mocks.setConsent(...a), leaveTrainer: (...a) => mocks.leaveTrainer(...a),
 }))
 vi.mock('../lib/api.js', () => ({ api: (...a) => mocks.api(...a) }))
+const store = vi.hoisted(() => ({ S: undefined }))
 vi.mock('../store/useStore.js', () => {
-  const snap = () => ({ setUser: mocks.setUser })
+  const snap = () => ({ setUser: mocks.setUser, S: store.S })
   const useStore = selector => selector ? selector(snap()) : snap()
   useStore.getState = snap
   return { useStore }
@@ -51,6 +52,7 @@ const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.
 const open = async () => { const host = mount(<MyTrainer />); await settle(); return host }
 
 beforeEach(() => {
+  store.S = undefined
   for (const k of Object.keys(mocks)) mocks[k].mockReset()
   mocks.myTrainer.mockResolvedValue(answer())
   mocks.setConsent.mockImplementation(async c => ({ consent: c }))
@@ -60,6 +62,14 @@ beforeEach(() => {
 afterEach(() => { act(() => { mounted.splice(0).forEach(({ root, host }) => { root.unmount(); host.remove() }) }) })
 
 describe('MyTrainer', () => {
+  it('names the applied plan version only once a prescription is applied', async () => {
+    let host = await open()
+    expect(host.textContent).not.toContain('Training plan')
+    store.S = { routines: [{ id: 'rx-a', rx: { v: 2 } }, { id: 'rx-b', rx: { v: 4 } }, { id: 'own' }] }
+    host = await open()
+    expect(host.textContent).toContain('Training plan: version 4')
+  })
+
   it('shows the trainer, since when, and the switches as the server has them', async () => {
     const host = await open()
     expect(host.textContent).toContain('Rui')

@@ -220,6 +220,7 @@ function setupOf(entry) {
  * session, and the routine is the plan it reads them against.
  */
 export function routineChangesFromEntry(routine, entries, idx) {
+  if (routine?.rx) return null   // a trainer's routine is changed by the trainer, never by a workout
   const at = routineSlotIndex(routine, entries, idx)
   if (at < 0) return null
   const slot = routine.ex[at]

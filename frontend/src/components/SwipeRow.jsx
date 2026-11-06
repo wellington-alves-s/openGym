@@ -21,11 +21,11 @@ import Icon from './Icon.jsx'
 // on the outer element, which is what a list's reorder measures and moves.
 const SwipeRow = forwardRef(function SwipeRow({
   children, canDelete = true, onDelete, onCopy, onBlocked, onStart, canSwipe, closeKey, flash, peek,
-  deleteLabel, copyLabel, deleteIcon = 'trash', copyIcon = 'copy', className, ...rest
+  deleteLabel, copyLabel, deleteIcon = 'trash', copyIcon = 'copy', className, noDelete, ...rest
 }, ref) {
   const canCopy = typeof onCopy === 'function'
   const sw = useSwipeRow({
-    canDelete, canCopy, canSwipe,
+    canDelete: canDelete && !noDelete, canCopy, canSwipe,
     onCommit: kind => (kind === 'delete' ? onDelete?.() : onCopy?.()),
     onBlocked, onStart, closeKey,
   })
@@ -48,11 +48,12 @@ const SwipeRow = forwardRef(function SwipeRow({
         <span className="lab"><Icon name={copyIcon} /><b>{copyLabel ?? t('Copy set')}</b></span>
       </button>
     </div>}
-    <div ref={sw.delRef} className={'swpane del' + (canDelete ? '' : ' dis')} aria-hidden={shut('delete') || undefined} inert={shut('delete') ? true : undefined}>
+    {/* noDelete: no delete side at all (a trainer's routine), not a greyed one. */}
+    {!noDelete && <div ref={sw.delRef} className={'swpane del' + (canDelete ? '' : ' dis')} aria-hidden={shut('delete') || undefined} inert={shut('delete') ? true : undefined}>
       <button type="button" tabIndex={shut('delete') ? -1 : 0} onClick={sw.pressDelete}>
         <span className="lab"><Icon name={deleteIcon} /><b>{deleteLabel ?? t('Delete')}</b></span>
       </button>
-    </div>
+    </div>}
     <div ref={sw.frontRef} className="swfront">{children}</div>
   </div>
 })

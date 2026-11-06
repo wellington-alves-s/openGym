@@ -2223,6 +2223,7 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
   background:var(--red);color:#fff;font-size:14px;--icon-stroke:2.6;position:relative;
 }
 .plan-minus::before{content:'';position:absolute;inset:-10px}
+.plan-minus-gap{width:24px;height:24px;flex:none}
 .plan-handle{
   flex:none;align-self:stretch;display:flex;align-items:center;padding:0 6px;margin:-10px -6px -10px 0;
   color:var(--label-3);font-size:18px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;

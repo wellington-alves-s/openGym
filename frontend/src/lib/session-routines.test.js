@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { routineFromSession, saveSessionAsRoutine } from './session-routines.js'
+import { routineFromSession, saveSessionAsRoutine, routineAdditions, addToRoutine } from './session-routines.js'
+import { routineChangesFromEntry, updateRoutineFromEntry } from './routines.js'
 import { buildCompletedWorkout } from './finish-workout.js'
 import { buildSessionEntries } from './session-start.js'
 import { makeSideSet, setSideField, toggleSide, isWarmupRow } from './workout-model.js'
@@ -214,5 +215,32 @@ describe('a routine saved from a planned session', () => {
     const st = stateOf([source])
     const saved = train(st, source, { r: 9 })
     expect(routineFromSession(saved, 'Copy', []).ex[0]).not.toHaveProperty('prog')
+  })
+})
+
+// A finished workout never offers or applies an update to a routine the trainer prescribed.
+describe('a prescribed routine (rx)', () => {
+  const rxRoutine = () => ({ id: 'rx-r1', name: 'Coach A', rx: { v: 1 }, excludeFromProgression: true, ex: [{ id: '0025', sets: 3, reps: 8, weight: 60 }] })
+  const done = id => ({ id, rid: 'rx-r1', target: { sets: 3, reps: 10, weight: 70 }, sets: [{ w: 70, r: 10, done: true }] })
+
+  it('is never offered an exercise added during its workout', () => {
+    const active = { id: 'a', entries: [done('0025'), { ...done('0334'), addedInSession: true }] }
+    expect(routineAdditions(active, [rxRoutine()])).toEqual([])
+    const own = { ...rxRoutine(), rx: undefined }
+    expect(routineAdditions({ ...active, entries: active.entries.map(e => ({ ...e, rid: 'rx-r1' })) }, [own])).toHaveLength(1)
+  })
+
+  it('addToRoutine leaves it as it was', () => {
+    const r = rxRoutine()
+    expect(addToRoutine(r, [{ id: '0334', sets: 2 }])).toBe(0)
+    expect(r).toEqual(rxRoutine())
+  })
+
+  it('takes no rest, note or warm-up change from a workout', () => {
+    const r = rxRoutine()
+    const entries = [{ ...done('0025'), target: { id: '0025', sets: 3, reps: 8, weight: 60, restSec: 90, note: 'slow', warmupSets: 2 } }]
+    expect(routineChangesFromEntry(r, entries, 0)).toBeNull()
+    expect(updateRoutineFromEntry(r, entries, 0)).toBeNull()
+    expect(r).toEqual(rxRoutine())
   })
 })

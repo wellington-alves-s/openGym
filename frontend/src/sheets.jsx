@@ -55,6 +55,7 @@ import { refillAfter } from './lib/rotation.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
 import { ownExerciseRest } from './lib/supersetFlow.js'
 import { saveSessionAsRoutine, routineAdditions, addToRoutine } from './lib/session-routines.js'
+import { isPrescribed } from './lib/prescription.js'
 import { repeatSessionEntries } from './lib/session-repeat.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
@@ -1269,7 +1270,7 @@ function AddToRoutine({ ex, close }) {
       update(s => {
         let r = isNew ? { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] } : s.routines.find(x => x.id === rid)
         if (isNew) s.routines.push(r)
-        if (r) r.ex.push({ id: ex.id, ...cfg })
+        if (r && !isPrescribed(r)) r.ex.push({ id: ex.id, ...cfg })   // a trainer's routine takes no additions
       })
       const r = isNew ? S().routines[S().routines.length - 1] : st.routines.find(x => x.id === rid)
       toast(t('“{0}” added to {1}', exerciseNameText(ex), r ? r.name : t('routine')))
@@ -1280,7 +1281,7 @@ function AddToRoutine({ ex, close }) {
     <h3 className={exerciseNameClass(ex)}>{t('Add “{0}”', exerciseNameFor(ex))}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Pick a routine. Sets, reps and weight come next.')}</div>
     <div className="list">
-      {st.routines.map(r => <div key={r.id} className="item" {...tappable(() => pick(r.id))}>
+      {st.routines.filter(r => !isPrescribed(r)).map(r => <div key={r.id} className="item" {...tappable(() => pick(r.id))}>
         <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
         <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
         {r.ex.some(e => e.id === ex.id) && <span className="tag">{t('already in')}</span>}<Icon name="plus" className="chev" />

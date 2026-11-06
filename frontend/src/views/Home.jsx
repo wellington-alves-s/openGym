@@ -19,6 +19,7 @@ import { dayNoteOf } from '../lib/day-notes.js'
 import { weighInAt } from '../lib/bodyweight.js'
 import WeightRate from '../components/WeightRate.jsx'
 import { SeasonDeco } from '../components/Seasonal.jsx'
+import { isPrescribed } from '../lib/prescription.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -142,6 +143,7 @@ export default function Home() {
             <div className="ttl">{S.active ? (editingSaved ? S.active.name : t('{0} (in progress)', S.active.name))
               : doneToday ? (doneToday.name ? t('{0} (done)', doneToday.name) : t('Workout done'))
               : routine ? todayName : t('Rest day')}{todayOvr && routine && !doneToday ? ' · ' + t('rescheduled') : ''}</div>
+            {!S.active && !doneToday && todayRoutines.some(isPrescribed) && <div className="ss"><span className="tag">{t('Prescribed')}</span></div>}
             {next && !doneToday && <div className="ss">{t('Next session: {0}, {1}', t(DAYN[next.weekday]), next.routine.name)}</div>}
           </div>
         </div>

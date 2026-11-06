@@ -154,7 +154,7 @@ export function routineAdditions(active, routines = []) {
   for (const entry of sessionEntries(active)) {
     if (entry?.addedInSession !== true || !entry.rid || !(entry.sets || []).some(hasCompletedWork)) continue
     const routine = (Array.isArray(routines) ? routines : []).find(r => r?.id === entry.rid)
-    if (!routine || !Array.isArray(routine.ex) || routine.ex.some(x => x?.id === entry.id)) continue
+    if (!routine || routine.rx || !Array.isArray(routine.ex) || routine.ex.some(x => x?.id === entry.id)) continue
     if (!groups.has(routine.id)) groups.set(routine.id, { routine, entries: [] })
     const list = groups.get(routine.id).entries
     if (!list.some(e => e.id === entry.id)) list.push(entry)
@@ -168,7 +168,7 @@ export function routineAdditions(active, routines = []) {
 
 /** Append those exercises to the routine (a store draft), skipping any it has by now. Returns how many. */
 export function addToRoutine(routine, ex) {
-  if (!routine || !Array.isArray(routine.ex)) return 0
+  if (!routine || routine.rx || !Array.isArray(routine.ex)) return 0
   const fresh = (Array.isArray(ex) ? ex : []).filter(cfg => cfg?.id != null && !routine.ex.some(x => x?.id === cfg.id))
   // groupIds again: a superset tag of the copies must not collide with one the routine has.
   routine.ex.push(...groupIds(fresh.map(cfg => structuredClone(cfg))))
