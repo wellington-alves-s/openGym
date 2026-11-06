@@ -83,6 +83,25 @@ describe('PrescriptionSync', () => {
     expect(useStore.getState().S.routines.some(r => r.id === 'rx-r1')).toBe(true)
     expect(useUI.getState().toastMsg).toBe('Your trainer updated your training')
   })
+
+  describe('a sign-out during a slow download', () => {
+    const bundle = { opengym_plan: 1, unit: 'kg', week: {}, routines: [{ id: 'r1', name: 'Push', ex: [] }], customEx: [] }
+    const slow = async leave => {
+      useStore.setState({ user: { id: 'u1', role: 'student' } })
+      useUI.setState({ toastMsg: null })
+      let release
+      rev.mockResolvedValue({ v: 1 })
+      rx.mockReturnValue(new Promise(r => { release = r }))
+      await mount(); await flush()
+      expect(rx).toHaveBeenCalledTimes(1)
+      await act(async () => leave())
+      await act(async () => { release({ v: 1, bundle }) }); await flush()
+      expect(useStore.getState().S.routines.some(r => r.id === 'rx-r1')).toBe(false)
+      expect(useUI.getState().toastMsg).toBeFalsy()
+    }
+    it('leaves the signed-out copy alone when the user is gone', () => slow(() => useStore.setState({ user: null })))
+    it('leaves it alone once unmounted', () => slow(() => { root.unmount(); root = createRoot(host) }))
+  })
 })
 
 describe('who gets it in App', () => {

@@ -9,7 +9,11 @@ import { syncPrescription } from '../lib/prescription-sync.js'
 // the foreground or the network returns.
 export default function PrescriptionSync() {
   useEffect(() => {
-    let busy = false
+    // An answer that lands after a sign-out (or a switch of account) must not touch the copy the
+    // device keeps now. This also keeps StrictMode's discarded first run from toasting twice.
+    let alive = true, busy = false
+    const uid = useStore.getState().user?.id
+    const current = () => alive && useStore.getState().user?.id === uid
     const run = async () => {
       if (busy) return
       busy = true
@@ -17,16 +21,17 @@ export default function PrescriptionSync() {
         await syncPrescription({
           fetchRev: studentRxRev, fetchRx: studentRx,
           getS: () => useStore.getState().S,
-          update: fn => useStore.getState().update(fn),
-          notify: () => useUI.getState().toast(t('Your trainer updated your training'))
+          update: fn => { if (current()) useStore.getState().update(fn) },
+          notify: () => { if (current()) useUI.getState().toast(t('Your trainer updated your training')) }
         })
-      } finally { busy = false }
+      } catch (e) { console.warn('prescription sync', e) } finally { busy = false }
     }
     const onVisible = () => { if (document.visibilityState === 'visible') run() }
     run()
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', run)
     return () => {
+      alive = false
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', run)
     }

@@ -190,6 +190,40 @@ describe('PrescriptionWorkspace, one session per student', () => {
     expect(host.textContent).toContain('Saved')
   })
 
+  const remount = () => {
+    act(() => root.unmount()); root = createRoot(host); store = null
+    act(() => root.render(<MemoryRouter initialEntries={['/students/abc/plan']}><Routes>
+      <Route path="/students/:sid/plan" element={<PrescriptionWorkspace />}><Route index element={<Probe />} /></Route>
+    </Routes></MemoryRouter>))
+  }
+
+  it('another account signing in on this browser finds nothing of the previous one', async () => {
+    useStore.setState({ user: { id: 't1' } })
+    mocks.getRx.mockResolvedValueOnce(rxOf(5)).mockResolvedValueOnce(rxOf(9, draft({ routines: [{ id: 'r1', name: 'Theirs', ex: [] }] })))
+    mocks.saveRxDraft.mockRejectedValue(Object.assign(new Error('offline'), { status: 0 }))
+    mount(); await flush()
+    rename('First trainer'); await wait(800); await flush()   // a failed save keeps the session
+    act(() => root.unmount()); await flush()
+    act(() => useStore.setState({ user: null }))
+    act(() => useStore.setState({ user: { id: 't2' } }))
+    expect(await whenSaved('abc')).toBeUndefined()
+    remount(); await flush()
+    expect(mocks.getRx).toHaveBeenCalledTimes(2)
+    expect(store.getState().S.routines[0].name).toBe('Theirs')
+    useStore.setState({ user: null })
+  })
+
+  it('a plan that loads after the page has gone is not kept for the next visit', async () => {
+    let release
+    mocks.getRx.mockReturnValueOnce(new Promise(r => { release = r })).mockResolvedValueOnce(rxOf(9, draft({ routines: [{ id: 'r1', name: 'Fresh', ex: [] }] })))
+    mount()
+    act(() => root.unmount()); root = createRoot(host)
+    await act(async () => { release(rxOf(5)) }); await flush()
+    remount(); await flush()
+    expect(mocks.getRx).toHaveBeenCalledTimes(2)
+    expect(store.getState().S.routines[0].name).toBe('Fresh')
+  })
+
   it('whenSaved sends what is waiting and answers with the newest revision', async () => {
     mocks.getRx.mockResolvedValue(rxOf(5))
     mocks.saveRxDraft.mockResolvedValue(rxOf(6))

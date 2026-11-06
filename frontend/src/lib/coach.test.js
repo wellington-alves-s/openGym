@@ -399,6 +399,28 @@ describe('accepting a subset', () => {
   })
 })
 
+describe('a routine the trainer prescribed', () => {
+  const rx = { id: 'rx-a', name: 'From the trainer', rx: { v: 2 }, excludeFromProgression: true, ex: [{ id: '0001', sets: 3, reps: 10, mode: 'reps' }] }
+  const withRx = () => JSON.parse(JSON.stringify(state({ routines: [...state().routines, rx] })))
+
+  it('is never changed by the Coach, while an own routine still is', () => {
+    for (const c of [
+      change({ target: { routineId: 'rx-a', exId: '0001' } }),
+      change({ type: 'rename-routine', target: { routineId: 'rx-a' }, before: 'From the trainer', after: 'Mine' }),
+      change({ type: 'remove-routine', target: { routineId: 'rx-a' }, before: null, after: null }),
+      change({ type: 'add-exercise', target: { routineId: 'rx-a' }, before: null, after: { id: '0002' } })
+    ]) {
+      const s = withRx()
+      expect(markStale(proposal([c]), s).changes[0].status).toBe('stale')
+      expect(() => applyChangeSet(s, proposal([c]), ['c1'])).toThrow()
+    }
+    const s = withRx()
+    applyChangeSet(s, proposal([change()]), ['c1'])
+    expect(s.routines[0].ex[0].sets).toBe(4)
+    expect(s.routines.find(r => r.id === 'rx-a')).toEqual(rx)
+  })
+})
+
 describe('snapshots and revert', () => {
   it('puts the plan back and leaves the training log alone', () => {
     const s = JSON.parse(JSON.stringify(state({ workouts: [{ id: 'w1', d: '2026-07-20', entries: [] }] })))

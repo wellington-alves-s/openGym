@@ -22,6 +22,7 @@ import { t, tn } from './i18n.js'
 import { snapshotKey } from './sync-merge.js'
 import { scheduleModeOf, startNewPass } from './rotation.js'
 import { queueOf } from './queue.js'
+import { isPrescribed } from './prescription.js'
 
 // Bumping this re-prompts everyone: it means what we share, or who we share it with, changed.
 // 2: the training line names the session notes, which the payload carries and version 1 never
@@ -139,7 +140,9 @@ export const planHash = S => hashPlan(canonicalPlan(S))
 
 /* ============================ staleness ============================ */
 
-const findRoutine = (S, id) => (S.routines || []).find(r => r.id === id) || null
+// A routine the trainer prescribed is read-only here too: to the Coach it is not there, so a change
+// about it reads as stale and cannot be applied (the plan's next version would not undo it).
+const findRoutine = (S, id) => (S.routines || []).find(r => r.id === id && !isPrescribed(r)) || null
 const findEx = (routine, id) => (routine?.ex || []).find(e => e.id === id) || null
 
 // The Coach reads a routine's name cut at 80 characters (NAME_MAX in api/coach/core/payload.js),
@@ -568,7 +571,7 @@ const CHANGE_APPLY = {
     // The same delete as Plan and RoutineEdit. It used to compare each weekday with ===, which
     // missed a combined day (a list) and left the deleted id on it. The week comes back from the
     // snapshot on a revert; the dropped reschedules are not in the snapshot, so they are recorded.
-    recordDayPlanDrops(s, deleteRoutine(s, c.target.routineId))
+    recordDayPlanDrops(s, deleteRoutine(s, need(findRoutine(s, c.target.routineId)).id))
   },
   'rename-routine': (s, c) => { need(findRoutine(s, c.target.routineId)).name = c.after },
   week: (s, c) => {

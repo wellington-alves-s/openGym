@@ -78,6 +78,32 @@ describe('syncPrescription', () => {
     expect(state.S.routines.map(r => r.id)).toEqual(['own1'])
   })
 
+  it('a version that is not a number is offline, only null removes', async () => {
+    for (const v of [undefined, '3']) {
+      const { h, state } = rig({ S: withRx(1), rev: { v } })
+      expect(await syncPrescription(h)).toBe('offline')
+      expect(state.S.routines.map(r => r.id)).toEqual(['own1', 'rx-r1'])
+    }
+  })
+
+  it('an update that throws on 404 is offline, not a rejection', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { h } = rig({ S: withRx(1), rev: Object.assign(new Error('nope'), { status: 404 }) })
+    h.update = vi.fn(() => { throw new Error('broken store') })
+    expect(await syncPrescription(h)).toBe('offline')
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('warns about a programming error, not about the network', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await syncPrescription(rig({ rev: new TypeError('Failed to fetch') }).h)
+    expect(warn).not.toHaveBeenCalled()
+    await syncPrescription(rig({ rev: { v: 3 }, rx: { v: 3, bundle: null } }).h)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+  })
+
   it('a failed download is offline and changes nothing', async () => {
     const { h, state } = rig({ rev: { v: 3 }, rx: new TypeError('Failed to fetch') })
     expect(await syncPrescription(h)).toBe('offline')

@@ -22,6 +22,8 @@ const DEBOUNCE_MS = 800
 const sessions = new Map()   // sid → session, only while the plan is open or holds unsaved edits
 const loading = new Map()    // sid → the getRx under way, so two copies of the page fetch once
 const lastRev = new Map()    // sid → the newest revision a save returned (a number per student)
+const pages = new Map()      // sid → how many copies of the page are mounted
+let account = 0              // bumped on every change of signed-in user: older loads are void
 const watchers = new Set()
 const emit = () => watchers.forEach(fn => fn())
 const watch = fn => { watchers.add(fn); return () => watchers.delete(fn) }
@@ -45,7 +47,7 @@ function createSession(sid, rx) {
     s.dirty = false; s.failed = false
     setStatus('saving')
     s.inFlight = saveRxDraft(sid, bundleOf(s.store.getState().S, s.base), s.rev)
-      .then(({ rx }) => { s.rev = rx._rev; lastRev.set(sid, rx._rev); if (!s.dirty) setStatus('saved') })
+      .then(({ rx }) => { s.rev = rx._rev; if (sessions.get(sid) === s) lastRev.set(sid, rx._rev); if (!s.dirty) setStatus('saved') })
       .catch(e => {
         if (e?.status === 409) { s.stopped = true; setStatus('conflict') }
         else { s.dirty = true; s.failed = true; setStatus('failed') }
@@ -73,11 +75,14 @@ export const dropSession = sid => { const s = sessions.get(sid); if (s) dispose(
 function ensureSession(sid) {
   if (sessions.has(sid)) return Promise.resolve(sessions.get(sid))
   if (!loading.has(sid)) {
+    const at = account
     const p = getRx(sid).then(({ rx }) => {
+      // Nobody is looking any more, or someone else signed in: the next visit reads it afresh.
+      if (at !== account || !pages.get(sid)) return null
       const s = createSession(sid, rx)
       sessions.set(sid, s); emit()
       return s
-    }).finally(() => loading.delete(sid))
+    }).finally(() => { if (loading.get(sid) === p) loading.delete(sid) })
     loading.set(sid, p)
   }
   return loading.get(sid)
@@ -115,11 +120,24 @@ if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveAll() })
 }
 
+// Signing out reloads nothing: whatever the previous account had open or unsaved here goes with it,
+// so the next one to sign in on this browser never sees that student's draft.
+useStore.subscribe((next, prev) => {
+  if (next.user?.id === prev.user?.id) return
+  account++
+  sessions.forEach(dispose)
+  lastRev.clear(); loading.clear()
+})
+
 export default function PrescriptionWorkspace() {
   const { sid } = useParams()
   const session = useSyncExternalStore(watch, () => sessions.get(sid) || null)
   const status = useSyncExternalStore(watch, () => session?.status || '')
   const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    pages.set(sid, (pages.get(sid) || 0) + 1)
+    return () => { const n = pages.get(sid) - 1; if (n) pages.set(sid, n); else pages.delete(sid) }
+  }, [sid])
   const load = useCallback(() => { setFailed(false); ensureSession(sid).catch(() => setFailed(true)) }, [sid])
   useEffect(() => { if (!session) load() }, [session, load])
   useEffect(() => (session ? acquire(session) : undefined), [session])

@@ -14,9 +14,11 @@ export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify
     update(S => { removePrescription(S) })
     return 'removed'
   }
+  const gone = () => (getS().active && hasRx() ? 'deferred' : drop())
   try {
     const { v } = await fetchRev()
-    if (v == null) return getS().active && hasRx() ? 'deferred' : drop()
+    if (v === null) return gone()
+    if (typeof v !== 'number') return 'offline'   // an answer we cannot read never takes the plan away
     if (v === appliedVersion(getS())) return 'same'
     if (getS().active) return 'deferred'
     const rx = await fetchRx()
@@ -26,7 +28,13 @@ export async function syncPrescription({ fetchRev, fetchRx, getS, update, notify
     return 'applied'
   } catch (e) {
     // Only the server saying "not linked" takes the plan away; no answer at all never does.
-    if (e?.status === 404) return getS().active && hasRx() ? 'deferred' : drop()
+    if (e?.status === 404) {
+      try { return gone() } catch (e2) { console.warn('prescription sync', e2); return 'offline' }
+    }
+    if (!isNetwork(e)) console.warn('prescription sync', e)
     return 'offline'
   }
 }
+
+// An answer with a status, a timeout (api.js `code`) or a fetch that never reached the server.
+const isNetwork = e => e?.status != null || e?.code === 'timeout' || (e instanceof TypeError && /fetch|network|load failed/i.test(e.message))
