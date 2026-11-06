@@ -12,6 +12,7 @@ import { myTrainer, setConsent, leaveTrainer } from '../lib/trainer-api.js'
 import { appliedVersion } from '../lib/prescription.js'
 import { confirmSheet } from '../sheets.jsx'
 import { Button, Switch } from '../components/ui.jsx'
+import { programNow, monthLabel } from '../components/ProgramCard.jsx'
 
 const say = e => useUI.getState().toast(e?.data?.error || e?.message || t('Could not save. Try again.'))
 
@@ -22,6 +23,7 @@ export default function MyTrainer() {
   const [saving, setSaving] = useState(false)
   const inFlight = useRef(false)
   const planVersion = useStore(s => appliedVersion(s.S || {}))
+  const uid = useStore(s => s.user?.id)
   const load = useCallback(async () => {
     setInfo(null)
     try { setInfo(await myTrainer()) } catch { setInfo('failed') }
@@ -36,6 +38,7 @@ export default function MyTrainer() {
   if (!info.trainer) return <div className="card muted">{t('You are not linked to a trainer.')}</div>
 
   const { consent } = info
+  const month = programNow(uid)
   const flip = async key => {
     if (inFlight.current) return
     inFlight.current = true; setSaving(true)
@@ -69,6 +72,7 @@ export default function MyTrainer() {
       <div><strong>{info.trainer.name}</strong></div>
       {info.since && <div className="small dim">{fmtDate(isoOf(new Date(info.since)), false, true)}</div>}
       {planVersion > 0 && <div className="small dim">{t('Training plan: version {0}', planVersion)}</div>}
+      {planVersion > 0 && month && <div className="small dim">{monthLabel(month.now, month.program.phases.length)}</div>}
     </div>
     <p className="small muted">{t('{0} sees your workouts. You choose what else to share.', info.trainer.name)}</p>
     <div className="card">

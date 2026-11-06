@@ -3,6 +3,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MyTrainer from './MyTrainer.jsx'
+import { writeCache } from '../lib/prescription-cache.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -16,9 +17,9 @@ vi.mock('../lib/trainer-api.js', () => ({
   myTrainer: (...a) => mocks.myTrainer(...a), setConsent: (...a) => mocks.setConsent(...a), leaveTrainer: (...a) => mocks.leaveTrainer(...a),
 }))
 vi.mock('../lib/api.js', () => ({ api: (...a) => mocks.api(...a) }))
-const store = vi.hoisted(() => ({ S: undefined }))
+const store = vi.hoisted(() => ({ S: undefined, user: undefined }))
 vi.mock('../store/useStore.js', () => {
-  const snap = () => ({ setUser: mocks.setUser, S: store.S })
+  const snap = () => ({ setUser: mocks.setUser, S: store.S, user: store.user })
   const useStore = selector => selector ? selector(snap()) : snap()
   useStore.getState = snap
   return { useStore }
@@ -52,14 +53,14 @@ const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.
 const open = async () => { const host = mount(<MyTrainer />); await settle(); return host }
 
 beforeEach(() => {
-  store.S = undefined
+  store.S = undefined; store.user = undefined
   for (const k of Object.keys(mocks)) mocks[k].mockReset()
   mocks.myTrainer.mockResolvedValue(answer())
   mocks.setConsent.mockImplementation(async c => ({ consent: c }))
   mocks.leaveTrainer.mockResolvedValue({ ok: true })
   mocks.api.mockResolvedValue({ user: { id: 'u1', name: 'Ana', role: 'student' } })
 })
-afterEach(() => { act(() => { mounted.splice(0).forEach(({ root, host }) => { root.unmount(); host.remove() }) }) })
+afterEach(() => { localStorage.clear(); act(() => { mounted.splice(0).forEach(({ root, host }) => { root.unmount(); host.remove() }) }) })
 
 describe('MyTrainer', () => {
   it('names the applied plan version only once a prescription is applied', async () => {
@@ -68,6 +69,24 @@ describe('MyTrainer', () => {
     store.S = { routines: [{ id: 'rx-a', rx: { v: 2 } }, { id: 'rx-b', rx: { v: 4 } }, { id: 'own' }] }
     host = await open()
     expect(host.textContent).toContain('Training plan: version 4')
+  })
+
+  it('adds the current month of the program to the plan line', async () => {
+    const week = {}
+    const phases = [{ id: 'p1', name: '', weeks: 4, bundle: { week, routines: [] } }, { id: 'p2', name: '', weeks: 4, bundle: { week, routines: [] } }]
+    store.S = { routines: [{ id: 'rx-a', rx: { v: 2, p: 'p2' } }] }
+    store.user = { id: 'u1' }
+    let host = await open()
+    expect(host.textContent).not.toContain('Month')   // no cache for this account yet
+    const d = new Date(); d.setDate(d.getDate() - 30)
+    const start = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+    writeCache('u1', { v: 2, program: { start, phases } })
+    host = await open()
+    expect(host.textContent).toContain('Training plan: version 2')
+    expect(host.textContent).toContain('Month 2 of 2')
+    store.user = { id: 'u2' }
+    host = await open()
+    expect(host.textContent).not.toContain('Month 2 of 2')
   })
 
   it('shows the trainer, since when, and the switches as the server has them', async () => {

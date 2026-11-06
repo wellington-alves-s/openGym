@@ -2069,6 +2069,11 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
   .wl-unit{padding:10px 8px 2px}
 }
 
+/* --- home: the student's program card --- */
+.prog-card{cursor:pointer}
+.prog-bar{height:5px;border-radius:3px;margin-top:10px;background:var(--surface-3);overflow:hidden}
+.prog-bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
+
 /* --- home: today's session row --- */
 .today-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
