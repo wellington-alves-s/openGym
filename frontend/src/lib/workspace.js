@@ -10,7 +10,9 @@ export const WorkspaceContext = createContext(null)
 export const useWorkspaceStore = () => useContext(WorkspaceContext) || useStore
 
 export function createWorkspaceStore(ownS, bundle, { backTo } = {}) {
-  const S = { ...ownS, routines: structuredClone(bundle.routines), week: structuredClone(bundle.week), unit: bundle.unit, customEx: [] }
+  // A snapshot of the trainer's settings around the student's plan; update() keeps only routines and
+  // week. No workouts: the trainer's own lifts must never seed a weight in the student's plan.
+  const S = { ...ownS, routines: structuredClone(bundle.routines), week: structuredClone(bundle.week), unit: bundle.unit, customEx: [], workouts: [] }
   return create((set, get) => ({
     S, prescription: true, backTo,
     update(fn) {

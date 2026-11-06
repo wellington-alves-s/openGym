@@ -10,6 +10,7 @@ import RoutineEdit from './RoutineEdit.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { WorkspaceContext, createWorkspaceStore } from '../lib/workspace.js'
+import { EXIDX } from '../lib/exercises.js'
 
 vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))
 const sheets = vi.hoisted(() => ({
@@ -99,6 +100,23 @@ describe('the routine editor inside a workspace', () => {
     expect(ws.getState().S.week).toEqual({})
     expect(container.textContent).toContain('student page')
     ownUntouched()
+  })
+
+  it('a replacement keeps the slot’s weight, never the trainer’s own last lift', () => {
+    const DB_BENCH = '0289'
+    mount()
+    // The trainer's own history: dumbbell bench at a weight nobody would carry over by chance.
+    const lifted = { id: 'w1', d: '2026-09-01', start: 1, end: 2, name: 'My own', routineIds: ['own'],
+      entries: [{ id: DB_BENCH, rid: 'own', target: { sets: 3, mode: 'reps', reps: 8 }, planned: { sets: 3, reps: 8, weight: 123 }, sets: [1, 2, 3].map(() => ({ w: 123, r: 8, done: true })) }] }
+    act(() => useStore.setState({ S: { ...useStore.getState().S, workouts: [lifted] } }))
+    ws = createWorkspaceStore(useStore.getState().S, { unit: 'kg', week: {}, routines: [{ id: 'd1', name: 'Draft A', emoji: 'dumbbell', ex: [ex('0025'), ex('0334')] }] }, { backTo: '/trainer/s/stu1' })
+    act(() => root.render(<WorkspaceContext.Provider value={ws}><MemoryRouter initialEntries={['/rx/d1']}><Routes><Route path="/rx/:id" element={<RoutineEdit />} /></Routes></MemoryRouter></WorkspaceContext.Provider>))
+    const picker = { close: vi.fn() }
+    sheets.exercisePicker.mockImplementation(() => picker)
+    act(() => container.querySelector('.item-open').click())
+    act(() => sheets.exConfigSheet.mock.calls.at(-1)[6]())
+    act(() => sheets.exercisePicker.mock.calls[0][0](EXIDX[DB_BENCH], true))
+    expect(draft().ex[0]).toEqual({ ...ex('0025'), id: DB_BENCH })
   })
 
   it('without a provider it edits the user’s own plan as always', () => {

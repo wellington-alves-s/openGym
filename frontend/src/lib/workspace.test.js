@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest'
 import { bundleOf, createWorkspaceStore } from './workspace.js'
+import { deleteRoutine } from './routines.js'
 
 const own = () => ({ unit: 'lb', routines: [{ id: 'mine', name: 'Mine', ex: [] }], week: { 1: ['mine'] }, dayPlan: { '2026-11-06': 'a' }, customEx: [{ id: 'c1' }], wc: { swipeSets: true } })
 const bundle = () => ({ opengym_plan: 1, unit: 'kg', week: { 2: ['a'] }, routines: [{ id: 'a', name: 'A', ex: [{ id: '0025', sets: 3 }] }], customEx: [] })
@@ -18,6 +19,7 @@ describe('createWorkspaceStore', () => {
     expect(S.week).toEqual(b.week)
     expect(S.unit).toBe('kg')
     expect(S.customEx).toEqual([])
+    expect(S.workouts).toEqual([])
     expect(S.wc).toEqual({ swipeSets: true })
     store.getState().update(s => { s.routines[0].name = 'Changed'; s.routines[0].ex.push({ id: '0334' }) })
     expect(JSON.stringify([ownS, b])).toBe(before)
@@ -30,11 +32,10 @@ describe('createWorkspaceStore', () => {
     store.getState().update(s => { s.routines[0].name = 'B' })
     expect(store.getState().S.routines[0].name).toBe('B')
     expect(first.routines[0].name).toBe('A')
-    store.getState().update(s => {
-      s.routines = s.routines.filter(r => r.id !== 'mine')
-      Object.keys(s.dayPlan || {}).forEach(k => delete s.dayPlan[k])
-    })
-    expect(store.getState().S.routines.map(r => r.id)).toEqual(['a'])
+    // The trainer's own dayPlan names 'a' too: deleting the student's 'a' must not touch it.
+    store.getState().update(s => { deleteRoutine(s, 'a') })
+    expect(store.getState().S.routines.map(r => r.id)).toEqual(['mine'])
+    expect(store.getState().S.week).toEqual({})
     expect(ownS.dayPlan).toEqual({ '2026-11-06': 'a' })
     expect(ownS.routines.map(r => r.id)).toEqual(['mine'])
     expect(() => store.getState().autoBackupNow()).not.toThrow()
