@@ -3,7 +3,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import PrescriptionWorkspace, { whenSaved } from './PrescriptionWorkspace.jsx'
+import PrescriptionWorkspace, { dropSession, whenSaved } from './PrescriptionWorkspace.jsx'
 import { DEF, useStore } from '../../store/useStore.js'
 import { useWorkspaceStore } from '../../lib/workspace.js'
 
@@ -46,7 +46,7 @@ beforeEach(() => {
   useStore.setState({ S: { ...structuredClone(DEF), unit: 'kg' } })
   store = null
 })
-afterEach(() => { act(() => root.unmount()); host.remove(); vi.useRealTimers() })
+afterEach(() => { act(() => root.unmount()); host.remove(); dropSession('abc'); vi.useRealTimers() })
 
 describe('PrescriptionWorkspace', () => {
   it('saves once, 800 ms after the last of two quick edits, then with the revision that save returned', async () => {
@@ -147,5 +147,69 @@ describe('PrescriptionWorkspace', () => {
     expect(mocks.saveRxDraft.mock.calls[0][1].routines[0].name).toBe('Late')
     await act(async () => { await whenSaved('abc') })
     root = createRoot(host)   // afterEach unmounts again
+  })
+})
+
+describe('PrescriptionWorkspace, one session per student', () => {
+  it('a page mounted again finds the same store, with no second read', async () => {
+    mocks.getRx.mockResolvedValue(rxOf(5))
+    mocks.saveRxDraft.mockResolvedValue(rxOf(6))
+    mount(); await flush()
+    const first = store
+    rename('Kept')
+    act(() => root.unmount()); root = createRoot(host)
+    store = null
+    act(() => root.render(<MemoryRouter initialEntries={['/students/abc/plan']}><Routes>
+      <Route path="/students/:sid/plan" element={<PrescriptionWorkspace />}><Route index element={<Probe />} /></Route>
+    </Routes></MemoryRouter>))
+    expect(store).toBe(first)   // at once, no blank page while it loads
+    expect(store.getState().S.routines[0].name).toBe('Kept')
+    expect(mocks.getRx).toHaveBeenCalledTimes(1)
+  })
+
+  it('a save that fails on the way out keeps the edits, and the next visit saves them with the held revision', async () => {
+    mocks.getRx.mockResolvedValue(rxOf(5))
+    const offline = () => Object.assign(new Error('offline'), { status: 0 })
+    mocks.saveRxDraft.mockRejectedValueOnce(offline()).mockRejectedValueOnce(offline()).mockResolvedValueOnce(rxOf(6))
+    mount(); await flush()
+    rename('Offline edit')
+    act(() => root.unmount()); await flush()
+    expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
+    await expect(whenSaved('abc')).rejects.toThrow()
+    root = createRoot(host)
+    store = null
+    act(() => root.render(<MemoryRouter initialEntries={['/students/abc/plan']}><Routes>
+      <Route path="/students/:sid/plan" element={<PrescriptionWorkspace />}><Route index element={<Probe />} /></Route>
+    </Routes></MemoryRouter>))
+    expect(store.getState().S.routines[0].name).toBe('Offline edit')
+    await wait(800); await flush()
+    expect(mocks.getRx).toHaveBeenCalledTimes(1)
+    expect(mocks.saveRxDraft).toHaveBeenCalledTimes(3)
+    expect(mocks.saveRxDraft.mock.calls[2][1].routines[0].name).toBe('Offline edit')
+    expect(mocks.saveRxDraft.mock.calls[2][2]).toBe(5)
+    expect(host.textContent).toContain('Saved')
+  })
+
+  it('whenSaved sends what is waiting and answers with the newest revision', async () => {
+    mocks.getRx.mockResolvedValue(rxOf(5))
+    mocks.saveRxDraft.mockResolvedValue(rxOf(6))
+    mount(); await flush()
+    rename('Now')
+    let rev
+    await act(async () => { rev = await whenSaved('abc') })
+    expect(rev).toBe(6)
+    expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the status line mounted while idle, and saves at once when the page is hidden', async () => {
+    mocks.getRx.mockResolvedValue(rxOf(5))
+    mocks.saveRxDraft.mockResolvedValue(rxOf(6))
+    mount(); await flush()
+    expect(host.querySelector('[role="status"]')).not.toBeNull()
+    rename('Closing')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    delete document.visibilityState
+    expect(mocks.saveRxDraft).toHaveBeenCalledTimes(1)
   })
 })

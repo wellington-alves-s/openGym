@@ -1,6 +1,6 @@
 // One student (spec section 5.1): name and state and, once they joined, the Training card: the
 // published version, whether the draft has changes since, and Edit plan, Publish and Versions.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useUI } from '../../store/useUI.js'
 import { t } from '../../lib/i18n.js'
@@ -20,13 +20,17 @@ export default function StudentDetail() {
   const nav = useNavigate()
   // null while loading, 'missing' or 'failed', else { student, rx } (rx only for a student who joined).
   const [data, setData] = useState(null)
+  // The revision last read, for a sheet that stays open across a reload (a 409, then a retry).
+  const rev = useRef(0)
   const load = useCallback(async () => {
     try {
       const student = (await listStudents()).find(s => s.id === sid)
       if (!student) { setData('missing'); return }
       // The workspace may still be saving the last change: read the plan once it is in.
-      if (student.status === 'active') await whenSaved(sid)
-      setData({ student, rx: student.status === 'active' ? (await getRx(sid)).rx : null })
+      if (student.status === 'active') await whenSaved(sid).catch(() => {})   // edits that cannot go up stay in the workspace
+      const rx = student.status === 'active' ? (await getRx(sid)).rx : null
+      if (rx) rev.current = rx._rev
+      setData({ student, rx })
     } catch { setData(prev => (prev && typeof prev === 'object' ? prev : 'failed')) }
   }, [sid])
   useEffect(() => { load() }, [load])
@@ -44,7 +48,8 @@ export default function StudentDetail() {
 
   const { student, rx } = data
   const current = rx?.versions.find(x => x.v === rx.current)
-  const latestRev = async () => { await whenSaved(sid); return rx._rev }
+  // Saves what the workspace still holds first; a save made after this page read the plan is newer.
+  const latestRev = async () => Math.max(rev.current, (await whenSaved(sid)) ?? -1)
   const publish = () => useUI.getState().openSheet(close => <PublishSheet sid={sid} close={close} onDone={load} latestRev={latestRev}
     empty={!rx.draft.bundle.routines.some(r => r.ex.length)} />)
   const versions = () => useUI.getState().openSheet(close => <VersionsSheet sid={sid} close={close} onDone={load} latestRev={latestRev}

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.jsx'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
+import { getRx, saveRxDraft } from './lib/trainer-api.js'
+import { dropSession } from './views/trainer/PrescriptionWorkspace.jsx'
 
 vi.mock('./lib/sound.js', () => ({
   setPlayOnSilent: vi.fn(), setVibrate: vi.fn(), setAlarmBuzzer: vi.fn(),
@@ -35,6 +37,7 @@ afterEach(() => {
   host.remove()
   useStore.setState(original)
   localStorage.clear()
+  dropSession('abc')
 })
 
 const signIn = (user, extra = {}) => useStore.setState({ S: structuredClone(DEF), user, ready: true, boot: vi.fn(), ...extra })
@@ -104,5 +107,50 @@ describe('an approved trainer and the admin dashboard', () => {
     signIn(approved)
     await open('#/admin')
     expect(window.location.hash).toBe('#/students')
+  })
+})
+
+/* App keys each page on its path, so the list and the editor are separate mounts of the plan's
+   layout. The draft, and edits not yet on the server, must survive the trip between them. */
+describe('an approved trainer moving through a student plan', () => {
+  const until = async ok => { for (let i = 0; i < 60 && !ok(); i++) await act(async () => { await new Promise(r => setTimeout(r, 25)) }) }
+  const nameField = () => [...host.querySelectorAll('input.input')].find(i => /day/.test(i.value))
+  const routineRow = () => host.querySelector('.card [role="button"]')
+  const backToList = () => act(async () => host.querySelector('button[data-back="/students/abc/plan"]').click())
+  const type = (el, value) => act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+
+  it('keeps the draft and unsent edits between the list and the editor, and saves them once it can', async () => {
+    getRx.mockClear()
+    saveRxDraft.mockReset()
+    saveRxDraft.mockRejectedValue(Object.assign(new Error('offline'), { status: 0 }))
+    signIn(approved)
+    await open('#/students/abc/plan')
+    await until(() => host.textContent.includes('Draft push day'))
+    await act(async () => routineRow().click())
+    await until(nameField)
+    expect(window.location.hash).toBe('#/students/abc/plan/r1')
+    type(nameField(), 'Edited day')
+    await backToList()
+    // The list has the edit at once, from the same store: no second read, no blank page.
+    expect(window.location.hash).toBe('#/students/abc/plan')
+    expect(host.textContent).toContain('Edited day')
+    await until(() => saveRxDraft.mock.calls.length > 0)
+    expect(getRx).toHaveBeenCalledTimes(1)
+    // The save failed (offline); the edit is still there after another round trip.
+    await act(async () => routineRow().click())
+    await until(nameField)
+    expect(nameField().value).toBe('Edited day')
+    saveRxDraft.mockReset()
+    saveRxDraft.mockImplementation(async (sid, bundle, rev) => ({ rx: { ...draftRx, _rev: rev + 1 } }))
+    await backToList()
+    await until(() => saveRxDraft.mock.calls.length > 0)
+    const [sid, bundle, rev] = saveRxDraft.mock.calls[0]
+    expect(sid).toBe('abc')
+    expect(bundle.routines[0].name).toBe('Edited day')
+    expect(rev).toBe(3)
+    expect(getRx).toHaveBeenCalledTimes(1)
   })
 })

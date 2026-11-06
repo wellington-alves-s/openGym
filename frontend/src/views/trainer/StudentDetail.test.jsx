@@ -87,6 +87,18 @@ describe('StudentDetail', () => {
     expect(host.textContent).toContain('the plan')
   })
 
+  it('an open sheet asks for the revision read last, so a retry after a 409 does not conflict again', async () => {
+    mocks.listStudents.mockResolvedValue([bia])
+    mocks.getRx.mockResolvedValue(rx())
+    mount(); await settle()
+    press('Publish')
+    const sheet = mocks.openSheet.mock.calls[0][0](() => {})
+    expect(await sheet.props.latestRev()).toBe(4)
+    mocks.getRx.mockResolvedValue({ rx: { ...rx().rx, _rev: 7 } })
+    await act(async () => { await sheet.props.onDone() }); await settle()
+    expect(await sheet.props.latestRev()).toBe(7)
+  })
+
   it('a student who has not joined gets the explanation and no actions', async () => {
     mocks.listStudents.mockResolvedValue([ana])
     mount('/students/a1'); await settle()
