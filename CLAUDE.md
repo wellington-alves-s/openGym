@@ -135,8 +135,10 @@ Trainer mode (`TRAINER_MODE`, off by default; personal trainers and their studen
 modules beside `server.js`: `trainer-routes.js` (a factory spread into `routes` only when the mode is
 on; `/api/join/*`, `/api/trainer/*`, `/api/student/*`, `/api/admin/trainer*`), `trainer-access.js` (roles and
 `canAccessStudent`, the one permission check), `trainer-store.js` (student records under
-`DATA_DIR/trainers/<trainerId>/`) and `student-invite.js` (single-use invite codes, stored hashed). Access
-that is denied answers 404, like an unknown student. New modules the image needs go in the
+`DATA_DIR/trainers/<trainerId>/`), `student-invite.js` (single-use invite codes, stored hashed) and `rx.js`
+(the prescription document: a draft plus numbered published versions, pure functions). Access
+that is denied answers 404, like an unknown student. The published plan reaches the student as routines
+`rx-<id>` marked `rx: { v }` and read-only, applied by `lib/prescription.js` (pulled by `lib/prescription-sync.js`). New modules the image needs go in the
 `Dockerfile` COPY list (`dockerfile-copy.test.js` checks it).
 
 ### Sync

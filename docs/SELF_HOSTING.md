@@ -508,6 +508,16 @@ TRAINER_MODE=1             # personal trainers and their students
   deleted.
 - **Privacy.** A trainer can only see what the student agrees to share. This first stage shares
   nothing yet: it sets up the accounts and the link, and the data sharing comes later.
+- **Prescribing training.** A trainer opens a student and edits that student's plan with the usual
+  routine editor. The edits are a draft that only the trainer sees. **Publish** turns the draft into a
+  numbered version (with an optional note), and the trainer can look at older versions and restore one
+  (the last 50 are kept). The student's app checks for a new version when it opens, comes back to the
+  foreground or gets its network back, and shows the prescribed routines beside its own, marked
+  *Prescribed*. The student can train them but cannot edit or delete them; they can copy one and
+  change the copy. A workout in progress is never changed: a new version waits until it ends.
+  If the trainer and the student unlink, the prescribed routines leave the student's plan and their
+  own routines stay. Plans can only use catalogue exercises (not custom ones), and editing a plan
+  needs the server to be reachable, since the draft lives on the server.
 - **For developers.** The routes are in [`api/openapi.yaml`](../api/openapi.yaml) under the
   `trainer` tag and the `admin` routes that mention trainers.
 

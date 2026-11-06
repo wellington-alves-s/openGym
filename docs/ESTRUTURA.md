@@ -69,13 +69,15 @@ Os testes ficam ao lado do código (`*.test.js`, `*.test.jsx`); `src/` tem 848 a
 **Telas (`views/`)**: `Home`, `Workout`, `Plan`, `RoutineEdit`, `History`, `Stats`, `Muscles`,
 `StructuralBalance`, `Library`, `CheckIn`, `Measurements`, `ProgressPhotos`, `Settings`, `WatchSettings`,
 `GymReminder`, `Login`, `MobileOnboarding`, `PermissionSteps`, `FocusView`, `CoachChat`, `CoachIntake`,
-`CoachSetup`, `Admin`, `AdminCoach`.
+`CoachSetup`, `Admin`, `AdminCoach`. O modo personal tem as suas em `views/trainer/` (`Students`,
+`StudentDetail`, `PrescriptionPlan`, `PrescriptionWorkspace`).
 
 **Componentes (`components/`)**, por tema:
 - Gráficos e corpo: `LineChart`, `Heatmap`, `BodyMap`, `MiniBodyMap`, `MuscleExplorer`, `SessionMuscles`, `WeightRate`
 - Treino: `RestTimer`, `TimerFlash`, `Elapsed`, `Stepper`, `DurationWheel`, `WorkoutChips`, `WorkoutMedia`, `WorkoutThumb`, `WorkoutScrollAnchor`, `WorkoutSettingsSheet`, `QueueRow`
 - Gestos e navegação: `SwipeCards`, `SwipeRow`, `TabBar`
-- Conta e sincronização: `Passkeys`, `PasswordAuth`, `LostAccess`, `DeleteAccount`, `ServerSync`, `SyncBanner`, `BackupFolderRow`
+- Conta e sincronização: `Passkeys`, `PasswordAuth`, `LostAccess`, `DeleteAccount`, `ServerSync`, `SyncBanner`, `BackupFolderRow`, `PrescriptionSync`
+- Modo personal: `PublishSheet`, `VersionsSheet`
 - Mídia e câmera: `Media`, `Animations`, `CustomMedia`, `CustomMediaField`, `CameraScan`, `QrCanvas`
 - Coach e exportação: `ChatInput`, `CoachConsentSheet`, `CsvExportSheet`, `ReportSheet`
 - Base: `ui.jsx`, `Icon`, `Modals`, `Toast`, `ErrorBoundary`, `Seasonal`, `AppIconRow`, `ExerciseAliases`, `ExerciseViewToggle`
@@ -87,6 +89,7 @@ Os testes ficam ao lado do código (`*.test.js`, `*.test.jsx`); `src/` tem 848 a
 - Exercícios: `exercises`, `exercises-data` (gerado), `exercise-*`, `similar-exercises`, `equipment`, `favourites`
 - Corpo: `measurements`, `bodyweight`, `day-photos`, `exif-date`
 - Sincronização: `api` (único ponto que fala com o backend), `sync-merge`, `sync-changes`, `sync-legacy`, `remote`, `device-link`, `device-auth`
+- Treino prescrito (modo personal): `prescription` (aplica a ficha publicada como rotinas `rx-` somente leitura), `prescription-sync` (decide quando buscar), `workspace` (o store que o editor de rotinas usa, para o personal editar o rascunho do aluno), `trainer-api`
 - Pontes nativas: `mobile`, `channel`, `capacitor-fetch`, `watch-sync`, `widgets`, `live-activity`, `health-sync`, `health-read`, `health-connect`, `gym-reminder`, `rest-alert`, `push`, `anim-quality`, `anim-packs`
 - Coach: `coach`, `coach-api`, `coach-local`, `coach-context`, `coach-insights`, `coach-schedule`, `coach-secrets`, `coach-consent`
 - Importar e exportar: `import-csv`, `import-hevy`, `export-csv`, `fit-export`, `plan-share`, `zip`, `report`, `report-print`, `print-doc`
@@ -126,6 +129,7 @@ de backup, Health Connect, impressão, scan), `sideload` e `play` (as duas varia
 | `durable.js` | Escrita temp-depois-rename |
 | `passkeys-store.js`, `password.js`, `recover.js`, `device-link.js`, `verify-error.js` | Autenticação (WebAuthn, senha opcional, recuperação, pareamento de celular) |
 | `trainer-routes.js`, `trainer-access.js`, `trainer-store.js`, `student-invite.js` | Modo personal (`TRAINER_MODE`, desligado por padrão): rotas de personal e alunos, permissões, registros dos alunos em `DATA_DIR/trainers/` e convites de uso único |
+| `rx.js` | A ficha prescrita de um aluno (rascunho mais versões numeradas), funções puras; o arquivo fica em `DATA_DIR/trainers/` via `trainer-store.js` |
 | `sync-stamps.js` | Cópia manual de `lib/sync-merge.js` (há teste de paridade) |
 | `media.js` | Fotos e vídeos de exercícios próprios em `DATA_DIR/uploads` |
 | `push-messages.js`, `nudge.js`, `nudge-copy.js`, `queue.js` | Web Push e lembretes (`nudge.js` e `queue.js` espelham o front) |
