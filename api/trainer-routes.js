@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from './trainer-access.js';
 import { validId, readStudent, listStudents, writeStudent, removeStudent, readRx, writeRx } from './trainer-store.js';
-import { emptyRx, saveDraft, publishDraft, restoreVersion, rxView, versionOf } from './rx.js';
+import { emptyRx, saveDraft, publishDraft, restoreVersion, rxView, versionOf, currentOf } from './rx.js';
 import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
 const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink|\/rx(?:\/draft|\/publish|\/restore|\/versions\/(\d{1,9}))?)?$/;
@@ -99,6 +99,15 @@ export function trainerRoutes({
     if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
     if (!isStudent(user)) { json(res, 404, NOT_FOUND); return null; }
     return user;
+  };
+  // The published version of the signed-in student's own plan ({ v: null } when none), else null after
+  // the answer. The file is the session's own id under the trainer on their record, read once.
+  const studentRx = (req, res) => {
+    const me = studentSession(req, res); if (!me) return null;
+    const trainer = db.users.find(u => u.id === me.trainerId);
+    if (!isApprovedTrainer(trainer)) { json(res, 404, NOT_FOUND); return null; }
+    const rx = readRx(DATA, trainer.id, me.id);
+    return (rx && currentOf(rx)) || { v: null };
   };
   // The pending trainer an owner's body names, else null after a 404 or a 400 (approved, not a
   // trainer at all, or an admin: an admin is never rejected or approved from here).
@@ -323,6 +332,16 @@ export function trainerRoutes({
         since: ok ? readStudent(DATA, trainer.id, me.id)?.linkedAt || null : null,
         consent: { ...consentOf(me.consent), at: me.consent?.at || null }
       });
+    },
+
+    'GET /api/student/rx/rev': async (req, res) => {
+      const cur = studentRx(req, res); if (!cur) return;
+      json(res, 200, { v: cur.v });
+    },
+
+    'GET /api/student/rx': async (req, res) => {
+      const cur = studentRx(req, res); if (!cur) return;
+      json(res, 200, cur.v == null ? { v: null } : { v: cur.v, at: cur.at, note: cur.note, bundle: cur.bundle });
     },
 
     'PUT /api/student/consent': async (req, res) => {

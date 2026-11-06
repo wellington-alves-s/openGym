@@ -246,7 +246,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>95 endpoints</span>
+    <span>97 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -2928,6 +2928,66 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s2">200</span>
     <span class="p-desc">The link and the consent on record.<span class="r-sig">{ trainer: object | null, since: integer | null, consent: <a href="#schema-StudentConsent">StudentConsent</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-studentRxRev">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/student/rx/rev</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Student: which version of my plan is current</span>
+  </summary>
+  <div class="ep-body">
+<p>Only the number, to check cheaply whether the plan the trainer published is newer than the one the app already applied. <code>v</code> is <code>null</code> when nothing is published. For a student account whose trainer is approved and active; any other caller gets the same 404 as a path that does not exist.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The current version number.<span class="r-sig">{ v: integer | null }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-studentRx">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/student/rx</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Student: read the plan my trainer published</span>
+  </summary>
+  <div class="ep-body">
+<p>The current published version with its bundle, never the draft and never an older version. <code>{ v: null }</code> when nothing is published. The plan is always the caller's own. For a student account whose trainer is approved and active; any other caller gets the same 404 as a path that does not exist.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The current version, or <code>{ v: null }</code>.<span class="r-sig"><a href="#schema-RxVersion">RxVersion</a> | object</span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>

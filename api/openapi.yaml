@@ -3539,7 +3539,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "not-linked", code: "undefined" }
+              example: { error: "not-linked", code: "not-linked" }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/TrainerPending' }
         '404': { $ref: '#/components/responses/TrainerHidden' }
@@ -3755,7 +3755,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "not-linked", code: "undefined" }
+              example: { error: "not-linked", code: "not-linked" }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/TrainerPending' }
         '404':
@@ -4003,6 +4003,54 @@ paths:
                   since: { oneOf: [{ type: integer }, { type: 'null' }], description: 'When the student joined, ms since epoch.' }
                   consent: { $ref: '#/components/schemas/StudentConsent' }
               example: { trainer: { name: "Rui" }, since: 1788700000000, consent: { measures: true, photos: false, diet: false, at: "2026-11-06T09:00:00.000Z" } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/student/rx/rev:
+    get:
+      tags: [trainer]
+      operationId: studentRxRev
+      summary: 'Student: which version of my plan is current'
+      description: |
+        Only the number, to check cheaply whether the plan the trainer published is newer than
+        the one the app already applied. `v` is `null` when nothing is published. For a
+        student account whose trainer is approved and active; any other caller gets the same
+        404 as a path that does not exist.
+      responses:
+        '200':
+          description: The current version number.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  v: { oneOf: [{ type: integer }, { type: 'null' }] }
+              example: { v: 2 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/student/rx:
+    get:
+      tags: [trainer]
+      operationId: studentRx
+      summary: 'Student: read the plan my trainer published'
+      description: |
+        The current published version with its bundle, never the draft and never an older
+        version. `{ v: null }` when nothing is published. The plan is always the caller's own.
+        For a student account whose trainer is approved and active; any other caller gets the
+        same 404 as a path that does not exist.
+      responses:
+        '200':
+          description: 'The current version, or `{ v: null }`.'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RxVersion'
+                  - type: object
+                    properties:
+                      v: { type: 'null' }
+              example: { v: 2, at: 1788700000000, note: "Week 3: more squats", bundle: { opengym_plan: 1, unit: "kg", week: { "1": "rx-a1b2c3d4" }, routines: [{ id: "rx-a1b2c3d4", name: "Legs", ex: [{ id: "back_squat" }] }], customEx: [] } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/TrainerHidden' }
 
