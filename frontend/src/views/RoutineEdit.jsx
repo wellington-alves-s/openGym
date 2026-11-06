@@ -26,6 +26,7 @@ import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { isPrescribed } from '../lib/prescription.js'
+import { useWorkspaceStore } from '../lib/workspace.js'
 
 export const ROUTINE_LONG_PRESS_MS = 380
 export const ROUTINE_DRAG_SLOP = 8
@@ -329,8 +330,8 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
  * puts the list back as it was, superset links included (a partner left alone loses its link,
  * cleanupSg). Once something else changed them, the exercise goes back in at its old place.
  */
-export function removeRoutineExercise(routineId, i) {
-  const st = useStore.getState()
+export function removeRoutineExercise(routineId, i, store = useStore) {
+  const st = store.getState()
   const routine = st.S.routines.find(x => x.id === routineId)
   const slot = routine?.ex?.[i]
   if (!slot) return false
@@ -341,19 +342,19 @@ export function removeRoutineExercise(routineId, i) {
     if (!ex) return
     ex.splice(i, 1); cleanupSg(ex)
   })
-  const now = useStore.getState().S.routines.find(x => x.id === routineId)
+  const now = store.getState().S.routines.find(x => x.id === routineId)
   const after = JSON.stringify(now?.ex)
   const del = Number(now?._f?.ex) || 0
   useUI.getState().toast(t('“{0}” left the routine.', exerciseNameText(exOr(slot.id))),
-    { action: t('Undo'), onAction: () => undoRemoveRoutineExercise({ routineId, i, before, after, base, del }) })
+    { action: t('Undo'), onAction: () => undoRemoveRoutineExercise({ routineId, i, before, after, base, del }, store) })
   return true
 }
-export function undoRemoveRoutineExercise({ routineId, i, before, after, base, del }) {
-  if (!useStore.getState().S.routines.some(x => x.id === routineId)) {
+export function undoRemoveRoutineExercise({ routineId, i, before, after, base, del }, store = useStore) {
+  if (!store.getState().S.routines.some(x => x.id === routineId)) {
     useUI.getState().toast(t('Too late, that one’s gone'))
     return false
   }
-  useStore.getState().update(s => {
+  store.getState().update(s => {
     const routine = s.routines.find(x => x.id === routineId)
     // Put back exactly, so a change another device made to these exercises before it saw the
     // removal still wins (lib/sync-merge.js, "Undo").
@@ -367,15 +368,19 @@ export function undoRemoveRoutineExercise({ routineId, i, before, after, base, d
 export default function RoutineEdit() {
   const nav = useNavigate()
   const { id } = useParams()
-  const S = useStore(s => s.S)
-  const update = useStore(s => s.update)
+  const store = useWorkspaceStore()
+  const S = store(s => s.S)
+  const update = store(s => s.update)
   const toast = useUI(s => s.toast)
+  // A trainer's workspace (lib/workspace.js) has its own way back, and none of the own-plan extras.
+  const { backTo, prescription } = store.getState()
+  const back = backTo || '/plan'
   const r = S.routines.find(x => x.id === id)
-  useEffect(() => { if (!r) nav('/plan') }, [!!r])
+  useEffect(() => { if (!r) nav(back) }, [!!r])
   // Editing here has no explicit "save" — every field change persists immediately. A single
   // auto-backup on the way out (not per keystroke) covers the whole editing session, deletion
   // included: this still unmounts after the delete button navigates away.
-  useEffect(() => () => useStore.getState().autoBackupNow(), [])
+  useEffect(() => () => store.getState().autoBackupNow(), [])
   const edit = fn => update(s => { fn(s.routines.find(x => x.id === id).ex) })
   const reorder = useRoutineReorder(r, r?.ex || [], (sourceIndex, targetSlot) => {
     if (!r?.rx) edit(exercises => { reorderRoutineUnit(exercises, sourceIndex, targetSlot) })
@@ -411,7 +416,7 @@ export default function RoutineEdit() {
     const picker = exercisePicker((ex, quick) => {
       // The slot and the history as they are now, not as this render saw them: a sync can land
       // while the picker is open, and the new exercise's weight comes from its own sessions.
-      const live = useStore.getState().S
+      const live = store.getState().S
       const slot = live.routines.find(x => x.id === id)?.ex[i]
       if (!slot || slot.id !== openedOn) { picker.close(); return }
       // "+" on the exercise that is already in the slot: nothing to replace, and no toast that
@@ -469,7 +474,7 @@ export default function RoutineEdit() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" data-back="/plan" onClick={() => nav('/plan')} aria-label={t('Plan')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back={back} onClick={() => nav(back)} aria-label={t('Plan')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, margin: '0 12px' }}>
         <input className="input" defaultValue={r.name} readOnly={locked} style={{ fontWeight: 600, fontSize: 20, letterSpacing: '-.021em' }}
           onChange={e => update(s => { s.routines.find(x => x.id === id).name = e.target.value.trim() || t('Routine') })} />
@@ -484,7 +489,7 @@ export default function RoutineEdit() {
       </div>
     </div>}
 
-    {!locked && <><div className="sect-b" style={{ marginBottom: 16 }}>
+    {!locked && !prescription && <><div className="sect-b" style={{ marginBottom: 16 }}>
       <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
         value={r.prog || 'linear'} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
         options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
@@ -532,7 +537,7 @@ export default function RoutineEdit() {
       const leavesUp = inSS.has(i) && !linkedPrev
       const leavesDown = inSS.has(i) && r.ex[i + 1]?.sg !== e.sg
       const isDragging = reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last
-      const removeHere = () => removeRoutineExercise(id, i)
+      const removeHere = () => removeRoutineExercise(id, i, store)
       // A tap anywhere on the row opens the exercise's sheet; its Remove is the keyboard's way
       // to take it out. The row itself is no button (it holds the link and Move buttons, which a
       // screen reader would lose inside one): the name is, a real <button> a click bubbles up
@@ -595,19 +600,19 @@ export default function RoutineEdit() {
     })()}
 
     {!locked && <div className="small dim row" style={{ margin: '10px 2px', gap: 5 }}><Icon name="link" style={{ fontSize: 13 }} />{t('Tap the link button on an exercise to superset it with the one above. You’ll do them back-to-back.')}</div>}
-    <Button onClick={() => {
+    {!prescription && <><Button onClick={() => {
       const copy = copyRoutine(r, t('Copy'))
       update(s => { s.routines.push(copy) })
       nav('/plan/r/' + copy.id)
     }}>{t('Copy routine')}</Button>
     <div style={{ height: 10 }} />
-    <Button disabled={!r.ex.length} onClick={printRoutine}>{t('Print / Save as PDF')}</Button>
+    <Button disabled={!r.ex.length} onClick={printRoutine}>{t('Print / Save as PDF')}</Button></>}
     {!locked && <><div style={{ height: 10 }} />
     <Button variant="danger" onClick={() => confirmSheet({
       title: t('Delete routine?'), message: t('“{0}” and its exercises will be removed.', r.name), confirmText: t('Delete'), danger: true,
       onConfirm: () => {
         update(s => { deleteRoutine(s, id) })
-        nav('/plan')
+        nav(back)
       }
     })}>{t('Delete routine')}</Button></>}
   </div>
