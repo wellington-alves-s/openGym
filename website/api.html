@@ -246,7 +246,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>97 endpoints</span>
+    <span>102 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -2715,6 +2715,259 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
 </details>
 
+<details class="ep" id="op-trainerModelsList">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/trainer/models</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: list my models</span>
+  </summary>
+  <div class="ep-body">
+<p>The trainer's models: reusable monthly plans kept in the trainer's own profile, to be copied into a student's draft. The list carries counts and no bundles; read one with <code>GET /api/trainer/models/{id}</code>. Oldest first.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The models.<span class="r-sig">{ models: <a href="#schema-TrainerModelSummary">TrainerModelSummary</a>[] }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerModelCreate">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/trainer/models</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: save a new model</span>
+  </summary>
+  <div class="ep-body">
+<p>Keeps a plan bundle under a name (1 to 40 characters, trimmed). The bundle is checked like a phase bundle of a prescription: at most 30 routines, 60 exercises in each and 128 KB, no custom exercises. A trainer keeps up to 100 models.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">bundle<em class="p-req" title="required">required</em></span>
+    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+<pre><code>{
+  &quot;name&quot;: &quot;Hypertrophy, month 1&quot;,
+  &quot;bundle&quot;: {
+    &quot;opengym_plan&quot;: 1,
+    &quot;unit&quot;: &quot;kg&quot;,
+    &quot;week&quot;: {
+      &quot;1&quot;: &quot;rx-a1b2c3d4&quot;
+    },
+    &quot;routines&quot;: [
+      {
+        &quot;id&quot;: &quot;rx-a1b2c3d4&quot;,
+        &quot;name&quot;: &quot;Legs&quot;,
+        &quot;ex&quot;: [
+          {
+            &quot;id&quot;: &quot;back_squat&quot;
+          }
+        ]
+      }
+    ],
+    &quot;customEx&quot;: []
+  }
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved, with a new id and <code>_rev</code> 1.<span class="r-sig">{ model: <a href="#schema-TrainerModel">TrainerModel</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>bad-name</code> (not 1 to 40 characters), <code>too-many-models</code> (the 101st), or the bundle is refused: <code>bad-bundle</code>, <code>too-big</code>, <code>too-many-routines</code>, <code>too-many-exercises</code> or <code>bad-week</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many models&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerModelGet">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/trainer/models/{id}</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: read a model</span>
+  </summary>
+  <div class="ep-body">
+<p>One model with its bundle. Another trainer's model, an unknown id and a malformed one all answer the same 404.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The model id from <code>GET /api/trainer/models</code>.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The model.<span class="r-sig">{ model: <a href="#schema-TrainerModel">TrainerModel</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerModelUpdate">
+  <summary>
+    <span class="m put">PUT</span>
+    <span class="ep-path"><code>/api/trainer/models/{id}</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: rename a model or replace its bundle</span>
+  </summary>
+  <div class="ep-body">
+<p>Changes the name, the bundle or both; a body with neither is refused. <code>_rev</code> is the revision the caller last read (each model has its own, starting at 1): if the model changed since, the answer is a 409 with the current model and nothing is written. Every change takes <code>_rev</code> up by one.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The model id from <code>GET /api/trainer/models</code>.</span>
+  </div>
+</div>
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">bundle</span>
+    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">_rev<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">The <code>_rev</code> of the model as last read.</span>
+  </div>
+</div>
+<pre><code>{
+  &quot;name&quot;: &quot;Hypertrophy, month 2&quot;,
+  &quot;_rev&quot;: 1
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Saved. The model carries the new <code>_rev</code>.<span class="r-sig">{ model: <a href="#schema-TrainerModel">TrainerModel</a> }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc"><code>bad-rev</code> (missing or not a whole number), <code>bad-model</code> (neither a name nor a bundle), <code>bad-name</code>, or the bundle is refused: <code>bad-bundle</code>, <code>too-big</code>, <code>too-many-routines</code>, <code>too-many-exercises</code> or <code>bad-week</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;_rev must be a whole number&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc"><code>conflict</code>: <code>_rev</code> is not the stored one, so the model changed elsewhere. The answer carries the current <code>model</code>; nothing was written.</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-trainerModelDelete">
+  <summary>
+    <span class="m delete">DELETE</span>
+    <span class="ep-path"><code>/api/trainer/models/{id}</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Trainer: delete a model</span>
+  </summary>
+  <div class="ep-body">
+<p>Removes the model. Plans already copied into a student's draft are not touched.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id <span class="p-hint">(path)</span><em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The model id from <code>GET /api/trainer/models</code>.</span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Deleted.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The caller is a personal trainer who the owner has not approved yet (<code>trainer-pending</code>). They can sign in and use the app for themselves, but not this route.<span class="r-sig"><code>{&quot;error&quot;:&quot;waiting for approval&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such route for this caller. The caller is not an approved trainer (or, on a student route, not a student), or the student is not theirs, does not exist or is a malformed id: one answer for all of them, so nothing says who another trainer's students are.<span class="r-sig"><code>{&quot;error&quot;:&quot;not found&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
 <details class="ep" id="op-joinPreview">
   <summary>
     <span class="m get">GET</span>
@@ -4806,6 +5059,82 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">versions[].note</span>
     <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-TrainerModelSummary">
+  <summary>
+    <span class="sch-name"><code>TrainerModelSummary</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A model as the list shows it, without its bundle.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">updated<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Epoch milliseconds of the last change.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">routines<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">How many routines the bundle has.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">exercises<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">How many exercises there are in all the routines.</span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-TrainerModel">
+  <summary>
+    <span class="sch-name"><code>TrainerModel</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A reusable monthly plan the trainer keeps, with its own revision.</span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">updated<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Epoch milliseconds of the last change.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">_rev<em class="p-req" title="required">required</em></span>
+    <span class="p-type">integer <span class="p-hint">(1&ndash;)</span></span>
+    <span class="p-desc">Send this back as <code>_rev</code> with the next change.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">bundle<em class="p-req" title="required">required</em></span>
+    <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
     <span class="p-desc"></span>
   </div>
 </div>

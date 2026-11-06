@@ -16,7 +16,7 @@ import webpush from 'web-push';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
-import { trainerRoutes, trainerStudentKey, joinKey, unlinkStudent, detachTrainer } from './trainer-routes.js';
+import { trainerRoutes, trainerStudentKey, trainerModelKey, joinKey, unlinkStudent, detachTrainer } from './trainer-routes.js';
 import { isApprovedTrainer, purgeStalePendingTrainers } from './trainer-access.js';
 import { removeTrainerDir } from './trainer-store.js';
 import { startCadence } from './coach/cadence.js';
@@ -3102,7 +3102,7 @@ const server = http.createServer(async (req, res) => {
   // above stays a plain lookup, and so csrfOk and the catch-all see one name for every file.
   const mm = /^\/api\/media\/([0-9a-f]{64})$/.exec(url.pathname);
   if (mm) { key = req.method + ' /api/media/{hash}'; req.mediaHash = mm[1]; }
-  else key = trainerStudentKey(req, url.pathname) || joinKey(req, url.pathname) || key;
+  else key = trainerStudentKey(req, url.pathname) || trainerModelKey(req, url.pathname) || joinKey(req, url.pathname) || key;
   const handler = routes[key];
   if (!handler) return json(res, 404, { error: 'not found' });
   if (!csrfOk(req, key)) {

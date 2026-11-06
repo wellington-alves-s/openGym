@@ -72,6 +72,25 @@ export function removeRx(dir, trainerId, studentId) {
   catch { return false; }
 }
 
+// The trainer's own profile, `<dir>/trainers/<trainerId>/profile.json`: { models: [{ id, name, updated, _rev, bundle }] }.
+// Always the whole file in and out; a missing or unreadable one is an empty profile.
+const profileFile = (dir, trainerId) => path.join(dir, 'trainers', trainerId, 'profile.json');
+
+export function readProfile(dir, trainerId) {
+  if (!validId(trainerId)) return { models: [] };
+  try {
+    const p = JSON.parse(fs.readFileSync(profileFile(dir, trainerId), 'utf8'));
+    return Array.isArray(p?.models) ? p : { models: [] };
+  } catch { return { models: [] }; }
+}
+
+export function writeProfile(dir, trainerId, profile) {
+  if (!validId(trainerId)) throw new Error('bad-id');
+  fs.mkdirSync(path.join(dir, 'trainers', trainerId), { recursive: true });
+  atomicWrite(profileFile(dir, trainerId), JSON.stringify(profile), 0o600);
+  return profile;
+}
+
 export function removeStudent(dir, trainerId, studentId) {
   if (!validId(trainerId) || !validId(studentId)) return false;
   removeRx(dir, trainerId, studentId);

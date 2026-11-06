@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validId, readStudent, listStudents, writeStudent, removeStudent, removeTrainerDir, readRx, writeRx, removeRx } from '../trainer-store.js';
+import { validId, readStudent, listStudents, writeStudent, removeStudent, removeTrainerDir, readRx, writeRx, removeRx, readProfile, writeProfile } from '../trainer-store.js';
 
 const T = 'trainer-0001';
 const rec = (over = {}) => ({ id: 'student-0001', name: 'Ana', status: 'invited', created: 1000, ...over });
@@ -99,6 +99,37 @@ describe('trainer store', () => {
     writeRx(dir, T, 'student-0001', {});
     assert.equal(removeTrainerDir(dir, T), true);
     assert.equal(readRx(dir, T, 'student-0001'), null);
+  });
+
+  it('a trainer with no profile file reads { models: [] }, also when the file is unreadable', () => {
+    assert.deepEqual(readProfile(dir, T), { models: [] });
+    fs.mkdirSync(path.join(dir, 'trainers', T), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'trainers', T, 'profile.json'), '{not json');
+    assert.deepEqual(readProfile(dir, T), { models: [] });
+    fs.writeFileSync(path.join(dir, 'trainers', T, 'profile.json'), 'null');
+    assert.deepEqual(readProfile(dir, T), { models: [] });
+  });
+
+  it('writeProfile creates the folder and the file (0o600) and readProfile gives it back', () => {
+    const p = { models: [{ id: 'model-0001', name: 'Cut', updated: 1, _rev: 1, bundle: {} }] };
+    assert.deepEqual(writeProfile(dir, T, p), p);
+    const file = path.join(dir, 'trainers', T, 'profile.json');
+    assert.deepEqual(readProfile(dir, T), p);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  });
+
+  it('a hostile trainer id reads an empty profile, throws on write and touches nothing', () => {
+    for (const id of ['..', '../x', 'a/b', '', 'short', null, {}]) {
+      assert.deepEqual(readProfile(dir, id), { models: [] }, String(id));
+      assert.throws(() => writeProfile(dir, id, { models: [] }), String(id));
+    }
+    assert.deepEqual(allFiles(dir), []);
+  });
+
+  it('removeTrainerDir takes the profile too', () => {
+    writeProfile(dir, T, { models: [{ id: 'model-0001' }] });
+    assert.equal(removeTrainerDir(dir, T), true);
+    assert.deepEqual(readProfile(dir, T), { models: [] });
   });
 
   it('removeTrainerDir takes the whole trainer folder, and nothing for a hostile id', () => {

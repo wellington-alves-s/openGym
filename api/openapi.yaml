@@ -3789,6 +3789,173 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
 
 
+  /api/trainer/models:
+    get:
+      tags: [trainer]
+      operationId: trainerModelsList
+      summary: "Trainer: list my models"
+      description: |
+        The trainer's models: reusable monthly plans kept in the trainer's own profile, to be
+        copied into a student's draft. The list carries counts and no bundles; read one with
+        `GET /api/trainer/models/{id}`. Oldest first.
+      responses:
+        '200':
+          description: The models.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [models]
+                properties:
+                  models: { type: array, items: { $ref: '#/components/schemas/TrainerModelSummary' } }
+              example:
+                models:
+                  - { id: "Qm3xT9vLk2Rb7HcW", name: "Hypertrophy, month 1", updated: 1793900000000, routines: 4, exercises: 24 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+    post:
+      tags: [trainer]
+      operationId: trainerModelCreate
+      summary: "Trainer: save a new model"
+      description: |
+        Keeps a plan bundle under a name (1 to 40 characters, trimmed). The bundle is checked
+        like a phase bundle of a prescription: at most 30 routines, 60 exercises in each and
+        128 KB, no custom exercises. A trainer keeps up to 100 models.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, bundle]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 40 }
+                bundle: { $ref: '#/components/schemas/RxBundle' }
+            example:
+              name: "Hypertrophy, month 1"
+              bundle: { opengym_plan: 1, unit: kg, week: { "1": "rx-a1b2c3d4" }, routines: [{ id: "rx-a1b2c3d4", name: Legs, ex: [{ id: back_squat }] }], customEx: [] }
+      responses:
+        '200':
+          description: Saved, with a new id and `_rev` 1.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [model]
+                properties:
+                  model: { $ref: '#/components/schemas/TrainerModel' }
+        '400':
+          description: >-
+            `bad-name` (not 1 to 40 characters), `too-many-models` (the 101st), or the bundle is
+            refused: `bad-bundle`, `too-big`, `too-many-routines`, `too-many-exercises` or
+            `bad-week`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "too many models", code: "too-many-models" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/trainer/models/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The model id from `GET /api/trainer/models`.
+        schema: { type: string }
+    get:
+      tags: [trainer]
+      operationId: trainerModelGet
+      summary: "Trainer: read a model"
+      description: |
+        One model with its bundle. Another trainer's model, an unknown id and a malformed one
+        all answer the same 404.
+      responses:
+        '200':
+          description: The model.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [model]
+                properties:
+                  model: { $ref: '#/components/schemas/TrainerModel' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+    put:
+      tags: [trainer]
+      operationId: trainerModelUpdate
+      summary: "Trainer: rename a model or replace its bundle"
+      description: |
+        Changes the name, the bundle or both; a body with neither is refused. `_rev` is the
+        revision the caller last read (each model has its own, starting at 1): if the model
+        changed since, the answer is a 409 with the current model and nothing is written.
+        Every change takes `_rev` up by one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_rev]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 40 }
+                bundle: { $ref: '#/components/schemas/RxBundle' }
+                _rev: { type: integer, description: 'The `_rev` of the model as last read.' }
+            example: { name: "Hypertrophy, month 2", _rev: 1 }
+      responses:
+        '200':
+          description: Saved. The model carries the new `_rev`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [model]
+                properties:
+                  model: { $ref: '#/components/schemas/TrainerModel' }
+        '400':
+          description: >-
+            `bad-rev` (missing or not a whole number), `bad-model` (neither a name nor a
+            bundle), `bad-name`, or the bundle is refused: `bad-bundle`, `too-big`,
+            `too-many-routines`, `too-many-exercises` or `bad-week`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "_rev must be a whole number", code: "bad-rev" }
+        '409':
+          description: >-
+            `conflict`: `_rev` is not the stored one, so the model changed elsewhere. The
+            answer carries the current `model`; nothing was written.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  code: { type: string, const: conflict }
+                  model: { $ref: '#/components/schemas/TrainerModel' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+    delete:
+      tags: [trainer]
+      operationId: trainerModelDelete
+      summary: "Trainer: delete a model"
+      description: |
+        Removes the model. Plans already copied into a student's draft are not touched.
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
   /api/join/{code}:
     parameters:
       - name: code
@@ -4551,6 +4718,28 @@ components:
               v: { type: integer }
               at: { type: integer }
               note: { type: string }
+
+    TrainerModelSummary:
+      type: object
+      description: A model as the list shows it, without its bundle.
+      required: [id, name, updated, routines, exercises]
+      properties:
+        id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        updated: { type: integer, description: Epoch milliseconds of the last change. }
+        routines: { type: integer, description: How many routines the bundle has. }
+        exercises: { type: integer, description: How many exercises there are in all the routines. }
+
+    TrainerModel:
+      type: object
+      description: A reusable monthly plan the trainer keeps, with its own revision.
+      required: [id, name, updated, _rev, bundle]
+      properties:
+        id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        updated: { type: integer, description: Epoch milliseconds of the last change. }
+        _rev: { type: integer, minimum: 1, description: 'Send this back as `_rev` with the next change.' }
+        bundle: { $ref: '#/components/schemas/RxBundle' }
 
     PasskeyList:
       type: object

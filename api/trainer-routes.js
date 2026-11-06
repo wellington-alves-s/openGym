@@ -10,11 +10,13 @@
  * all get the same 404. */
 import crypto from 'node:crypto';
 import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from './trainer-access.js';
-import { validId, readStudent, listStudents, writeStudent, removeStudent, readRx, writeRx } from './trainer-store.js';
-import { emptyRx, programOf, saveDraft, publishDraft, restoreVersion, rxView, versionOf, currentOf } from './rx.js';
+import { validId, readStudent, listStudents, writeStudent, removeStudent, readRx, writeRx, readProfile, writeProfile } from './trainer-store.js';
+import { emptyRx, checkBundle, programOf, saveDraft, publishDraft, restoreVersion, rxView, versionOf, currentOf } from './rx.js';
 import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
 const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink|\/rx(?:\/draft|\/publish|\/restore|\/versions\/(\d{1,9}))?)?$/;
+const MODEL_PATH = /^\/api\/trainer\/models\/([^/]+)$/;
+const MAX_MODELS = 100;
 const JOIN_PATH = /^\/api\/join\/([^/]+)(\/password|\/options|\/verify)?$/;
 
 // The route key for a per-student path, or null. Sets req.studentId to the segment as sent.
@@ -25,6 +27,14 @@ export function trainerStudentKey(req, pathname) {
   // .../rx/versions/<n>: the number goes on req.rxVersion, the key stays one for every n.
   if (m[3] !== undefined) { req.rxVersion = +m[3]; return `${req.method} /api/trainer/students/{id}/rx/versions/{v}`; }
   return `${req.method} /api/trainer/students/{id}${m[2] || ''}`;
+}
+
+// The same for /api/trainer/models/{id}, the id as sent left on req.modelId (validId is the handler's).
+export function trainerModelKey(req, pathname) {
+  const m = MODEL_PATH.exec(pathname);
+  if (!m) return null;
+  req.modelId = m[1];
+  return `${req.method} /api/trainer/models/{id}`;
 }
 
 // The same for /api/join/{code}, the code left on req.joinCode. The key, never the path, is what
@@ -108,6 +118,26 @@ export function trainerRoutes({
     if (!isApprovedTrainer(trainer)) { json(res, 404, NOT_FOUND); return null; }
     const rx = readRx(DATA, trainer.id, me.id);
     return (rx && currentOf(rx)) || { v: null };
+  };
+  // The models routes: the trainer's profile and the model the path names (null after a 404 for an
+  // unknown, foreign or hostile id: a trainer only ever reads their own file). Each model has its own
+  // _rev; a change reads the file, checks, changes one model and writes it all back with no await between.
+  const modelOf = (req, res, trainer, profile) => {
+    const m = validId(req.modelId) ? profile.models.find(x => x.id === req.modelId) : null;
+    if (!m) { audit(req, 'trainer.denied', { ok: false, user: trainer }); json(res, 404, NOT_FOUND); }
+    return m || null;
+  };
+  // → the trimmed name, else null after the 400.
+  const modelName = (res, v) => {
+    const name = text(v).trim();
+    if (name && name.length <= 40) return name;
+    json(res, 400, { error: 'name must be 1 to 40 characters', code: 'bad-name' });
+    return null;
+  };
+  const badBundle = (res, bundle) => {
+    const code = checkBundle(bundle);
+    if (code) json(res, 400, { error: code.replace(/-/g, ' '), code });
+    return !!code;
   };
   // The pending trainer an owner's body names, else null after a 404 or a 400 (approved, not a
   // trainer at all, or an admin: an admin is never rejected or approved from here).
@@ -321,6 +351,58 @@ export function trainerRoutes({
       const ver = versionOf(rxOf(g), req.rxVersion);
       if (!ver) return json(res, 404, { error: 'no such version', code: 'no-such-version' });
       json(res, 200, { version: ver });
+    },
+
+    /* ---------- models: reusable plans in the trainer's profile ---------- */
+    'GET /api/trainer/models': async (req, res) => {
+      const trainer = trainerGuard(req, res); if (!trainer) return;
+      json(res, 200, { models: readProfile(DATA, trainer.id).models.map(({ id, name, updated, bundle }) => ({
+        id, name, updated, routines: bundle.routines.length, exercises: bundle.routines.reduce((n, r) => n + r.ex.length, 0)
+      })) });
+    },
+
+    'GET /api/trainer/models/{id}': async (req, res) => {
+      const trainer = trainerGuard(req, res); if (!trainer) return;
+      const model = modelOf(req, res, trainer, readProfile(DATA, trainer.id)); if (!model) return;
+      json(res, 200, { model });
+    },
+
+    'POST /api/trainer/models': async (req, res) => {
+      const body = await readBody(req);
+      const trainer = trainerGuard(req, res); if (!trainer) return;
+      const name = modelName(res, body.name); if (!name) return;
+      if (badBundle(res, body.bundle)) return;
+      const profile = readProfile(DATA, trainer.id);
+      if (profile.models.length >= MAX_MODELS) return json(res, 400, { error: 'a trainer keeps up to 100 models', code: 'too-many-models' });
+      const model = { id: crypto.randomBytes(12).toString('base64url'), name, updated: Date.now(), _rev: 1, bundle: body.bundle };
+      writeProfile(DATA, trainer.id, { ...profile, models: [...profile.models, model] });
+      audit(req, 'model.create', { user: trainer, msg: name });
+      json(res, 200, { model });
+    },
+
+    'PUT /api/trainer/models/{id}': async (req, res) => {
+      const body = await readBody(req);
+      const trainer = trainerGuard(req, res); if (!trainer) return;
+      const profile = readProfile(DATA, trainer.id);
+      const old = modelOf(req, res, trainer, profile); if (!old) return;
+      if (!Number.isInteger(body._rev)) return json(res, 400, { error: '_rev must be a whole number', code: 'bad-rev' });
+      if (body._rev !== old._rev) return json(res, 409, { error: 'the model changed elsewhere', code: 'conflict', model: old });
+      if (body.name === undefined && body.bundle === undefined) return json(res, 400, { error: 'send a name, a bundle or both', code: 'bad-model' });
+      const model = { ...old, _rev: old._rev + 1, updated: Date.now() };
+      if (body.name !== undefined) { model.name = modelName(res, body.name); if (!model.name) return; }
+      if (body.bundle !== undefined) { if (badBundle(res, body.bundle)) return; model.bundle = body.bundle; }
+      writeProfile(DATA, trainer.id, { ...profile, models: profile.models.map(x => (x === old ? model : x)) });
+      audit(req, 'model.update', { user: trainer, msg: model.name });
+      json(res, 200, { model });
+    },
+
+    'DELETE /api/trainer/models/{id}': async (req, res) => {
+      const trainer = trainerGuard(req, res); if (!trainer) return;
+      const profile = readProfile(DATA, trainer.id);
+      const old = modelOf(req, res, trainer, profile); if (!old) return;
+      writeProfile(DATA, trainer.id, { ...profile, models: profile.models.filter(x => x !== old) });
+      audit(req, 'model.delete', { user: trainer, msg: old.name });
+      json(res, 200, { ok: true });
     },
 
     /* ---------- the student's side ---------- */
