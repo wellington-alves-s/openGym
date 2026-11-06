@@ -1,0 +1,142 @@
+/* A trainer's side of the prescription: draft, publish, restore and read a version, plus who may touch it. */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { startServer } from './trainer-harness.mjs';
+
+const user = (id, name, extra = {}) => ({ id, name, created: new Date().toISOString(), ...extra });
+const USERS = [
+  user('trainer01', 'Coach One', { role: 'trainer', trainerStatus: 'approved' }),
+  user('trainer02', 'Coach Two', { role: 'trainer', trainerStatus: 'approved' }),
+  user('student01', 'Student', { role: 'student', trainerId: 'trainer01' }),
+  user('student02', 'Waiting', { role: 'student', trainerId: 'trainer01' })
+];
+const rec = (id, status) => JSON.stringify({ id, name: id, status, created: 1, linkedAt: 2, _rev: 1 });
+const files = {
+  'trainers/trainer01/students/student01.json': rec('student01', 'active'),
+  'trainers/trainer01/students/student02.json': rec('student02', 'invited')
+};
+const ON = { env: { TRAINER_MODE: '1' }, users: USERS, files };
+const NOT_FOUND = { error: 'not found' };
+const base = '/api/trainer/students/student01/rx';
+const bundle = (...exIds) => ({
+  opengym_plan: 1, unit: 'kg', week: { 1: 'r1' },
+  routines: [{ id: 'r1', name: 'A', ex: exIds.map(id => ({ id })) }], customEx: []
+});
+const rxFile = s => path.join(s.dir, 'trainers/trainer01/rx/student01.json');
+const onDisk = s => JSON.parse(fs.readFileSync(rxFile(s), 'utf8'));
+const put = (s, b, _rev, as = 'trainer01') => s.call(base + '/draft', { method: 'PUT', body: { bundle: b, _rev }, as });
+const publish = (s, _rev, note = '') => s.call(base + '/publish', { method: 'POST', body: { note, _rev }, as: 'trainer01' });
+
+test('a student who never had a plan reads an empty draft and no current version', async t => {
+  const s = await startServer(t, ON);
+  const r = await s.call(base, { as: 'trainer01' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.rx._rev, 0);
+  assert.equal(r.body.rx.current, null);
+  assert.deepEqual(r.body.rx.draft.bundle.routines, []);
+  assert.deepEqual(r.body.rx.versions, []);
+});
+
+test('saving the draft needs the revision it was read at; a stale one is a 409 with the current plan', async t => {
+  const s = await startServer(t, ON);
+  const a = await put(s, bundle('ex1'), 0);
+  assert.equal(a.status, 200);
+  assert.equal(a.body.rx._rev, 1);
+  assert.equal(onDisk(s).draft.bundle.routines[0].ex[0].id, 'ex1');
+  const before = fs.readFileSync(rxFile(s), 'utf8');
+  const b = await put(s, bundle('ex2'), 0);
+  assert.equal(b.status, 409);
+  assert.equal(b.body.code, 'conflict');
+  assert.equal(b.body.rx._rev, 1);
+  assert.equal(b.body.rx.draft.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal(fs.readFileSync(rxFile(s), 'utf8'), before);
+});
+
+test('a bundle that breaks the limits is a 400 with its code and changes nothing', async t => {
+  const s = await startServer(t, ON);
+  const many = bundle('ex1');
+  many.routines = Array.from({ length: 31 }, (_, i) => ({ id: 'r' + i, name: 'R', ex: [{ id: 'x' }] }));
+  many.week = {};
+  const r = await put(s, many, 0);
+  assert.deepEqual([r.status, r.body.code], [400, 'too-many-routines']);
+  assert.equal(fs.existsSync(rxFile(s)), false);
+  assert.equal((await put(s, 'nope', 0)).body.code, 'bad-bundle');
+  assert.equal((await put(s, bundle('ex1'), 'x')).status, 400);   // _rev has to be a number
+});
+
+test('publishing an empty draft is a 400 empty-draft; publishing numbers the versions 1 and 2', async t => {
+  const s = await startServer(t, ON);
+  const e = await publish(s, 0);
+  assert.deepEqual([e.status, e.body.code], [400, 'empty-draft']);
+  let rev = (await put(s, bundle('ex1'), 0)).body.rx._rev;
+  const p1 = await publish(s, rev, 'first');
+  assert.equal(p1.status, 200);
+  assert.equal(p1.body.v, 1);
+  assert.equal(p1.body.rx.current, 1);
+  rev = p1.body.rx._rev;
+  rev = (await put(s, bundle('ex1', 'ex2'), rev)).body.rx._rev;
+  const p2 = await publish(s, rev);
+  assert.equal(p2.body.v, 2);
+  assert.deepEqual(p2.body.rx.versions.map(v => [v.v, v.note]), [[1, 'first'], [2, '']]);
+  assert.equal(p2.body.rx.versions[0].bundle, undefined);   // the view never carries bundles
+  assert.equal((await publish(s, rev)).status, 409);   // stale
+  const audit = fs.readFileSync(path.join(s.dir, 'audit.log'), 'utf8');
+  assert.match(audit, /"ev":"rx\.publish"[^\n]*v2/);
+});
+
+test('restoring a version writes only the draft; versions/{v} serves the bundle, an unknown one is 404', async t => {
+  const s = await startServer(t, ON);
+  let rev = (await put(s, bundle('ex1'), 0)).body.rx._rev;
+  rev = (await publish(s, rev)).body.rx._rev;
+  rev = (await put(s, bundle('ex9'), rev)).body.rx._rev;
+  const r = await s.call(base + '/restore', { method: 'POST', body: { v: 1, _rev: rev }, as: 'trainer01' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.rx.draft.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal(r.body.rx.current, 1);
+  assert.equal(r.body.rx.versions.length, 1);
+  assert.equal(onDisk(s).versions.length, 1);
+  assert.match(fs.readFileSync(path.join(s.dir, 'audit.log'), 'utf8'), /"ev":"rx\.restore"/);
+  const bad = await s.call(base + '/restore', { method: 'POST', body: { v: 9, _rev: r.body.rx._rev }, as: 'trainer01' });
+  assert.equal(bad.status, 404);
+  assert.equal((await s.call(base + '/restore', { method: 'POST', body: { v: 'x', _rev: r.body.rx._rev }, as: 'trainer01' })).status, 400);
+  const v1 = await s.call(base + '/versions/1', { as: 'trainer01' });
+  assert.equal(v1.status, 200);
+  assert.deepEqual(Object.keys(v1.body.version).sort(), ['at', 'bundle', 'note', 'v']);
+  assert.equal(v1.body.version.bundle.routines[0].ex[0].id, 'ex1');
+  assert.equal((await s.call(base + '/versions/9', { as: 'trainer01' })).status, 404);
+  assert.equal((await s.call(base + '/versions/abc', { as: 'trainer01' })).status, 404);
+});
+
+const ROUTES = [
+  ['GET', base], ['PUT', base + '/draft'], ['POST', base + '/publish'], ['POST', base + '/restore'], ['GET', base + '/versions/1']
+];
+const bodyFor = p => p.endsWith('/draft') ? { bundle: bundle('ex1'), _rev: 0 } : { v: 1, note: '', _rev: 0 };
+
+test('who may touch the plan: another trainer and a student get 404, nobody 401, an unlinked-yet student 400', async t => {
+  const s = await startServer(t, ON);
+  for (const [method, p] of ROUTES) {
+    const body = method === 'GET' ? undefined : bodyFor(p);
+    for (const as of ['trainer02', 'student01']) {
+      const r = await s.call(p, { method, body, as });
+      assert.deepEqual([r.status, r.body], [404, NOT_FOUND], `${method} ${p} as ${as}`);
+    }
+    assert.equal((await s.call(p, { method, body })).status, 401, `${method} ${p}`);
+    const w = await s.call(p.replace('student01', 'student02'), { method, body, as: 'trainer01' });
+    assert.deepEqual([w.status, w.body.code], [400, 'not-linked'], `${method} ${p} invited`);
+    const h = await s.call(p.replace('student01', '..%2f..'), { method, body, as: 'trainer01' });
+    assert.deepEqual([h.status, h.body], [404, NOT_FOUND], `${method} ${p} hostile`);
+    const u = await s.call(p.replace('student01', 'nobody999'), { method, body, as: 'trainer01' });
+    assert.deepEqual([u.status, u.body], [404, NOT_FOUND], `${method} ${p} unknown`);
+  }
+  assert.equal(fs.existsSync(rxFile(s)), false);
+});
+
+test('with trainer mode off every plan route is a plain 404', async t => {
+  const s = await startServer(t, { users: USERS, files });
+  for (const [method, p] of ROUTES) {
+    const r = await s.call(p, { method, body: method === 'GET' ? undefined : bodyFor(p), as: 'trainer01' });
+    assert.equal(r.status, 404, `${method} ${p}`);
+  }
+});

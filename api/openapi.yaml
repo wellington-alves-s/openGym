@@ -3507,6 +3507,266 @@ paths:
         '403': { $ref: '#/components/responses/TrainerPending' }
         '404': { $ref: '#/components/responses/TrainerHidden' }
 
+  /api/trainer/students/{id}/rx:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The student id from `GET /api/trainer/students`.
+        schema: { type: string }
+    get:
+      tags: [trainer]
+      operationId: trainerRxGet
+      summary: "Trainer: read a student's plan"
+      description: |
+        The plan a trainer keeps for one student: the draft being edited and the list of
+        published versions. The version bundles are left out (the document can be large);
+        read one with `GET /api/trainer/students/{id}/rx/versions/{v}`. A student who never
+        had a plan gets an empty draft, `_rev` 0 and no current version. Only for a student
+        who has joined; another trainer's student, an unknown id and a malformed one all answer
+        the same 404.
+      responses:
+        '200':
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '400':
+          description: '`not-linked`: the student has not joined (or is no longer linked).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "not-linked", code: "undefined" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/trainer/students/{id}/rx/draft:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The student id from `GET /api/trainer/students`.
+        schema: { type: string }
+    put:
+      tags: [trainer]
+      operationId: trainerRxDraft
+      summary: "Trainer: save a student's draft"
+      description: |
+        Replaces the draft with a plan bundle (at most 30 routines, 60 exercises in each and
+        128 KB; no custom exercises). Published versions are not touched. `_rev` is the
+        revision the caller last read: if someone saved since, the answer is a 409 with the
+        current plan and nothing is written.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_rev]
+              properties:
+                bundle: { $ref: '#/components/schemas/RxBundle' }
+                _rev: { type: integer, description: 'The `_rev` of the plan as last read; 0 when there is none yet.' }
+      responses:
+        '200':
+          description: Saved. The plan carries the new `_rev`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '400':
+          description: >-
+            `not-linked`; `bad-rev`; or the bundle is refused: `bad-bundle`, `too-big`,
+            `too-many-routines`, `too-many-exercises` or `bad-week`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "too many routines", code: "too-many-routines" }
+        '409':
+          description: >-
+            `conflict`: `_rev` is not the stored one, so the plan changed elsewhere. The
+            answer carries the current `rx`; nothing was written.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  code: { type: string, const: conflict }
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/trainer/students/{id}/rx/publish:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The student id from `GET /api/trainer/students`.
+        schema: { type: string }
+    post:
+      tags: [trainer]
+      operationId: trainerRxPublish
+      summary: "Trainer: publish the draft as a new version"
+      description: |
+        Copies the draft into the next numbered version and makes it the current one. At most
+        50 versions are kept; the oldest goes first, never the current one. A draft with no
+        exercise cannot be published. `_rev` as in `PUT .../rx/draft`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_rev]
+              properties:
+                note: { type: string, maxLength: 200, description: 'A short note for the student, kept with the version.' }
+                _rev: { type: integer, description: 'The `_rev` of the plan as last read; 0 when there is none yet.' }
+      responses:
+        '200':
+          description: Published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rx: { $ref: '#/components/schemas/RxView' }
+                  v: { type: integer, description: The number of the new version. }
+        '400':
+          description: >-
+            `not-linked`; `bad-rev`; `empty-draft` (no exercise in the draft); or a draft
+            that no longer passes the bundle checks.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "empty draft", code: "empty-draft" }
+        '409':
+          description: >-
+            `conflict`: `_rev` is not the stored one, so the plan changed elsewhere. The
+            answer carries the current `rx`; nothing was written.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  code: { type: string, const: conflict }
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404': { $ref: '#/components/responses/TrainerHidden' }
+
+  /api/trainer/students/{id}/rx/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The student id from `GET /api/trainer/students`.
+        schema: { type: string }
+    post:
+      tags: [trainer]
+      operationId: trainerRxRestore
+      summary: "Trainer: copy a published version back into the draft"
+      description: |
+        Writes the bundle of version `v` into the draft. Nothing is published and the current
+        version does not change. `_rev` as in `PUT .../rx/draft`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_rev]
+              properties:
+                v: { type: integer, description: The version to copy. }
+                _rev: { type: integer, description: 'The `_rev` of the plan as last read; 0 when there is none yet.' }
+      responses:
+        '200':
+          description: Restored into the draft.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '400':
+          description: '`not-linked`; `bad-rev`; or `bad-version` (`v` is not a whole number).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "bad version", code: "bad-version" }
+        '409':
+          description: >-
+            `conflict`: `_rev` is not the stored one, so the plan changed elsewhere. The
+            answer carries the current `rx`; nothing was written.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  code: { type: string, const: conflict }
+                  rx: { $ref: '#/components/schemas/RxView' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404':
+          description: >-
+            The same answer as every route here for a student that is not the caller's, or
+            `no-such-version` when `v` was never published (or has been dropped).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/trainer/students/{id}/rx/versions/{v}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The student id from `GET /api/trainer/students`.
+        schema: { type: string }
+      - name: v
+        in: path
+        required: true
+        description: A version number from the `versions` list of the plan.
+        schema: { type: integer }
+    get:
+      tags: [trainer]
+      operationId: trainerRxVersion
+      summary: "Trainer: read one published version"
+      description: |
+        One version with its bundle, the only place the bundles are served.
+      responses:
+        '200':
+          description: The version.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { $ref: '#/components/schemas/RxVersion' }
+        '400':
+          description: '`not-linked`: the student has not joined (or is no longer linked).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "not-linked", code: "undefined" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/TrainerPending' }
+        '404':
+          description: >-
+            The same answer as every route here for a student that is not the caller's, or
+            `no-such-version`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+
   /api/join/{code}:
     parameters:
       - name: code
@@ -4140,6 +4400,60 @@ components:
       type: object
       properties:
         ok: { type: boolean, const: true }
+
+    RxBundle:
+      type: object
+      description: >-
+        A plan bundle, the shape the app exports and imports. The server checks the outline
+        only (unit, routine ids and names, the week pointing at real routines, the limits);
+        what is inside each exercise passes as sent and the app that applies it cleans it.
+      required: [opengym_plan, unit, week, routines, customEx]
+      properties:
+        opengym_plan: { type: integer, const: 1 }
+        unit: { type: string, enum: [kg, lb] }
+        week:
+          type: object
+          description: 'Weekday `0` to `6` to a routine id, or a list of ids.'
+          additionalProperties: true
+        routines:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            required: [id, name, ex]
+            properties:
+              id: { type: string, pattern: '^[\w-]{1,64}$' }
+              name: { type: string }
+              ex: { type: array, maxItems: 60, items: { type: object, required: [id], properties: { id: { type: string } } } }
+        customEx: { type: array, maxItems: 0, description: Always empty; custom exercises are not prescribed. }
+
+    RxVersion:
+      type: object
+      properties:
+        v: { type: integer }
+        at: { type: integer, description: Epoch milliseconds. }
+        note: { type: string }
+        bundle: { $ref: '#/components/schemas/RxBundle' }
+
+    RxView:
+      type: object
+      description: The plan as the routes answer it. The bundles of the versions are not in it.
+      properties:
+        _rev: { type: integer, description: 'Send this back as `_rev` with the next change. 0 until the first save.' }
+        draft:
+          type: object
+          properties:
+            bundle: { $ref: '#/components/schemas/RxBundle' }
+            updated: { type: integer, description: 'Epoch milliseconds; 0 for a draft nobody saved.' }
+        current: { oneOf: [{ type: integer }, { type: 'null' }], description: The published version the student has, if any. }
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              v: { type: integer }
+              at: { type: integer }
+              note: { type: string }
 
     PasskeyList:
       type: object

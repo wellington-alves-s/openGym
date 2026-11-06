@@ -10,10 +10,11 @@
  * all get the same 404. */
 import crypto from 'node:crypto';
 import { isApprovedTrainer, isPendingTrainer, isStudent, canAccessStudent, detachStudentsOf } from './trainer-access.js';
-import { validId, readStudent, listStudents, writeStudent, removeStudent } from './trainer-store.js';
+import { validId, readStudent, listStudents, writeStudent, removeStudent, readRx, writeRx } from './trainer-store.js';
+import { emptyRx, saveDraft, publishDraft, restoreVersion, rxView, versionOf } from './rx.js';
 import { createStudentInvite, dropStudentInvites, findStudentInvite, burnStudentInvite } from './student-invite.js';
 
-const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink)?$/;
+const STUDENT_PATH = /^\/api\/trainer\/students\/([^/]*)(\/invite|\/unlink|\/rx(?:\/draft|\/publish|\/restore|\/versions\/(\d{1,9}))?)?$/;
 const JOIN_PATH = /^\/api\/join\/([^/]+)(\/password|\/options|\/verify)?$/;
 
 // The route key for a per-student path, or null. Sets req.studentId to the segment as sent.
@@ -21,6 +22,8 @@ export function trainerStudentKey(req, pathname) {
   const m = STUDENT_PATH.exec(pathname);
   if (!m) return null;
   req.studentId = m[1];
+  // .../rx/versions/<n>: the number goes on req.rxVersion, the key stays one for every n.
+  if (m[3] !== undefined) { req.rxVersion = +m[3]; return `${req.method} /api/trainer/students/{id}/rx/versions/{v}`; }
   return `${req.method} /api/trainer/students/{id}${m[2] || ''}`;
 }
 
@@ -109,6 +112,31 @@ export function trainerRoutes({
     const trainer = trainerGuard(req, res); if (!trainer) return null;
     const rec = studentGuard(req, res, trainer, req.studentId, ownFolder); if (!rec) return null;
     return { trainer, rec };
+  };
+  // The prescription routes work on a student who has joined, and on nobody else.
+  const rxGuard = (req, res) => {
+    const g = trainerAndStudent(req, res); if (!g) return null;
+    if (g.rec.status !== 'active') { json(res, 400, { error: 'this student has not joined', code: 'not-linked' }); return null; }
+    return g;
+  };
+  const rxOf = g => readRx(DATA, g.trainer.id, g.rec.id) || emptyRx();
+  // A change to the stored plan: `apply(rx, body)` is one of rx.js's pure functions. The guard, the
+  // read, the _rev check and the write follow each other with no await, so two saves cannot both pass.
+  // → { g, body, rx } with what was written, or null after the answer (a stale _rev is a 409 with the current plan).
+  const rxChange = async (req, res, apply) => {
+    const body = await readBody(req);
+    const g = rxGuard(req, res); if (!g) return null;
+    const rx = rxOf(g);
+    if (!Number.isInteger(body._rev)) { json(res, 400, { error: '_rev must be a whole number', code: 'bad-rev' }); return null; }
+    if (body._rev !== rx._rev) { json(res, 409, { error: 'the plan changed elsewhere', code: 'conflict', rx: rxView(rx) }); return null; }
+    let next;
+    try { next = apply(rx, body); }
+    catch (e) {
+      if (!e.code) throw e;
+      json(res, e.code === 'no-such-version' ? 404 : 400, { error: e.code.replace(/-/g, ' '), code: e.code });
+      return null;
+    }
+    return { g, body, rx: writeRx(DATA, g.trainer.id, g.rec.id, next) };
   };
   // The code goes back in this one answer and nowhere else (not db.json, not the audit).
   const invite = (req, trainer, rec) => {
@@ -249,6 +277,40 @@ export function trainerRoutes({
       const g = trainerAndStudent(req, res, true); if (!g) return;
       if (unlinkStudent(ctx, g.trainer.id, g.rec.id)) audit(req, 'student.unlink', { user: g.trainer, target: g.rec });
       json(res, 200, { ok: true });
+    },
+
+    /* ---------- the prescription ----------
+       Answers carry rxView, never the version bundles: the stored document can reach several MB. */
+    'GET /api/trainer/students/{id}/rx': async (req, res) => {
+      const g = rxGuard(req, res); if (!g) return;
+      json(res, 200, { rx: rxView(rxOf(g)) });
+    },
+
+    'PUT /api/trainer/students/{id}/rx/draft': async (req, res) => {
+      const done = await rxChange(req, res, (rx, body) => saveDraft(rx, body.bundle, Date.now())); if (!done) return;
+      json(res, 200, { rx: rxView(done.rx) });
+    },
+
+    'POST /api/trainer/students/{id}/rx/publish': async (req, res) => {
+      const done = await rxChange(req, res, (rx, body) => publishDraft(rx, body.note, Date.now())); if (!done) return;
+      audit(req, 'rx.publish', { user: done.g.trainer, target: done.g.rec, msg: `v${done.rx.current}` });
+      json(res, 200, { rx: rxView(done.rx), v: done.rx.current });
+    },
+
+    'POST /api/trainer/students/{id}/rx/restore': async (req, res) => {
+      const done = await rxChange(req, res, (rx, body) => {
+        if (!Number.isInteger(body.v)) throw Object.assign(new Error('bad-version'), { code: 'bad-version' });
+        return restoreVersion(rx, body.v, Date.now());
+      }); if (!done) return;
+      audit(req, 'rx.restore', { user: done.g.trainer, target: done.g.rec, msg: `v${done.body.v}` });
+      json(res, 200, { rx: rxView(done.rx) });
+    },
+
+    'GET /api/trainer/students/{id}/rx/versions/{v}': async (req, res) => {
+      const g = rxGuard(req, res); if (!g) return;
+      const ver = versionOf(rxOf(g), req.rxVersion);
+      if (!ver) return json(res, 404, { error: 'no such version', code: 'no-such-version' });
+      json(res, 200, { version: { v: ver.v, at: ver.at, note: ver.note, bundle: ver.bundle } });
     },
 
     /* ---------- the student's side ---------- */
