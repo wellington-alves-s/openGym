@@ -135,10 +135,16 @@ Trainer mode (`TRAINER_MODE`, off by default; personal trainers and their studen
 modules beside `server.js`: `trainer-routes.js` (a factory spread into `routes` only when the mode is
 on; `/api/join/*`, `/api/trainer/*`, `/api/student/*`, `/api/admin/trainer*`), `trainer-access.js` (roles and
 `canAccessStudent`, the one permission check), `trainer-store.js` (student records under
-`DATA_DIR/trainers/<trainerId>/`), `student-invite.js` (single-use invite codes, stored hashed) and `rx.js`
-(the prescription document: a draft plus numbered published versions, pure functions). Access
+`DATA_DIR/trainers/<trainerId>/`, plus that trainer's models in `profile.json`), `student-invite.js` (single-use invite codes, stored hashed) and `rx.js`
+(the prescription document: a draft plus numbered published versions, each a PROGRAM: a start date and
+phases, a month each, with `programOf` and `checkProgram`; it reads stage-2a documents too, as one open phase; pure
+functions). Models are reusable plans (a bundle each, up to 100 per trainer) behind `/api/trainer/models`. Access
 that is denied answers 404, like an unknown student. The published plan reaches the student as routines
-`rx-<id>` marked `rx: { v }` and read-only, applied by `lib/prescription.js` (pulled by `lib/prescription-sync.js`). New modules the image needs go in the
+`rx-<id>` marked `rx: { v, p }` (`p` the phase) and read-only. The phase of today is worked out on the student's device:
+`lib/program.js` (`phaseAt`, pure, `today` is a parameter) picks it from the program kept in a local cache
+(`lib/prescription-cache.js`), `lib/prescription.js` applies it, and `lib/prescription-sync.js` decides when to
+download or re-check (so the month turns offline too). The trainer's editors share `lib/draft-session.js` (one
+draft session per program or model, saved by itself, a phase at a time). New modules the image needs go in the
 `Dockerfile` COPY list (`dockerfile-copy.test.js` checks it).
 
 ### Sync

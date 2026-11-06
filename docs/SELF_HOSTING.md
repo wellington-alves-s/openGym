@@ -518,6 +518,19 @@ TRAINER_MODE=1             # personal trainers and their students
   If the trainer and the student unlink, the prescribed routines leave the student's plan and their
   own routines stay. Plans can only use catalogue exercises (not custom ones), and editing a plan
   needs the server to be reachable, since the draft lives on the server.
+- **Programs in months.** A plan can be a program: a start date and up to 24 months (phases), each month
+  with its own routines and a length in weeks. The student's app works out the month of today by itself,
+  on its first check of the day (it opens, comes back to the foreground or gets its network back), and
+  swaps the prescribed routines when the month turns. It keeps the last program it downloaded, so the
+  month also turns offline. A workout in progress is never changed. Before the start date the
+  student sees when the program starts; after the last month it stays on the last one.
+- **Models.** A trainer can save a month of a plan as a model and start another plan from one. A
+  model is a copy: changing a model does not change plans already published, and the other way
+  round. Each trainer keeps up to 100 models, only they can see them.
+- **Before a second month.** Update every student's app before you publish a program with more
+  than one month: an older app only understands a one-month plan.
+- **Backups.** Back up `trainers/<id>/profile.json` (the models) and `trainers/<id>/rx/` (the plans)
+  with the rest of `./data`.
 - **Updating and switching off.** Update the api before the web image. Turning `TRAINER_MODE` off,
   or rolling the api back to a version without it, removes the prescribed routines from the
   students' devices the next time their app checks; turning it back on brings them back. Make sure

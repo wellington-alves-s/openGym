@@ -137,7 +137,7 @@ the old one (`durable.js`), so a crash never leaves half a file.
 
 Sign-in is a passkey (`@simplewebauthn/server`), optionally a password, plus a signed session
 cookie. Phones get the same signed session as a bearer token, made by pairing with a one-time code
-(`device-link.js`). With `TRAINER_MODE=1` it also serves personal trainers and their students: trainer approval by the owner and single-use student invites (`trainer-routes.js`, `student-invite.js`). A trainer's plan for a student is one document with a draft and numbered versions (`rx.js`); the student's app pulls the published version in as read-only routines (`lib/prescription.js`, `lib/prescription-sync.js`). Every route is listed in `api/openapi.yaml`, and `openapi-routes.test.js` fails
+(`device-link.js`). With `TRAINER_MODE=1` it also serves personal trainers and their students: trainer approval by the owner and single-use student invites (`trainer-routes.js`, `student-invite.js`). A trainer's plan for a student is one document with a draft and numbered versions (`rx.js`), each a program: a start date and phases, a month each. A trainer also keeps reusable models in `trainers/<id>/profile.json` (`trainer-store.js`). The student's app keeps the last downloaded program (`lib/prescription-cache.js`), picks the phase of today (`lib/program.js`) and applies it as read-only routines (`lib/prescription.js`, `lib/prescription-sync.js`), so the month turns without a network. The trainer edits a program or a model through one draft session (`lib/draft-session.js`). Every route is listed in `api/openapi.yaml`, and `openapi-routes.test.js` fails
 when the two disagree.
 
 ## Exercise media
