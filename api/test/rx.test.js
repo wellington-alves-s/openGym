@@ -24,7 +24,7 @@ describe('checkBundle', () => {
   });
 
   it('refuses a malformed bundle', () => {
-    for (const b of [null, undefined, 'x', 3, [], bundle({ unit: 'st' }), bundle({ unit: undefined }), bundle({ customEx: [{ id: 'c' }] }), bundle({ routines: 'x' }), bundle({ customEx: undefined })])
+    for (const b of [null, undefined, 'x', 3, [], bundle({ unit: 'st' }), bundle({ unit: undefined }), bundle({ customEx: [{ id: 'c' }] }), bundle({ routines: 'x' }), bundle({ customEx: undefined }), bundle({ opengym_plan: undefined }), bundle({ opengym_plan: 2 }), bundle({ opengym_plan: '1' })])
       assert.equal(checkBundle(b), 'bad-bundle', JSON.stringify(b));
     for (const r of [{ name: 'A', ex: [] }, { id: 'r1', ex: [] }, { id: 'r1', name: 'A' }, { id: 'r1', name: 'A', ex: 'x' }, { id: 'r1', name: 7, ex: [] }, { id: 'r 1', name: 'A', ex: [] }, { id: 'x'.repeat(65), name: 'A', ex: [] }, { id: '', name: 'A', ex: [] }, null, 'r1',
       { id: 'r1', name: 'A', ex: [{}] }, { id: 'r1', name: 'A', ex: [{ id: 5 }] }, { id: 'r1', name: 'A', ex: [null] }])
@@ -154,5 +154,7 @@ describe('restoreVersion, versionOf, currentOf, rxView', () => {
     assert.equal(view.current, 2);
     assert.deepEqual(view.draft, rx.draft);
     assert.deepEqual(view.versions, [{ v: 1, at: 2, note: 'one' }, { v: 2, at: 4, note: 'two' }]);
+    view.draft.bundle.routines[0].name = 'changed';
+    assert.equal(rx.draft.bundle.routines[0].name, 'Push');   // a copy, not the document's own
   });
 });

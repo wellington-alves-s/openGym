@@ -21,7 +21,7 @@ export function checkBundle(b) {
   let size;
   try { size = Buffer.byteLength(JSON.stringify(b)); } catch { return 'bad-bundle'; }
   if (size > RX_LIMITS.bytes) return 'too-big';
-  if ((b.unit !== 'kg' && b.unit !== 'lb') || !Array.isArray(b.customEx) || b.customEx.length || !Array.isArray(b.routines)) return 'bad-bundle';
+  if (b.opengym_plan !== 1 || (b.unit !== 'kg' && b.unit !== 'lb') || !Array.isArray(b.customEx) || b.customEx.length || !Array.isArray(b.routines)) return 'bad-bundle';
   if (b.routines.length > RX_LIMITS.routines) return 'too-many-routines';
   const ids = new Set();
   for (const r of b.routines) {
@@ -71,4 +71,4 @@ export const versionOf = (rx, v) => rx.versions.find(x => x.v === v) || null;
 export const currentOf = rx => (rx.current == null ? null : versionOf(rx, rx.current));
 
 // What the routes send: no version bundles, only the list of versions.
-export const rxView = rx => ({ _rev: rx._rev, draft: rx.draft, current: rx.current, versions: rx.versions.map(({ v, at, note }) => ({ v, at, note })) });
+export const rxView = rx => ({ _rev: rx._rev, draft: clone(rx.draft), current: rx.current, versions: rx.versions.map(({ v, at, note }) => ({ v, at, note })) });

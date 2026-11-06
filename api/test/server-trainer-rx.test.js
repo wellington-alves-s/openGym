@@ -10,12 +10,15 @@ const USERS = [
   user('trainer01', 'Coach One', { role: 'trainer', trainerStatus: 'approved' }),
   user('trainer02', 'Coach Two', { role: 'trainer', trainerStatus: 'approved' }),
   user('student01', 'Student', { role: 'student', trainerId: 'trainer01' }),
-  user('student02', 'Waiting', { role: 'student', trainerId: 'trainer01' })
+  user('student02', 'Waiting', { role: 'student', trainerId: 'trainer01' }),
+  user('student03', 'Gone', { role: 'student', trainerId: 'trainer01' }),
+  user('trainer03', 'Coach Pending', { role: 'trainer', trainerStatus: 'pending' })
 ];
 const rec = (id, status) => JSON.stringify({ id, name: id, status, created: 1, linkedAt: 2, _rev: 1 });
 const files = {
   'trainers/trainer01/students/student01.json': rec('student01', 'active'),
-  'trainers/trainer01/students/student02.json': rec('student02', 'invited')
+  'trainers/trainer01/students/student02.json': rec('student02', 'invited'),
+  'trainers/trainer01/students/student03.json': rec('student03', 'unlinked')
 };
 const ON = { env: { TRAINER_MODE: '1' }, users: USERS, files };
 const NOT_FOUND = { error: 'not found' };
@@ -109,6 +112,18 @@ test('restoring a version writes only the draft; versions/{v} serves the bundle,
   assert.equal((await s.call(base + '/versions/abc', { as: 'trainer01' })).status, 404);
 });
 
+test('a stale publish or restore is a 409 and leaves the file as it was', async t => {
+  const s = await startServer(t, ON);
+  let rev = (await put(s, bundle('ex1'), 0)).body.rx._rev;
+  rev = (await publish(s, rev)).body.rx._rev;
+  await put(s, bundle('ex2'), rev);
+  const before = fs.readFileSync(rxFile(s), 'utf8');
+  assert.equal((await publish(s, rev)).status, 409);
+  const r = await s.call(base + '/restore', { method: 'POST', body: { v: 1, _rev: rev }, as: 'trainer01' });
+  assert.deepEqual([r.status, r.body.code], [409, 'conflict']);
+  assert.equal(fs.readFileSync(rxFile(s), 'utf8'), before);
+});
+
 const ROUTES = [
   ['GET', base], ['PUT', base + '/draft'], ['POST', base + '/publish'], ['POST', base + '/restore'], ['GET', base + '/versions/1']
 ];
@@ -125,6 +140,10 @@ test('who may touch the plan: another trainer and a student get 404, nobody 401,
     assert.equal((await s.call(p, { method, body })).status, 401, `${method} ${p}`);
     const w = await s.call(p.replace('student01', 'student02'), { method, body, as: 'trainer01' });
     assert.deepEqual([w.status, w.body.code], [400, 'not-linked'], `${method} ${p} invited`);
+    const gone = await s.call(p.replace('student01', 'student03'), { method, body, as: 'trainer01' });
+    assert.deepEqual([gone.status, gone.body.code], [400, 'not-linked'], `${method} ${p} unlinked`);
+    const pending = await s.call(p, { method, body, as: 'trainer03' });
+    assert.equal(pending.status, 403, `${method} ${p} pending trainer`);
     const h = await s.call(p.replace('student01', '..%2f..'), { method, body, as: 'trainer01' });
     assert.deepEqual([h.status, h.body], [404, NOT_FOUND], `${method} ${p} hostile`);
     const u = await s.call(p.replace('student01', 'nobody999'), { method, body, as: 'trainer01' });

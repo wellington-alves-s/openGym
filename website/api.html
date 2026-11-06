@@ -2487,7 +2487,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 </div>
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
-    <span class="p-name">bundle</span>
+    <span class="p-name">bundle<em class="p-req" title="required">required</em></span>
     <span class="p-type"><a href="#schema-RxBundle">RxBundle</a></span>
     <span class="p-desc"></span>
   </div>
@@ -2605,7 +2605,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 </div>
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
-    <span class="p-name">v</span>
+    <span class="p-name">v<em class="p-req" title="required">required</em></span>
     <span class="p-type">integer</span>
     <span class="p-desc">The version to copy.</span>
   </div>
@@ -4593,7 +4593,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">A plan bundle, the shape the app exports and imports.</span>
   </summary>
   <div class="ep-body">
-<p>The server checks the outline only (unit, routine ids and names, the week pointing at real routines, the limits); what is inside each exercise passes as sent and the app that applies it cleans it.</p>
+<p>The server checks the outline only (<code>opengym_plan</code> 1, unit, routine ids and names, the week pointing at real routines, the limits); what is inside each exercise passes as sent and the app that applies it cleans it.</p>
 <div class="ptab">
   <div class="prow">
     <span class="p-name">opengym_plan<em class="p-req" title="required">required</em></span>

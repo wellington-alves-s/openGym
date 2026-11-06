@@ -3566,7 +3566,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [_rev]
+              required: [bundle, _rev]
               properties:
                 bundle: { $ref: '#/components/schemas/RxBundle' }
                 _rev: { type: integer, description: 'The `_rev` of the plan as last read; 0 when there is none yet.' }
@@ -3682,7 +3682,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [_rev]
+              required: [v, _rev]
               properties:
                 v: { type: integer, description: The version to copy. }
                 _rev: { type: integer, description: 'The `_rev` of the plan as last read; 0 when there is none yet.' }
@@ -4048,6 +4048,7 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/RxVersion'
                   - type: object
+                    required: [v]
                     properties:
                       v: { type: 'null' }
               example: { v: 2, at: 1788700000000, note: "Week 3: more squats", bundle: { opengym_plan: 1, unit: "kg", week: { "1": "rx-a1b2c3d4" }, routines: [{ id: "rx-a1b2c3d4", name: "Legs", ex: [{ id: "back_squat" }] }], customEx: [] } }
@@ -4453,7 +4454,7 @@ components:
       type: object
       description: >-
         A plan bundle, the shape the app exports and imports. The server checks the outline
-        only (unit, routine ids and names, the week pointing at real routines, the limits);
+        only (`opengym_plan` 1, unit, routine ids and names, the week pointing at real routines, the limits);
         what is inside each exercise passes as sent and the app that applies it cleans it.
       required: [opengym_plan, unit, week, routines, customEx]
       properties:
