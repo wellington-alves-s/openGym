@@ -984,3 +984,36 @@ describe('body measurements across devices (#82)', () => {
     expect(next.measurements[0].t).toBe(1000)
   })
 })
+
+describe('body notes and height across devices', () => {
+  const note = (iso, text, ts) => ({ [iso]: ts && text == null ? { _ts: ts } : { text, _ts: ts } })
+  it('notes on different days are both kept', () => {
+    const a = base({ _ts: 100, bodyNotes: note('2026-10-01', 'fasted', 90) })
+    const b = base({ _ts: 200, bodyNotes: note('2026-10-02', 'after dinner', 20) })
+    for (const m of [mergeStates(a, b), mergeStates(b, a)]) {
+      expect(m.bodyNotes['2026-10-01'].text).toBe('fasted')
+      expect(m.bodyNotes['2026-10-02'].text).toBe('after dinner')
+    }
+  })
+  it('the same day keeps the larger _ts, whichever copy is newer as a whole', () => {
+    const a = base({ _ts: 100, bodyNotes: note('2026-10-01', 'new', 90) })
+    const b = base({ _ts: 300, bodyNotes: note('2026-10-01', 'old', 40) })
+    for (const m of [mergeStates(a, b), mergeStates(b, a)]) expect(m.bodyNotes['2026-10-01'].text).toBe('new')
+  })
+  it('a removed note (_ts 9) beats an older text (_ts 5) and the text does not come back', () => {
+    const removed = base({ _ts: 10, bodyNotes: { '2026-10-01': { _ts: 9 } } })
+    const stale = base({ _ts: 300, bodyNotes: note('2026-10-01', 'old', 5) })
+    for (const m of [mergeStates(removed, stale), mergeStates(stale, removed)]) expect(m.bodyNotes['2026-10-01']).toEqual({ _ts: 9 })
+  })
+  it('a profile without bodyNotes merges with one that has them', () => {
+    const old = base({ _ts: 100 })
+    const withNotes = base({ _ts: 50, bodyNotes: note('2026-10-01', 'hi', 40) })
+    for (const m of [mergeStates(old, withNotes), mergeStates(withNotes, old)]) expect(m.bodyNotes['2026-10-01'].text).toBe('hi')
+  })
+  it('heightCm is a plain setting: the copy that changed it last wins', () => {
+    const start = base({ _ts: 100, heightCm: 170 })
+    const edit = (h, ts) => { const n = clone(start); n.heightCm = h; n._ts = ts; return stampEdits(start, n, ts) }
+    const a = edit(172, 500), b = edit(175, 900)
+    for (const m of [mergeStates(a, b), mergeStates(b, a)]) expect(m.heightCm).toBe(175)
+  })
+})
