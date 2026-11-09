@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { weeklyWeights, weighInAt, logWeighIn } from './bodyweight.js'
+import { weeklyWeights, weighInAt, logWeighIn, bodyWeightMax } from './bodyweight.js'
 
 // Discord 'Weight': every weigh-in, week by week, with the week's mean.
 describe('weeklyWeights', () => {
@@ -86,5 +86,12 @@ describe('logWeighIn', () => {
       expect(logWeighIn(S, w, at('2026-10-15T07:00:00')), String(w)).toBe(false)
       expect(S.bodyweight).toEqual([{ d: '2026-10-15', w: 82 }])
     }
+  })
+})
+
+describe('bodyWeightMax', () => {
+  it('700 kg, 1500 lb', () => {
+    expect(bodyWeightMax('kg')).toBe(700)
+    expect(bodyWeightMax('lb')).toBe(1500)
   })
 })

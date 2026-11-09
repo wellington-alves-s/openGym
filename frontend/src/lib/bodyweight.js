@@ -64,6 +64,12 @@ export const RATE_MIN_SPAN_DAYS = 10
 const DAY = 86400000
 
 /**
+ * The heaviest body weight a typed value may be, in the profile's unit: a 320 kg lifter is real,
+ * 9999 is not (it drew the chart from 0 to 10,000 and set a goal thousands of kg away).
+ */
+export const bodyWeightMax = unit => (unit === 'lb' ? 1500 : 700)
+
+/**
  * The trend of the weigh-ins in the `days` up to `now`, in the weigh-ins' own unit per week and
  * in percent of the window's mean weight per week. `{ enough: false, n }` when there are fewer
  * than RATE_MIN_WEIGHINS, or they span less than RATE_MIN_SPAN_DAYS. Each weigh-in sits at noon

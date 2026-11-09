@@ -71,7 +71,7 @@ import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuratio
 import { editCompletedSession, editLeftEmpty, editedRecord, editChangesNothing } from './lib/session-edit.js'
 import { stampWorkout } from './lib/sync-merge.js'
 import { hrLabel } from './lib/heart-rate.js'
-import { weeklyWeights } from './lib/bodyweight.js'
+import { weeklyWeights, bodyWeightMax as bwMax } from './lib/bodyweight.js'
 import { workoutText } from './lib/workout-text.js'
 import { workoutCardModel, layoutWorkoutCard, drawWorkoutCard, viewAspect, CARD_FONT } from './lib/workout-card.js'
 import { copyText } from './lib/clipboard.js'
@@ -269,7 +269,6 @@ const W_LO = 1
 const wHi = unit => (unit === 'lb' ? 660 : 300)
 // A typed body weight may sit past the slider (a 320 kg lifter is real), but not past any
 // person: 9999 saved, drew the chart from -0 to 10,000 and set a goal 9,922 kg away.
-const bwMax = unit => (unit === 'lb' ? 1500 : 700)
 const bwTooHeavy = (n, unit) => {
   if (n <= bwMax(unit)) return false
   toast(t('That looks too heavy. Keep it at {0} or less.', fmtNum(bwMax(unit)) + ' ' + unit))
