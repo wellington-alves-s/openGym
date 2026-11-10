@@ -171,7 +171,23 @@ export function openProgressCompare(x, y) {
 }
 
 // How many photos one pick takes: each is read and re-encoded on the device, one after another.
-const MAX_AT_ONCE = 20
+export const MAX_AT_ONCE = 20
+
+/** Files picked photos ({ file, exif }[]) one after another: several go on their EXIF day where
+ *  they have one, else on `d`; one goes on `d`. Returns how many went in and how many found no room. */
+export async function fileProgressPhotos({ files, d, pick, update, canDay }) {
+  const n = { added: 0, noRoom: 0 }
+  for (const it of files) {
+    const got = await pick(it.file)
+    if (!got) continue
+    const day = files.length > 1 ? (it.exif || d) : d
+    let res
+    update(s => { res = fileProgressPhoto(s, day, got, { canDay }) })
+    if (res === 'workout' || res === 'day') n.added++
+    else if (res === 'no-room') n.noRoom++
+  }
+  return n
+}
 
 /* The day the picked photos go under. One photo: its own EXIF date, or today, either changeable.
    Several: each with an EXIF date goes on that day, the rest on the day picked here. */
@@ -247,16 +263,7 @@ export default function ProgressPhotos() {
     useUI.getState().openSheet(close => <AddPhotosSheet items={items} close={close} save={save} />)
   }
   const save = async (items, picked) => {
-    const n = { added: 0, noRoom: 0 }
-    for (const it of items) {
-      const got = await pick(it.file)
-      if (!got) continue
-      const d = items.length > 1 ? (it.exif || picked) : picked
-      let res
-      update(s => { res = fileProgressPhoto(s, d, got, { canDay }) })
-      if (res === 'workout' || res === 'day') n.added++
-      else if (res === 'no-room') n.noRoom++
-    }
+    const n = await fileProgressPhotos({ files: items, d: picked, pick, update, canDay })
     if (n.added) { toast(tn('{0} photo added', '{0} photos added', n.added)); syncMedia({ force: true }) }
     if (n.noRoom) toast(t('Your server keeps photos only on days with a workout. An update lets it keep them for any day.'))
   }
