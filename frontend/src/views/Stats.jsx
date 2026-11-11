@@ -39,7 +39,7 @@ const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purpl
 
 // The date range buttons under Body weight, and since issue #511 under Exercise progress too.
 // In days, 0 = everything; a function because the labels follow the current language.
-const rangeOptions = () => [{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]
+export const rangeOptions = () => [{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]
 // Where a range starts, in ms. Worked out once per pick rather than from each render's clock, so
 // the memoised chart arrays below keep their identity (LineChart drops its hover on a new one).
 const rangeStart = days => (days ? Date.now() - days * 86400000 : 0)

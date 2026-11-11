@@ -119,7 +119,7 @@ export function PhotoView({ p, close }) {
   </div>
 }
 
-function openPhotoView(p) {
+export function openPhotoView(p) {
   useUI.getState().openSheet(close => <PhotoView p={p} close={close} />, { kind: 'viewer' })
 }
 

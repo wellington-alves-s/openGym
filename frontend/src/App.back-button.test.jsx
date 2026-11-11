@@ -61,9 +61,10 @@ describe("a page's own back button", () => {
     expect(scrolls.at(-1)).toEqual([0, 900])
   })
 
-  it('takes Body measurements back to Stats, the screen it is opened from', async () => {
+  it('sends /measurements to the Measurements tab of Body, and takes it back to Stats', async () => {
     await go('#/measurements')
     const back = await appear('#app [data-back]')
+    expect(window.location.hash).toBe('#/body?tab=measurements')
     expect(back.getAttribute('data-back')).toBe('/stats')
     await tap(back)
     expect(window.location.hash).toBe('#/stats')
