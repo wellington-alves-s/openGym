@@ -3,7 +3,8 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Measurements, { manageMeasurementsSheet, measurementLogSheet } from './Measurements.jsx'
+import MeasurementsTab, { manageMeasurementsSheet } from './Measurements.jsx'
+import { bodyCheckinSheet } from '../components/BodyCheckinSheet.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { bindUI } from '../components/ui.jsx'
@@ -30,6 +31,9 @@ const type = (input, value) => act(() => {
   Object.getOwnPropertyDescriptor(input.constructor.prototype, 'value').set.call(input, value)
   input.dispatchEvent(new Event('input', { bubbles: true }))
 })
+// The Register sheet for a date, with its folded Measurements section opened.
+const checkin = d => { act(() => bodyCheckinSheet(d)); const host = topSheet(); act(() => button(host, 'Measurements').click()); return host }
+const save = async host => { await act(async () => { button(host, 'Save').click() }) }
 const install = patch => useStore.setState({ S: normalizeMeasurementsState({ ...structuredClone(DEF), measurementEnabled: [], ...patch }), user: null })
 const custom = (id, unit, enabled = true) => ({ id, name: id, unit, enabled })
 
@@ -59,17 +63,16 @@ describe('custom measurement units in the app (#699)', () => {
     ])
   })
 
-  it('logs percentages, masses and legacy lengths with the right units on a pounds profile', () => {
+  it('logs percentages, masses and legacy lengths with the right units on a pounds profile', async () => {
     install({ unit: 'lb', customMeasurements: [custom('Muscle ratio', '%'), custom('Lean mass', 'kg'), custom('Knee', undefined)] })
-    measurementLogSheet()
-    const host = topSheet()
+    const host = checkin()
     expect(field(host, 'Muscle ratio').querySelector('i').textContent).toBe('%')
     expect(field(host, 'Lean mass').querySelector('i').textContent).toBe('kg')
     expect(field(host, 'Knee').querySelector('i').textContent).toBe('in')
     type(field(host, 'Muscle ratio').querySelector('input'), '40.5')
     type(field(host, 'Lean mass').querySelector('input'), '60')
     type(field(host, 'Knee').querySelector('input'), '15')
-    act(() => button(host, 'Save').click())
+    await save(host)
     expect(useStore.getState().S.measurements[0].other).toEqual([
       { id: 'Muscle ratio', name: 'Muscle ratio', value: 40.5, unit: '%' },
       { id: 'Lean mass', name: 'Lean mass', value: 60, unit: 'kg' },
@@ -77,16 +80,15 @@ describe('custom measurement units in the app (#699)', () => {
     ])
   })
 
-  it('edits a disabled percent field without converting it to a circumference', () => {
+  it('edits a disabled percent field without converting it to a circumference', async () => {
     install({ unit: 'lb', customMeasurements: [custom('Muscle ratio', '%', false)],
       measurements: [{ d: '2026-10-01', other: [{ id: 'Muscle ratio', value: 40.5 }] }],
     })
-    measurementLogSheet('2026-10-01')
-    const host = topSheet()
+    const host = checkin('2026-10-01')
     const input = field(host, 'Muscle ratio').querySelector('input')
     expect(input.value).toBe('40.5')
     type(input, '42')
-    act(() => button(host, 'Save').click())
+    await save(host)
     expect(useStore.getState().S.measurements[0].other[0]).toMatchObject({ value: 42, unit: '%' })
   })
 
@@ -95,7 +97,7 @@ describe('custom measurement units in the app (#699)', () => {
       { d: '2026-10-01', other: [{ id: 'Muscle ratio', value: 40 }] },
       { d: '2026-10-02', other: [{ id: 'Muscle ratio', value: 40.5 }] },
     ] })
-    const host = render(<MemoryRouter><Measurements /></MemoryRouter>)
+    const host = render(<MemoryRouter><MeasurementsTab /></MemoryRouter>)
     expect(host.querySelector('.big').textContent).toBe('40.5 %')
     expect(host.textContent).toContain('+0.5 % since previous')
     expect(host.querySelector('.measure-preview b').textContent).toBe('40.5 %')
@@ -105,16 +107,15 @@ describe('custom measurement units in the app (#699)', () => {
     expect(host.querySelector('.measure-preview b').textContent).toBe('40.5 %')
   })
 
-  it('rejects a percentage above 100 without writing, and accepts zero', () => {
+  it('rejects a percentage above 100 without writing, and accepts zero', async () => {
     install({ customMeasurements: [custom('Muscle ratio', '%')] })
-    measurementLogSheet()
-    const host = topSheet()
+    const host = checkin()
     type(field(host, 'Muscle ratio').querySelector('input'), '101')
-    act(() => button(host, 'Save').click())
+    await save(host)
     expect(useStore.getState().S.measurements).toEqual([])
     expect(useUI.getState().toast).toHaveBeenCalledWith('Muscle ratio must be between 0 and 100%.')
     type(field(host, 'Muscle ratio').querySelector('input'), '0')
-    act(() => button(host, 'Save').click())
+    await save(host)
     expect(useStore.getState().S.measurements[0].other[0]).toMatchObject({ value: 0, unit: '%' })
   })
 

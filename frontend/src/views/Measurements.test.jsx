@@ -14,7 +14,8 @@ vi.mock('../lib/api.js', async importOriginal => ({ ...(await importOriginal()),
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { todayISO } from '../lib/format.js'
-import Measurements, { measurementLogSheet } from './Measurements.jsx'
+import MeasurementsTab from './Measurements.jsx'
+import { bodyCheckinSheet } from '../components/BodyCheckinSheet.jsx'
 
 const clone = v => JSON.parse(JSON.stringify(v))
 const mounted = []
@@ -33,6 +34,9 @@ const setValue = (input, v) => act(() => {
 })
 const field = (host, label) => [...host.querySelectorAll('.measure-field')].find(l => l.textContent.startsWith(label)).querySelector('input')
 const click = (host, text) => act(() => { [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text).click() })
+const save = async host => { await act(async () => { [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save').click() }) }
+// The Register sheet, with its folded Measurements section opened.
+const checkin = d => { act(() => bodyCheckinSheet(d)); const form = topSheet(); click(form, 'Measurements'); return form }
 const toast = () => useUI.getState().toastMsg
 const entries = () => useStore.getState().S.measurements
 
@@ -49,61 +53,65 @@ beforeEach(() => {
 afterEach(() => { act(() => { mounted.splice(0).forEach(r => r.unmount()) }) })
 
 describe('logging body measurements', () => {
-  it('a check-in typed in cm is saved for today and shows on the screen', () => {
+  it('a check-in typed in cm is saved for today and shows on the screen', async () => {
     seed()
-    const screen = render(<Measurements />)
+    const screen = render(<MeasurementsTab />)
     expect(screen.textContent).toContain('No measurements yet')
-    act(() => measurementLogSheet())
+    expect(screen.querySelector('.hdr')).toBeNull()   // a tab of the Body screen, under its header
+    act(() => [...screen.querySelectorAll('button')].find(b => b.textContent.trim() === 'Log').click())
     const form = topSheet()
+    click(form, 'Measurements')
     setValue(field(form, 'Waist'), '84.5')
     setValue(field(form, 'Body fat'), '18')
-    click(form, 'Save')
+    await save(form)
     expect(entries()).toHaveLength(1)
     expect(entries()[0]).toMatchObject({ d: todayISO(), waist: 84.5, bodyFat: 18, chest: null })
     expect(screen.textContent).toContain('84.5')
     expect(screen.textContent).not.toContain('No measurements yet')
   })
 
-  it('in lb a waist typed in inches is stored in cm and read back in inches', () => {
+  it('in lb a waist typed in inches is stored in cm and read back in inches', async () => {
     seed({ unit: 'lb' })
-    act(() => measurementLogSheet())
-    const form = topSheet()
+    const form = checkin()
     setValue(field(form, 'Waist'), '34')
-    click(form, 'Save')
+    await save(form)
     expect(entries()[0].waist).toBeCloseTo(34 * 2.54, 1)   // kept to a millimetre
-    const screen = render(<Measurements />)
+    const screen = render(<MeasurementsTab />)
     expect(screen.textContent).toMatch(/34\s*in/)
   })
 
-  it('refuses an empty check-in and a body fat over 100 %, and saves nothing', () => {
+  it('refuses an empty check-in and a body fat over 100 %, and saves nothing', async () => {
     seed()
-    act(() => measurementLogSheet())
-    const form = topSheet()
-    click(form, 'Save')
-    expect(toast()).toMatch(/at least one measurement/)
+    const form = checkin()
+    await save(form)
+    expect(toast()).toBe('Fill in at least one item')
     setValue(field(form, 'Body fat'), '140')
-    click(form, 'Save')
-    expect(toast()).toMatch(/between 0 and 100/)
+    await save(form)
+    expect(toast()).toBe('Body fat must be between 0 and 100%.')
     expect(entries()).toEqual([])
   })
 
-  it('a second check-in on the same day is refused: the day is edited instead, and stays one entry', () => {
+  it('the Register sheet on a day with measurements edits that day, and it stays one entry', async () => {
     const day = todayISO()
-    seed({ measurements: [{ d: day, t: 1, waist: 90, chest: null, bodyFat: null, other: [] }] })
-    act(() => measurementLogSheet())
-    let form = topSheet()
-    setValue(field(form, 'Waist'), '88')
-    click(form, 'Save')
-    expect(entries()).toHaveLength(1)
-    expect(entries()[0].waist).toBe(90)
-    // Editing the day: the form opens with what was logged, and the change replaces it.
-    act(() => measurementLogSheet(day))
-    form = topSheet()
+    seed({ measurements: [
+      { d: '2026-01-05', t: 1, waist: 95, chest: null, bodyFat: null, other: [] },
+      { d: day, t: 1, waist: 90, chest: null, bodyFat: null, other: [] },
+    ] })
+    // The old sheet refused a second check-in on the same day; this one opens the day instead.
+    let form = checkin()
     expect(field(form, 'Waist').value).toBe('90')
     setValue(field(form, 'Waist'), '88')
-    click(form, 'Save')
-    expect(entries()).toHaveLength(1)
-    expect(entries()[0].waist).toBe(88)
+    await save(form)
+    expect(entries().map(e => [e.d, e.waist])).toEqual([['2026-01-05', 95], [day, 88]])
+    // The pencil of a history row (newest first) opens that row's date.
+    const screen = render(<MeasurementsTab />)
+    act(() => screen.querySelectorAll('button[aria-label="Edit"]')[1].click())
+    form = topSheet()
+    click(form, 'Measurements')
+    expect(field(form, 'Waist').value).toBe('95')
+    setValue(field(form, 'Waist'), '94')
+    await save(form)
+    expect(entries().map(e => [e.d, e.waist])).toEqual([['2026-01-05', 94], [day, 88]])
   })
 
   it('deleting a check-in asks first and then removes only that day', () => {
@@ -111,7 +119,7 @@ describe('logging body measurements', () => {
       { d: '2026-09-01', t: 1, waist: 92, chest: null, bodyFat: null, other: [] },
       { d: '2026-09-15', t: 2, waist: 90, chest: null, bodyFat: null, other: [] },
     ] })
-    const screen = render(<Measurements />)
+    const screen = render(<MeasurementsTab />)
     const del = screen.querySelectorAll('button[aria-label="Delete"]')
     expect(del).toHaveLength(2)
     act(() => del[0].click())           // newest first: 2026-09-15

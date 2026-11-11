@@ -19,7 +19,7 @@ import { fileProgressPhotos, MAX_AT_ONCE } from '../views/ProgressPhotos.jsx'
 const toast = m => useUI.getState().toast(m)
 const hasContent = c => c.weight != null || Object.keys(c.measurements).length > 0 || c.note !== ''
 
-// The fields shown: the active ones, plus any the date already holds (as MeasurementLog did).
+// The fields shown: the active ones, plus any the date already holds, even if switched off since.
 function fieldsFor(S, d) {
   const fields = [...enabledMeasurementFields(S)]
   const entry = (S.measurements || []).find(e => e.d === d)

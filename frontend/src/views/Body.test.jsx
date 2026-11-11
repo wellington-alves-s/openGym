@@ -71,10 +71,11 @@ describe('the Body screen', () => {
   it('?tab=measurements shows Measurements, and switching tabs writes the URL', () => {
     seed()
     const host = render(<Body />, '/body?tab=measurements')
-    expect(host.textContent).toContain('Body measurements')
+    expect(host.textContent).toContain('Measurement history')
+    expect(host.querySelectorAll('.hdr')).toHaveLength(1)   // the tab brings no header of its own
     click(host, 'Weight')
     expect(where.search).toBe('?tab=weight')
-    expect(host.textContent).not.toContain('Body measurements')
+    expect(host.textContent).not.toContain('Measurement history')
     click(host, 'Measurements')
     expect(where.search).toBe('?tab=measurements')
   })

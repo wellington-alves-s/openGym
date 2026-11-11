@@ -19,7 +19,7 @@ import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Segmented } from '../components/ui.jsx'
 import { progressPhotosOf, openPhotoView } from './ProgressPhotos.jsx'
 import { rangeOptions } from './Stats.jsx'
-import Measurements from './Measurements.jsx'
+import MeasurementsTab from './Measurements.jsx'
 
 const BAND = { under: () => t('Underweight'), normal: () => t('Normal weight'), over: () => t('Overweight'), obese: () => t('Obesity') }
 
@@ -51,13 +51,15 @@ function Photos({ S }) {
 
 function WeightTab({ S }) {
   const [range, setRange] = useState(90)
-  const now = Date.now()
   const bws = S.bodyweight
   const last = bws.at(-1), prev = bws.at(-2)
   const delta = last && prev ? last.w - prev.w : null
   const gap = last ? goalGap(last.w, S.targetW, prev?.w) : null
-  const pts = bws.filter(b => range === 0 || weighInAt(b) > now - range * 86400000)
-    .map(b => ({ t: weighInAt(b), y: b.w, d: b.d }))
+  // Memoised with the range start captured once, as in Stats: LineChart drops its hover on a new array.
+  const pts = useMemo(() => {
+    const from = Date.now() - range * 86400000
+    return bws.filter(b => range === 0 || weighInAt(b) > from).map(b => ({ t: weighInAt(b), y: b.w, d: b.d }))
+  }, [bws, range])
   return <div className="card">
     <div className="row between bw-head" style={{ marginBottom: 8, alignItems: 'flex-start' }}>
       {last ? <div>
@@ -125,8 +127,7 @@ export default function Body() {
     <Segmented value={tab} onChange={v => setParams({ tab: v }, { replace: true })}
       options={[{ value: 'weight', label: t('Weight') }, { value: 'measurements', label: t('Measurements') }]} />
     <div style={{ height: 12 }} />
-    {/* provisional: Task 6 swaps the whole Measurements screen for its tab component */}
-    {tab === 'weight' ? <WeightTab S={S} /> : <Measurements />}
+    {tab === 'weight' ? <WeightTab S={S} /> : <MeasurementsTab />}
     <Diagnosis S={S} />
   </>
 }

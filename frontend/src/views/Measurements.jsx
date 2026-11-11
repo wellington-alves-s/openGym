@@ -1,20 +1,20 @@
+// The Measurements tab of the Body screen, and the sheet that chooses which measurements to
+// track. A check-in is logged or edited through the Register sheet (BodyCheckinSheet.jsx).
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import {
-  MEASUREMENT_FIELDS, MEASUREMENT_KEYS, emptyMeasurement, enabledMeasurementFields,
-  fromMeasurementDisplay, latestMeasurement, measurementEntryHasValues,
-  measurementSeries, measurementUnit, measurementValue, normalizeMeasurementEntry,
-  toMeasurementDisplay, normalizeMeasurementsState, CUSTOM_MEASUREMENT_UNITS, customMeasurementUnits,
-  measurementUnitLabel, zeroIsReading,
+  MEASUREMENT_FIELDS, MEASUREMENT_KEYS, enabledMeasurementFields, latestMeasurement,
+  measurementSeries, measurementUnit, measurementValue, toMeasurementDisplay,
+  normalizeMeasurementsState, CUSTOM_MEASUREMENT_UNITS, customMeasurementUnits, measurementUnitLabel,
 } from '../lib/measurements.js'
-import { fmtDate, fmtNum, todayISO, uid } from '../lib/format.js'
+import { fmtDate, fmtNum, uid } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button, NumberField, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
+import { Button, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
 import { confirmSheet } from '../sheets.jsx'
+import { bodyCheckinSheet } from '../components/BodyCheckinSheet.jsx'
 
 // Every write leaves the list in its one-entry-per-day shape (normalizeMeasurementsState).
 const update = (fn, ...rest) => useStore.getState().update(s => { fn(s); normalizeMeasurementsState(s) }, ...rest)
@@ -28,89 +28,6 @@ const shownValue = (entry, field, profileUnit) => {
   const value = measurementValue(entry, field.key)
   if (value == null) return null
   return toMeasurementDisplay(value, profileUnit, field)
-}
-
-function MeasurementLog({ sourceDate, close }) {
-  const S = useStore(s => s.S)
-  const source = sourceDate ? S.measurements.find(e => e.d === sourceDate) : null
-  const enabled = enabledMeasurementFields(S)
-  const fields = [...enabled]
-  // Editing must expose populated fields even if the user disabled them after logging.
-  if (source) {
-    for (const f of MEASUREMENT_FIELDS) {
-      if (source[f.key] != null && !fields.some(x => x.key === f.key)) fields.push(f)
-    }
-    for (const o of source.other || []) {
-      if (o.value != null && !fields.some(x => x.key === 'other:' + o.id)) {
-        fields.push({ key: 'other:' + o.id, label: o.name, unit: o.unit, custom: true, group: 'Other' })
-      }
-    }
-  }
-  const [date, setDate] = useState(source?.d || todayISO())
-  const [values, setValues] = useState(() => Object.fromEntries(fields.map(f => [f.key, shownValue(source, f, S.unit)])))
-
-  const save = () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayISO()) { toast(t('Choose a valid date')); return }
-    if (date !== sourceDate && S.measurements.some(e => e.d === date)) {
-      toast(t('That date already has measurements. Edit it instead.')); return
-    }
-    const base = source ? normalizeMeasurementEntry(source, S.customMeasurements) : emptyMeasurement(date, S.customMeasurements)
-    base.d = date
-    base.t = source && date === source.d ? source.t : (date === todayISO() ? Date.now() : new Date(date + 'T12:00:00').getTime())
-    for (const field of fields) {
-      const raw = values[field.key]
-      const shown = measurementUnit(S.unit, field)
-      const percent = shown === '%'
-      const value = raw == null || (raw === 0 && !zeroIsReading(shown)) ? null : Math.round(+raw * 10) / 10
-      if (percent && value != null && (value < 0 || value > 100)) {
-        toast(field.key === 'bodyFat' ? t('Body fat must be between 0 and 100%.') : t('{0} must be between 0 and 100%.', field.label)); return
-      }
-      if (field.custom) {
-        const item = base.other.find(o => o.id === field.key.slice(6))
-        if (item) {
-          item.value = fromMeasurementDisplay(value, S.unit, field)
-          if (field.unit) item.unit = field.unit
-        }
-      } else if (field.key === 'bodyFat') base.bodyFat = value
-      else base[field.key] = value == null ? null : fromMeasurementDisplay(value, S.unit)
-    }
-    if (!measurementEntryHasValues(base)) { toast(t('Enter at least one measurement')); return }
-    // `t` is when the check-in was last saved: the newer one of a day wins a sync merge, the
-    // way a weigh-in's does. The chart places it by its date, not by this.
-    base.t = Date.now()
-    update(state => {
-      if (sourceDate) state.measurements = state.measurements.filter(e => e.d !== sourceDate)
-      state.measurements.push(base)
-    })
-    close()
-    toast(t('Measurements saved'))
-  }
-
-  return <>
-    <h3>{source ? t('Edit measurements') : t('Log measurements')}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{t('Fill only what you measured today. Empty fields stay empty.')}</div>
-    <label className="measure-date">
-      <span>{t('Date')}</span>
-      <input className="field" type="date" value={date} max={todayISO()} onChange={e => setDate(e.target.value)} />
-    </label>
-    {fields.length ? <div className="measure-form">
-      {fields.map(field => <label className="measure-field" key={field.key}>
-        <span>{t(field.label)}</span>
-        <span className="measure-input">
-          <NumberField nullable value={values[field.key]} onChange={value => setValues(v => ({ ...v, [field.key]: value }))} />
-          <i>{fieldUnit(field, S.unit)}</i>
-        </span>
-      </label>)}
-    </div> : <div className="empty small">{t('Choose at least one measurement first.')}</div>}
-    <div style={{ height: 14 }} />
-    <Button variant="primary" onClick={save} disabled={!fields.length}>{t('Save')}</Button>
-    <div style={{ height: 8 }} />
-    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
-  </>
-}
-
-export function measurementLogSheet(sourceDate = null) {
-  return useUI.getState().openSheet(close => <MeasurementLog sourceDate={sourceDate} close={close} />)
 }
 
 function ManageMeasurements({ close }) {
@@ -178,8 +95,7 @@ export function manageMeasurementsSheet() {
   return useUI.getState().openSheet(close => <ManageMeasurements close={close} />)
 }
 
-export default function Measurements() {
-  const nav = useNavigate()
+export default function MeasurementsTab() {
   const S = useStore(s => s.S)
   const [range, setRange] = useState(90)
   const available = useMemo(() => {
@@ -212,13 +128,7 @@ export default function Measurements() {
     onConfirm: () => { update(state => { state.measurements = state.measurements.filter(e => e.d !== entry.d) }); toast(t('Measurements deleted')) },
   })
 
-  return <div className="narrow">
-    <div className="hdr">
-      <button className="iconbtn" data-back="/stats" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
-      <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('Body measurements')}</h1><div className="sub">{t('Circumference & composition')}</div></div>
-      <button className="iconbtn" onClick={manageMeasurementsSheet} aria-label={t('Choose measurements')}><Icon name="gear" /></button>
-    </div>
-
+  return <>
     <div className="card">
       <div className="row between" style={{ marginBottom: 10 }}>
         <div>
@@ -226,7 +136,7 @@ export default function Measurements() {
           <div className="big" style={{ marginTop: 3 }}>{latest ? <>{fmtNum(latest.y)} <span className="muted" style={{ fontSize: '1rem' }}>{unit}</span></> : '–'}</div>
           {delta != null && delta !== 0 && <div className="small" style={{ marginTop: 3, color: 'var(--label-2)' }}>{delta > 0 ? '+' : ''}{withUnit(delta, unit)} {t('since previous')}</div>}
         </div>
-        <Button size="sm" icon="plus" onClick={() => measurementLogSheet()}>{t('Log')}</Button>
+        <Button size="sm" icon="plus" onClick={() => bodyCheckinSheet()}>{t('Log')}</Button>
       </div>
       {available.length > 0 && <div className="sect-b measure-select"><SelectRow
         title={t('Measurement')} sheetTitle={t('Choose measurement')} value={key} onChange={setSelected}
@@ -253,12 +163,12 @@ export default function Measurements() {
         <div className="row between">
           <div><b>{fmtDate(entry.d, true)}</b><div className="small dim" style={{ marginTop: 2 }}>{t(count === 1 ? '{0} measurement' : '{0} measurements', count)}</div></div>
           <div className="row" style={{ gap: 4 }}>
-            <button className="iconbtn" onClick={() => measurementLogSheet(entry.d)} aria-label={t('Edit')}><Icon name="pencil" /></button>
+            <button className="iconbtn" onClick={() => bodyCheckinSheet(entry.d)} aria-label={t('Edit')}><Icon name="pencil" /></button>
             <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={() => remove(entry)} aria-label={t('Delete')}><Icon name="trash" /></button>
           </div>
         </div>
         {previewFields.length > 0 && <div className="measure-preview">{previewFields.map(({ field: f, value }) => <span key={f.key}>{t(f.label)} <b>{withUnit(value, fieldUnit(f, S.unit))}</b></span>)}</div>}
       </div>
     })}</div> : <div className="empty small">{t('No measurements yet')}</div>}
-  </div>
+  </>
 }

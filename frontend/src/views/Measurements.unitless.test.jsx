@@ -3,7 +3,8 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Measurements, { manageMeasurementsSheet, measurementLogSheet } from './Measurements.jsx'
+import MeasurementsTab, { manageMeasurementsSheet } from './Measurements.jsx'
+import { bodyCheckinSheet } from '../components/BodyCheckinSheet.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { bindUI } from '../components/ui.jsx'
@@ -58,13 +59,14 @@ describe('a custom measurement without a unit', () => {
     expect(useStore.getState().S.customMeasurements).toEqual([expect.objectContaining({ name: 'Visceral fat', unit: 'none' })])
   })
 
-  it('logs a plain number, zero included, with nothing after it', () => {
+  it('logs a plain number, zero included, with nothing after it', async () => {
     install({ unit: 'lb', customMeasurements: [visc] })
-    measurementLogSheet()
+    act(() => bodyCheckinSheet())
     const host = topSheet()
+    act(() => button(host, 'Measurements').click())
     expect(field(host, 'Visceral fat').querySelector('i').textContent).toBe('')
     type(field(host, 'Visceral fat').querySelector('input'), '0')
-    act(() => button(host, 'Save').click())
+    await act(async () => { button(host, 'Save').click() })
     expect(useStore.getState().S.measurements[0].other[0]).toMatchObject({ value: 0, unit: 'none' })
   })
 
@@ -73,7 +75,7 @@ describe('a custom measurement without a unit', () => {
       { d: '2026-10-01', other: [{ id: 'visc', value: 9, unit: 'none' }] },
       { d: '2026-10-02', other: [{ id: 'visc', value: 8, unit: 'none' }] },
     ] })
-    const host = render(<MemoryRouter><Measurements /></MemoryRouter>)
+    const host = render(<MemoryRouter><MeasurementsTab /></MemoryRouter>)
     expect(host.querySelector('.big').textContent.trim()).toBe('8')
     expect(host.textContent).toContain('-1 since previous')
     expect(host.querySelector('.measure-preview b').textContent.trim()).toBe('8')

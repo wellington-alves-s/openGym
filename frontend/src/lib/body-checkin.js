@@ -1,6 +1,6 @@
 // One check-in per date on the Body screen: the day's weigh-in, its measurements and its note,
-// read and saved together. The measurement rules are the ones the old logging sheet had
-// (MeasurementLog.save in views/Measurements.jsx); the weigh-in rule is the body-weight sheet's.
+// read and saved together. The measurement rules are the ones the old measurement logging sheet
+// had; the weigh-in rule is the body-weight sheet's.
 import {
   MEASUREMENT_FIELDS, emptyMeasurement, normalizeMeasurementEntry, normalizeMeasurementsState,
   measurementEntryHasValues, measurementUnit, measurementValue, toMeasurementDisplay,
