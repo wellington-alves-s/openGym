@@ -35,8 +35,12 @@ const setValue = (input, v) => act(() => {
 const field = (host, label) => [...host.querySelectorAll('.measure-field')].find(l => l.textContent.startsWith(label)).querySelector('input')
 const click = (host, text) => act(() => { [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text).click() })
 const save = async host => { await act(async () => { [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save').click() }) }
-// The Register sheet, with its folded Measurements section opened.
-const checkin = d => { act(() => bodyCheckinSheet(d)); const form = topSheet(); click(form, 'Measurements'); return form }
+// The Register sheet with its Measurements section open (it starts open on a date with measurements).
+const checkin = d => {
+  act(() => bodyCheckinSheet(d)); const form = topSheet()
+  if ([...form.querySelectorAll('button')].find(b => b.textContent.trim() === 'Measurements').getAttribute('aria-expanded') !== 'true') click(form, 'Measurements')
+  return form
+}
 const toast = () => useUI.getState().toastMsg
 const entries = () => useStore.getState().S.measurements
 
@@ -107,7 +111,6 @@ describe('logging body measurements', () => {
     const screen = render(<MeasurementsTab />)
     act(() => screen.querySelectorAll('button[aria-label="Edit"]')[1].click())
     form = topSheet()
-    click(form, 'Measurements')
     expect(field(form, 'Waist').value).toBe('95')
     setValue(field(form, 'Waist'), '94')
     await save(form)

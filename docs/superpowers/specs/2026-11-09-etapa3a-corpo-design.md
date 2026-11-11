@@ -56,8 +56,9 @@ Não é um documento novo. Para uma data `d`, o "registro" é o que existe nas o
 Cada uma com teste ao lado.
 
 - `body-checkin.js`:
-  - `checkinOf(S, d)` → `{ d, weight, measurements, note, photos }` lido das origens (`weight` em kg ou lb do
-    perfil como a folha mostra; `null` onde não há).
+  - `checkinOf(S, d)` → `{ d, weight, measurements, note }` lido das origens (`weight` em kg ou lb do
+    perfil como a folha mostra; `null` onde não há). As fotos não vêm daqui: a folha as lê com `progressPhotosOf`
+    (`views/ProgressPhotos.jsx`), porque um módulo de `lib/` não importa uma tela.
   - `applyCheckin(state, input, now)` → muta o estado como `update()` espera e devolve `{ ok: true, photos }` ou
     `{ ok: false, reason }`. `input = { d, weight, measurements, note, newPhotos }`. Regras: data válida e não
     futura; ao menos uma coisa preenchida (peso, uma medida, uma foto nova ou observação); o peso passa pelos
@@ -101,8 +102,8 @@ Abre de qualquer ponto de Corpo, na data de hoje, ou numa data ao editar. Campos
 `useMediaPicker` e `fileProgressPhoto`, como a tela de fotos); observação; e as medidas **ativas** (as de
 `enabledMeasurementFields`), recolhidas por padrão atrás de "Medidas". Ao trocar a data, a folha recarrega os
 valores dessa data (`checkinOf`). Salvar chama `applyCheckin` e depois arquiva as fotos. Mensagens: data
-inválida, "Preencha ao menos um item", peso fora do limite, medida percentual fora de 0 a 100. A folha de
-medidas e a de peso existentes continuam abertas pelos mesmos pontos de antes (o treino e o Watch usam a de peso).
+inválida, "Preencha ao menos um item", peso fora do limite, medida percentual fora de 0 a 100. A antiga folha de
+medidas foi removida e a folha Registrar a substitui; a folha de peso fica onde estava (o treino e o Watch usam).
 
 ### 5.3 Estatísticas
 

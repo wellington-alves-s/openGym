@@ -109,6 +109,29 @@ describe('the Body screen', () => {
     expect(S().heightCm).toBe(null)
   })
 
+  it('in lb, Edit then Save with the shown height unchanged leaves heightCm as it was', () => {
+    seed({ unit: 'lb', heightCm: 180 })
+    const host = render(<Body />)
+    const before = S()
+    click(host, 'Edit')
+    click(host, 'Save')
+    expect(S().heightCm).toBe(180)
+    expect(S()).toBe(before)                     // nothing written, nothing restamped
+    expect(host.querySelector('input.num')).toBeNull()
+  })
+
+  it('Cancel leaves the height edit without writing', () => {
+    seed({ heightCm: 180 })
+    const host = render(<Body />)
+    const before = S()
+    click(host, 'Edit')
+    setValue(host.querySelector('input.num'), '170')
+    click(host, 'Cancel')
+    expect(S()).toBe(before)
+    expect(host.querySelector('input.num')).toBeNull()
+    expect(host.textContent).toContain('180 cm')
+  })
+
   it('lists the photos with the day\'s weight, and a tap opens the photo', () => {
     seed({
       bodyweight: [{ d: '2026-10-01', w: 81, t: 1 }],

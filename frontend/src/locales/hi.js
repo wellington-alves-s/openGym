@@ -95,6 +95,7 @@ export default {
   'Edit check-in': 'चेक-इन बदलें',
   'Fill in at least one item': 'कम से कम एक चीज़ भरें',
   'Check-in saved': 'चेक-इन सहेजा गया',
+  'That photo is already on this day': 'यह फ़ोटो इस दिन पर पहले से है',
   'Body': 'शरीर',
   'See all': 'सभी देखें',
   'Diagnosis': 'निदान',

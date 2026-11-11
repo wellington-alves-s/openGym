@@ -97,6 +97,7 @@ export default {
   'Edit check-in': 'Bejegyzés szerkesztése',
   'Fill in at least one item': 'Tölts ki legalább egy mezőt',
   'Check-in saved': 'Bejegyzés mentve',
+  'That photo is already on this day': 'Ez a fotó már szerepel ezen a napon',
   'Body': 'Test',
   'See all': 'Összes megtekintése',
   'Diagnosis': 'Diagnózis',

@@ -1211,6 +1211,7 @@ export default {
   'Edit check-in': 'تعديل التسجيل',
   'Fill in at least one item': 'املأ عنصرًا واحدًا على الأقل',
   'Check-in saved': 'تم حفظ التسجيل',
+  'That photo is already on this day': 'هذه الصورة موجودة بالفعل في هذا اليوم',
   'Body': 'الجسم',
   'See all': 'عرض الكل',
   'Diagnosis': 'التشخيص',

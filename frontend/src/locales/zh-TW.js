@@ -94,6 +94,7 @@ export default {
   'Edit check-in': '編輯記錄',
   'Fill in at least one item': '請至少填寫一項',
   'Check-in saved': '記錄已儲存',
+  'That photo is already on this day': '這張照片已經在這一天了',
   'Body': '身體',
   'See all': '查看全部',
   'Diagnosis': '診斷',

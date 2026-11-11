@@ -938,10 +938,10 @@ docker compose up -d --build
 The app shell is versioned (`?v=N`) so clients pick up changes on next load. Your `./data` is
 untouched; the exercise media come with the new image.
 
-If you update the images one at a time, update the api before the web. An older api treats new
-data it does not know as one whole setting: body notes (`bodyNotes`), for example, are merged day
-by day only by an api that knows them, so with an older one two devices editing notes at once can
-lose one device's notes.
+Body notes (`bodyNotes`) are merged day by day by the app, not by the api. A device still on the
+previous app version (a phone not yet updated, a cached PWA) treats them as one value: when it
+merges a conflict it keeps one copy of all the notes, so a note added or removed on an updated
+device can be lost or come back. Update every device before relying on body notes across devices.
 
 ## Passkeys fail even though `RP_ID` looks right
 

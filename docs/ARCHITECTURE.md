@@ -80,8 +80,9 @@ flowchart TB
   evicted), and pushed to the server when signed in. `useUI.js` is everything that should not
   survive a reload.
 - **Body.** `views/Body.jsx` (`/body`) gathers progress photos, weight, measurements and a BMI card
-  (`S.heightCm`). One Register sheet per date writes all of it plus a note through the pure
-  `lib/body-checkin.js`. Body notes live in `S.bodyNotes`, a map stamped per day, not in `dayNotes`,
+  (`S.heightCm`). One Register sheet per date writes weight, measurements and a note through the
+  pure `lib/body-checkin.js`, and files its photos with `fileProgressPhotos`
+  (`views/ProgressPhotos.jsx`). Body notes live in `S.bodyNotes`, a map stamped per day, not in `dayNotes`,
   where a note would excuse a missed training day.
 - **Logic in `lib/`.** Anything that decides what you lift next, or reads a logged session back, is
   a pure function with a test beside it. Views stay thin.

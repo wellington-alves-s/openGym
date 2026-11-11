@@ -70,6 +70,14 @@ describe("a page's own back button", () => {
     expect(window.location.hash).toBe('#/stats')
   })
 
+  it('takes the progress photos back to Body, the only way in', async () => {
+    await go('#/progress-photos')
+    const back = await appear('#app [data-back]')
+    expect(back.getAttribute('data-back')).toBe('/body')
+    await tap(back)
+    expect(window.location.hash).toBe('#/body')
+  })
+
   it('a page opened at the top is remembered at the top, though no scroll event says so', async () => {
     const row = text => [...document.querySelectorAll('#app button, #app [role="button"]')].find(b => b.textContent.trim().startsWith(text))
     await go('#/settings/workout')

@@ -61,7 +61,7 @@ import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
 import Workout from './views/Workout.jsx'
 
-// Screens most sessions never open (the Coach, the admin dashboard, photos, measurements, the
+// Screens most sessions never open (the Coach, the admin dashboard, photos, the Body screen, the
 // balance check) are their own chunks rather than part of the code every start parses: ~200 KB
 // of the main bundle. They are fetched once the app is idle after the start (the service worker
 // and the phone build hold them locally anyway), so by the time one is opened it renders at once,

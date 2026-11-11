@@ -95,6 +95,7 @@ export default {
   'Edit check-in': 'Edytuj wpis',
   'Fill in at least one item': 'Wypełnij co najmniej jedno pole',
   'Check-in saved': 'Wpis zapisany',
+  'That photo is already on this day': 'To zdjęcie jest już przy tym dniu',
   'Body': 'Ciało',
   'See all': 'Zobacz wszystkie',
   'Diagnosis': 'Diagnoza',

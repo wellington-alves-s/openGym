@@ -95,6 +95,7 @@ export default {
   'Edit check-in': 'চেক-ইন সম্পাদনা',
   'Fill in at least one item': 'অন্তত একটি ঘর পূরণ করুন',
   'Check-in saved': 'চেক-ইন সংরক্ষিত হয়েছে',
+  'That photo is already on this day': 'এই ছবিটি এই দিনে আগে থেকেই আছে',
   'Body': 'শরীর',
   'See all': 'সব দেখুন',
   'Diagnosis': 'মূল্যায়ন',

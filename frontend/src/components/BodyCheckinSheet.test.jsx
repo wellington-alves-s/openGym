@@ -9,8 +9,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../lib/api.js', async importOriginal => ({ ...(await importOriginal()), api: vi.fn(() => Promise.reject(new Error('offline'))), beacon: vi.fn() }))
 vi.mock('../lib/media-sync.js', () => ({ syncMedia: vi.fn() }))
 const photoRef = { kind: 'image', hash: '7'.padStart(64, '0'), mime: 'image/jpeg', size: 10, width: 4, height: 3, at: 1 }
+const ref = n => ({ ...photoRef, hash: String(n).padStart(64, '0') })
+// What the picker does with a file; a test swaps it for one that fails, as the real one toasts then.
+let mockPick = async () => photoRef
 vi.mock('./CustomMediaField.jsx', () => ({
-  useMediaPicker: () => ({ pick: async () => photoRef, busy: false, canAdd: true, showAdd: true }),
+  useMediaPicker: () => ({ pick: (...a) => mockPick(...a), busy: false, canAdd: true, showAdd: true }),
 }))
 
 import { DEF, useStore } from '../store/useStore.js'
@@ -55,7 +58,13 @@ beforeEach(() => {
   useUI.setState({ sheets: [], toastMsg: '' })
   document.body.innerHTML = ''
   syncMedia.mockClear()
+  mockPick = async () => photoRef
 })
+const choosePhoto = (form, name = 'front.jpg') => {
+  const input = form.querySelector('input[type=file]')
+  Object.defineProperty(input, 'files', { value: [new File(['x'], name, { type: 'image/jpeg' })], configurable: true })
+  act(() => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+}
 afterEach(() => { act(() => { mounted.splice(0).forEach(r => r.unmount()) }) })
 
 describe('the Register sheet', () => {
@@ -78,11 +87,12 @@ describe('the Register sheet', () => {
     expect(form.textContent).toContain('Edit check-in')
     expect(weightInput(form).value).toBe('81.5')
     expect(noteInput(form).value).toBe('felt light')
-    click(form, 'Measurements')
     expect(field(form, 'Waist').value).toBe('84')
     setValue(dateInput(form), '2026-01-06')
     expect(weightInput(form).value).toBe('')
     expect(noteInput(form).value).toBe('')
+    expect(field(form, 'Waist')).toBeUndefined()      // no measurements there: folded again
+    click(form, 'Measurements')
     expect(field(form, 'Waist').value).toBe('')
   })
 
@@ -150,11 +160,52 @@ describe('the Register sheet', () => {
     seed({ unit: 'lb', measurements: [{ d: todayISO(), waist: 80.1, t: 1 }] })
     act(() => bodyCheckinSheet())
     const form = topSheet()
-    click(form, 'Measurements')
     expect(field(form, 'Waist').value).toBe('31.5')
     setValue(weightInput(form), '180')
     await save(form)
     expect(S().bodyweight).toMatchObject([{ d: todayISO(), w: 180 }])
     expect(S().measurements[0].waist).toBe(80.1)
+  })
+
+  it('opens on a date with measurements with the Measurements section already open', () => {
+    seed({ measurements: [{ d: '2026-01-05', waist: 84, t: 1 }] })
+    act(() => bodyCheckinSheet('2026-01-05'))
+    const form = topSheet()
+    expect(field(form, 'Waist').value).toBe('84')
+  })
+
+  it('a weight with a photo the picker could not read saves the weight and leaves the picker error', async () => {
+    seed()
+    mockPick = async () => { useUI.getState().toast('Could not read that file'); return null }
+    act(() => bodyCheckinSheet())
+    const form = topSheet()
+    setValue(weightInput(form), '80')
+    choosePhoto(form)
+    await save(form)
+    expect(S().bodyweight).toMatchObject([{ d: todayISO(), w: 80 }])
+    expect(open()).toBe(0)
+    expect(toast()).not.toBe('Check-in saved')
+    expect(toast()).toBe('Could not read that file')
+  })
+
+  it('a photo the day already has says so, and the sheet stays open', async () => {
+    seed({ dayPhotos: { [photoRef.hash]: { d: todayISO(), m: photoRef, _ts: 1 } } })
+    act(() => bodyCheckinSheet())
+    const form = topSheet()
+    choosePhoto(form)
+    await save(form)
+    expect(toast()).toBe('That photo is already on this day')
+    expect(open()).toBe(1)
+  })
+
+  it('shows how many photos the date holds, as an existing check-in, and follows the date', () => {
+    seed({ dayPhotos: { [ref(1).hash]: { d: '2026-01-05', m: ref(1), _ts: 1 }, [ref(2).hash]: { d: '2026-01-05', m: ref(2), _ts: 1 } } })
+    act(() => bodyCheckinSheet('2026-01-05'))
+    const form = topSheet()
+    expect(form.textContent).toContain('2 photos')
+    expect(form.querySelector('h3').textContent).toBe('Edit check-in')
+    setValue(dateInput(form), '2026-01-06')
+    expect(form.textContent).not.toContain('2 photos')
+    expect(form.querySelector('h3').textContent).toBe('Check-in')
   })
 })

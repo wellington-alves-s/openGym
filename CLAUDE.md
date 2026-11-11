@@ -112,8 +112,9 @@ machine, never in CI (see "Exercise media" below and docs/APP_STORES.md).
   "Muscle ratio (%)", and the importer reads those columns back (only from our own header).
   Measurements live in the Body screen (`views/Body.jsx`, `/body`; `/measurements` redirects to its
   tab), beside progress photos, weight and a BMI card from `S.heightCm` (cm, 50 to 260). One
-  Register sheet per date (`components/BodyCheckinSheet.jsx`) writes weight, photos, measurements
-  and a note through the pure `lib/body-checkin.js`. The note goes in `S.bodyNotes`, a map stamped
+  Register sheet per date (`components/BodyCheckinSheet.jsx`) writes weight, measurements and a
+  note through the pure `lib/body-checkin.js`, and files its photos with `fileProgressPhotos`
+  (`views/ProgressPhotos.jsx`). The note goes in `S.bodyNotes`, a map stamped
   per day, never in `dayNotes` (a day note excuses the missed-day nudge).
 - **`views/`**: one file per screen, routed by `react-router-dom` from `App.jsx`.
 - **`sheets.jsx`**: the bottom sheets (exercise picker, exercise config, workout detail, plan

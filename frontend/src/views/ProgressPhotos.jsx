@@ -174,9 +174,10 @@ export function openProgressCompare(x, y) {
 export const MAX_AT_ONCE = 20
 
 /** Files picked photos ({ file, exif }[]) one after another: several go on their EXIF day where
- *  they have one, else on `d`; one goes on `d`. Returns how many went in and how many found no room. */
+ *  they have one, else on `d`; one goes on `d`. Returns how many went in, how many were already
+ *  there (dup) and how many found no room. */
 export async function fileProgressPhotos({ files, d, pick, update, canDay }) {
-  const n = { added: 0, noRoom: 0 }
+  const n = { added: 0, dup: 0, noRoom: 0 }
   for (const it of files) {
     const got = await pick(it.file)
     if (!got) continue
@@ -184,6 +185,7 @@ export async function fileProgressPhotos({ files, d, pick, update, canDay }) {
     let res
     update(s => { res = fileProgressPhoto(s, day, got, { canDay }) })
     if (res === 'workout' || res === 'day') n.added++
+    else if (res === 'dup') n.dup++
     else if (res === 'no-room') n.noRoom++
   }
   return n
@@ -269,7 +271,7 @@ export default function ProgressPhotos() {
   }
 
   return <>
-    <div className="hdr"><button className="iconbtn" data-back="/stats" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
+    <div className="hdr"><button className="iconbtn" data-back="/body" onClick={() => nav('/body')} aria-label={t('Body')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('Progress photos')}</h1>
         <div className="sub">{tn('{0} photo', '{0} photos', photos.length)}</div></div>
       {photos.length >= 2 && (comparing

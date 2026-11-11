@@ -88,6 +88,8 @@ function Diagnosis({ S }) {
   const [draft, setDraft] = useState(shown)
   const b = bmiOf(S)
   const save = () => {
+    // Unchanged: 180 cm shows as 70.9 in and would come back as 180.1, restamped.
+    if (S.heightCm != null && draft === shown) { setEditing(false); return }
     const cm = normalizeHeightCm(fromMeasurementDisplay(draft, S.unit))
     if (cm === null) { useUI.getState().toast(t('Enter a valid height')); return }
     useStore.getState().update(s => { s.heightCm = cm })
@@ -101,6 +103,7 @@ function Diagnosis({ S }) {
         <NumberField nullable value={draft} onChange={setDraft} aria-label={t('Height')} />
         <span className="muted">{unit}</span>
         <Button size="sm" variant="tinted" onClick={save}>{t('Save')}</Button>
+        {editing && S.heightCm != null && <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>{t('Cancel')}</Button>}
       </div>
     </> : <div className="row between" style={{ alignItems: 'center' }}>
       <span>{t('Height')} {fmtNum(shown) + ' ' + unit}</span>

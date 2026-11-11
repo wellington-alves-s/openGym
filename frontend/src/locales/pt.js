@@ -95,6 +95,7 @@ export default {
   'Edit check-in': 'Editar registo',
   'Fill in at least one item': 'Preenche pelo menos um item',
   'Check-in saved': 'Registo guardado',
+  'That photo is already on this day': 'Essa foto já está neste dia',
   'Body': 'Corpo',
   'See all': 'Ver todas',
   'Diagnosis': 'Diagnóstico',

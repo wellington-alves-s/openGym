@@ -31,8 +31,12 @@ const type = (input, value) => act(() => {
   Object.getOwnPropertyDescriptor(input.constructor.prototype, 'value').set.call(input, value)
   input.dispatchEvent(new Event('input', { bubbles: true }))
 })
-// The Register sheet for a date, with its folded Measurements section opened.
-const checkin = d => { act(() => bodyCheckinSheet(d)); const host = topSheet(); act(() => button(host, 'Measurements').click()); return host }
+// The Register sheet for a date with its Measurements section open (it starts open on a date with measurements).
+const checkin = d => {
+  act(() => bodyCheckinSheet(d)); const host = topSheet()
+  if (button(host, 'Measurements').getAttribute('aria-expanded') !== 'true') act(() => button(host, 'Measurements').click())
+  return host
+}
 const save = async host => { await act(async () => { button(host, 'Save').click() }) }
 const install = patch => useStore.setState({ S: normalizeMeasurementsState({ ...structuredClone(DEF), measurementEnabled: [], ...patch }), user: null })
 const custom = (id, unit, enabled = true) => ({ id, name: id, unit, enabled })

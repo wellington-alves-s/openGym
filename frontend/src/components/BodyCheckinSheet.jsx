@@ -10,14 +10,16 @@ import { bodyWeightMax } from '../lib/bodyweight.js'
 import { serverTakesDayPhotos } from '../lib/day-photos.js'
 import { syncMedia } from '../lib/media-sync.js'
 import { fmtNum, todayISO } from '../lib/format.js'
-import { t } from '../lib/i18n.js'
+import { t, tn } from '../lib/i18n.js'
+import { NOTE_MAX } from '../lib/history.js'
 import { useMediaPicker } from './CustomMediaField.jsx'
 import { Button, NumberField, TextField } from './ui.jsx'
 import { manageMeasurementsSheet } from '../views/Measurements.jsx'
-import { fileProgressPhotos, MAX_AT_ONCE } from '../views/ProgressPhotos.jsx'
+import { fileProgressPhotos, progressPhotosOf, MAX_AT_ONCE } from '../views/ProgressPhotos.jsx'
 
 const toast = m => useUI.getState().toast(m)
-const hasContent = c => c.weight != null || Object.keys(c.measurements).length > 0 || c.note !== ''
+const hasMeasurements = c => Object.keys(c.measurements).length > 0
+const hasContent = c => c.weight != null || hasMeasurements(c) || c.note !== ''
 
 // The fields shown: the active ones, plus any the date already holds, even if switched off since.
 function fieldsFor(S, d) {
@@ -50,13 +52,16 @@ function BodyCheckin({ start, close }) {
   const [touched, setTouched] = useState(() => new Set())
   const [note, setNote] = useState(loaded.note)
   const [files, setFiles] = useState([])
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(() => hasMeasurements(loaded))
   const [saving, setSaving] = useState(false)
   const fields = fieldsFor(S, date)
+  const photos = progressPhotosOf(S).filter(p => p.d === date).length
+  const existing = hasContent(loaded) || photos > 0
 
   const changeDate = d => {
     const c = checkinOf(S, d)
     setDate(d); setLoaded(c); setWeight(c.weight); setValues(c.measurements); setTouched(new Set()); setNote(c.note)
+    setOpen(hasMeasurements(c))
   }
   const setField = (key, value) => {
     setValues(v => ({ ...v, [key]: value }))
@@ -95,10 +100,10 @@ function BodyCheckin({ start, close }) {
     if (!res.ok && res.reason !== 'empty') { toast(refusal(res)); return }
     if (!res.ok && !files.length) {
       // An edit saved without a change has nothing to write, and nothing went wrong.
-      if (hasContent(loaded)) close(); else toast(t('Fill in at least one item'))
+      if (existing) close(); else toast(t('Fill in at least one item'))
       return
     }
-    let n = { added: 0, noRoom: 0 }
+    let n = { added: 0, dup: 0, noRoom: 0 }
     if (files.length) {
       setSaving(true)
       try {
@@ -107,14 +112,16 @@ function BodyCheckin({ start, close }) {
       if (n.added) syncMedia({ force: true })
     }
     const noRoom = () => toast(t('Your server keeps photos only on days with a workout. An update lets it keep them for any day.'))
-    if (!res.ok && !n.added) { if (n.noRoom) noRoom(); return } // only photos, and none went in
-    close()
-    toast(t('Check-in saved'))
+    // A photo neither filed, nor a duplicate, nor out of room: the picker already toasted why, and
+    // that message stays on screen instead of "Check-in saved".
+    const failed = files.length - n.added - n.dup - n.noRoom
+    if (res.ok || n.added) { close(); if (!failed) toast(t('Check-in saved')) } // else only photos, none went in: stay open
+    if (n.dup && !failed) toast(t('That photo is already on this day'))
     if (n.noRoom) noRoom()
   }
 
   return <>
-    <h3>{hasContent(loaded) ? t('Edit check-in') : t('Check-in')}</h3>
+    <h3>{existing ? t('Edit check-in') : t('Check-in')}</h3>
     <label className="measure-date">
       <span>{t('Date')}</span>
       <input className="field" type="date" value={date} max={todayISO()} onChange={e => changeDate(e.target.value)} />
@@ -129,12 +136,13 @@ function BodyCheckin({ start, close }) {
       </label>
       <label className="measure-field checkin-note">
         <span>{t('Note')}</span>
-        <TextField value={note} maxLength={200} onChange={e => setNote(e.target.value)} />
+        <TextField value={note} maxLength={NOTE_MAX} onChange={e => setNote(e.target.value)} />
       </label>
     </div>
     {showAdd && <div style={{ margin: '12px 0' }}>
       <Button icon="camera" disabled={!canAdd || saving} onClick={() => fileRef.current?.click()}>{t('Add photos')}</Button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
+      {photos > 0 && <div className="small muted">{tn('{0} photo', '{0} photos', photos)}</div>}
       {files.map((f, i) => <div className="row between small" key={i}>
         <span>{f.name}</span>
         <Button variant="ghost" size="sm" icon="xmark" aria-label={t('Remove')} title={t('Remove')}

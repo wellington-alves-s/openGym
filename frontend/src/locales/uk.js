@@ -1162,6 +1162,7 @@ export default {
   'Edit check-in': 'Змінити запис',
   'Fill in at least one item': 'Заповни хоча б одне поле',
   'Check-in saved': 'Запис збережено',
+  'That photo is already on this day': 'Це фото вже є за цей день',
   'Body': 'Тіло',
   'See all': 'Переглянути всі',
   'Diagnosis': 'Діагностика',
