@@ -95,7 +95,7 @@ export default {
   'Edit check-in': '기록 수정',
   'Fill in at least one item': '하나 이상 입력하세요',
   'Check-in saved': '기록을 저장했습니다',
-  'That photo is already on this day': '이 사진은 이미 이 날짜에 있습니다',
+  'That photo is already in your progress photos': '이 사진은 이미 진행 사진에 있어요',
   'Body': '신체',
   'See all': '모두 보기',
   'Diagnosis': '진단',

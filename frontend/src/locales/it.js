@@ -95,7 +95,7 @@ export default {
   'Edit check-in': 'Modifica registrazione',
   'Fill in at least one item': 'Compila almeno un campo',
   'Check-in saved': 'Registrazione salvata',
-  'That photo is already on this day': 'Questa foto è già presente in questo giorno',
+  'That photo is already in your progress photos': 'Questa foto è già nelle tue foto dei progressi',
   'Body': 'Corpo',
   'See all': 'Vedi tutte',
   'Diagnosis': 'Diagnosi',

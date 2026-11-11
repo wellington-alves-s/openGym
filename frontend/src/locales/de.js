@@ -96,7 +96,7 @@ export default {
   'Edit check-in': 'Check-in bearbeiten',
   'Fill in at least one item': 'Fülle mindestens ein Feld aus',
   'Check-in saved': 'Check-in gespeichert',
-  'That photo is already on this day': 'Dieses Foto ist an diesem Tag schon da',
+  'That photo is already in your progress photos': 'Dieses Foto ist schon in deinen Fortschrittsfotos',
   'Body': 'Körper',
   'See all': 'Alle ansehen',
   'Diagnosis': 'Diagnose',

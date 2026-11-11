@@ -95,7 +95,7 @@ export default {
   'Edit check-in': 'Kaydı düzenle',
   'Fill in at least one item': 'En az bir alanı doldur',
   'Check-in saved': 'Kayıt kaydedildi',
-  'That photo is already on this day': 'Bu fotoğraf bu günde zaten var',
+  'That photo is already in your progress photos': 'Bu fotoğraf ilerleme fotoğraflarında zaten var',
   'Body': 'Vücut',
   'See all': 'Tümünü gör',
   'Diagnosis': 'Değerlendirme',

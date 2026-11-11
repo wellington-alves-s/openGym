@@ -12,8 +12,9 @@ const photoRef = { kind: 'image', hash: '7'.padStart(64, '0'), mime: 'image/jpeg
 const ref = n => ({ ...photoRef, hash: String(n).padStart(64, '0') })
 // What the picker does with a file; a test swaps it for one that fails, as the real one toasts then.
 let mockPick = async () => photoRef
+let mockShowAdd = true   // false: a server without media support, no Add photos button
 vi.mock('./CustomMediaField.jsx', () => ({
-  useMediaPicker: () => ({ pick: (...a) => mockPick(...a), busy: false, canAdd: true, showAdd: true }),
+  useMediaPicker: () => ({ pick: (...a) => mockPick(...a), busy: false, canAdd: true, showAdd: mockShowAdd }),
 }))
 
 import { DEF, useStore } from '../store/useStore.js'
@@ -59,6 +60,7 @@ beforeEach(() => {
   document.body.innerHTML = ''
   syncMedia.mockClear()
   mockPick = async () => photoRef
+  mockShowAdd = true
 })
 const choosePhoto = (form, name = 'front.jpg') => {
   const input = form.querySelector('input[type=file]')
@@ -194,7 +196,7 @@ describe('the Register sheet', () => {
     const form = topSheet()
     choosePhoto(form)
     await save(form)
-    expect(toast()).toBe('That photo is already on this day')
+    expect(toast()).toBe('That photo is already in your progress photos')
     expect(open()).toBe(1)
   })
 
@@ -207,5 +209,14 @@ describe('the Register sheet', () => {
     setValue(dateInput(form), '2026-01-06')
     expect(form.textContent).not.toContain('2 photos')
     expect(form.querySelector('h3').textContent).toBe('Check-in')
+  })
+
+  it('shows how many photos the date holds even where photos cannot be added', () => {
+    mockShowAdd = false
+    seed({ dayPhotos: { [ref(1).hash]: { d: '2026-01-05', m: ref(1), _ts: 1 } } })
+    act(() => bodyCheckinSheet('2026-01-05'))
+    const form = topSheet()
+    expect(button(form, 'Add photos')).toBeUndefined()
+    expect(form.textContent).toContain('1 photo')
   })
 })

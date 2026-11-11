@@ -861,7 +861,7 @@ export const PT_BR_OVERRIDES = {
   'Edit check-in': 'Editar registro',
   'Fill in at least one item': 'Preencha ao menos um item',
   'Check-in saved': 'Registro salvo',
-  'That photo is already on this day': 'Essa foto já está neste dia',
+  'That photo is already in your progress photos': 'Essa foto já está nas suas fotos de progresso',
   'Body': 'Corpo',
   'See all': 'Ver todas',
   'Diagnosis': 'Diagnóstico',

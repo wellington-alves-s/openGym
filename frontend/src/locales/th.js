@@ -97,7 +97,7 @@ export default {
   'Edit check-in': 'แก้ไขบันทึก',
   'Fill in at least one item': 'กรอกอย่างน้อยหนึ่งช่อง',
   'Check-in saved': 'บันทึกแล้ว',
-  'That photo is already on this day': 'รูปนี้มีอยู่ในวันนี้แล้ว',
+  'That photo is already in your progress photos': 'รูปนี้มีอยู่ในรูปความคืบหน้าของคุณแล้ว',
   'Body': 'ร่างกาย',
   'See all': 'ดูทั้งหมด',
   'Diagnosis': 'การประเมิน',

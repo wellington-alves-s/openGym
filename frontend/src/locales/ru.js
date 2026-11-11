@@ -95,7 +95,7 @@ export default {
   'Edit check-in': 'Изменить запись',
   'Fill in at least one item': 'Заполните хотя бы одно поле',
   'Check-in saved': 'Запись сохранена',
-  'That photo is already on this day': 'Это фото уже есть за этот день',
+  'That photo is already in your progress photos': 'Это фото уже есть в ваших фото прогресса',
   'Body': 'Тело',
   'See all': 'Смотреть все',
   'Diagnosis': 'Диагностика',

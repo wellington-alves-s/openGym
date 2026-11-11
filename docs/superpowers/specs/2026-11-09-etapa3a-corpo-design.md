@@ -100,7 +100,7 @@ Cabeçalho com voltar para `/stats`, título "Corpo" e o botão Registrar. De ci
 
 Abre de qualquer ponto de Corpo, na data de hoje, ou numa data ao editar. Campos: data; peso; fotos (usa
 `useMediaPicker` e `fileProgressPhoto`, como a tela de fotos); observação; e as medidas **ativas** (as de
-`enabledMeasurementFields`), recolhidas por padrão atrás de "Medidas". Ao trocar a data, a folha recarrega os
+`enabledMeasurementFields`), recolhidas por padrão atrás de "Medidas" e já abertas quando a data tem medidas. Ao trocar a data, a folha recarrega os
 valores dessa data (`checkinOf`). Salvar chama `applyCheckin` e depois arquiva as fotos. Mensagens: data
 inválida, "Preencha ao menos um item", peso fora do limite, medida percentual fora de 0 a 100. A antiga folha de
 medidas foi removida e a folha Registrar a substitui; a folha de peso fica onde estava (o treino e o Watch usam).

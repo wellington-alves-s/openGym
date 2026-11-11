@@ -96,7 +96,7 @@ export default {
   'Edit check-in': 'Redigera incheckning',
   'Fill in at least one item': 'Fyll i minst ett fält',
   'Check-in saved': 'Incheckning sparad',
-  'That photo is already on this day': 'Det fotot finns redan på den här dagen',
+  'That photo is already in your progress photos': 'Det fotot finns redan bland dina framstegsfoton',
   'Body': 'Kropp',
   'See all': 'Visa alla',
   'Diagnosis': 'Diagnos',

@@ -95,7 +95,7 @@ export default {
   'Edit check-in': 'Modifier le relevé',
   'Fill in at least one item': 'Remplis au moins un champ',
   'Check-in saved': 'Relevé enregistré',
-  'That photo is already on this day': 'Cette photo est déjà enregistrée pour ce jour',
+  'That photo is already in your progress photos': 'Cette photo est déjà dans tes photos de progression',
   'Body': 'Corps',
   'See all': 'Tout voir',
   'Diagnosis': 'Diagnostic',

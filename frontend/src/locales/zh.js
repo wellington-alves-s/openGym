@@ -95,7 +95,7 @@ export default {
   'Edit check-in': '编辑记录',
   'Fill in at least one item': '请至少填写一项',
   'Check-in saved': '记录已保存',
-  'That photo is already on this day': '这张照片已经在这一天了',
+  'That photo is already in your progress photos': '这张照片已经在你的进度照片中了',
   'Body': '身体',
   'See all': '查看全部',
   'Diagnosis': '诊断',

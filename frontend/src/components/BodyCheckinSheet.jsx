@@ -116,7 +116,7 @@ function BodyCheckin({ start, close }) {
     // that message stays on screen instead of "Check-in saved".
     const failed = files.length - n.added - n.dup - n.noRoom
     if (res.ok || n.added) { close(); if (!failed) toast(t('Check-in saved')) } // else only photos, none went in: stay open
-    if (n.dup && !failed) toast(t('That photo is already on this day'))
+    if (n.dup && !failed) toast(t('That photo is already in your progress photos'))
     if (n.noRoom) noRoom()
   }
 
@@ -139,10 +139,10 @@ function BodyCheckin({ start, close }) {
         <TextField value={note} maxLength={NOTE_MAX} onChange={e => setNote(e.target.value)} />
       </label>
     </div>
+    {photos > 0 && <div className="small muted" style={{ marginTop: 12 }}>{tn('{0} photo', '{0} photos', photos)}</div>}
     {showAdd && <div style={{ margin: '12px 0' }}>
       <Button icon="camera" disabled={!canAdd || saving} onClick={() => fileRef.current?.click()}>{t('Add photos')}</Button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
-      {photos > 0 && <div className="small muted">{tn('{0} photo', '{0} photos', photos)}</div>}
       {files.map((f, i) => <div className="row between small" key={i}>
         <span>{f.name}</span>
         <Button variant="ghost" size="sm" icon="xmark" aria-label={t('Remove')} title={t('Remove')}
