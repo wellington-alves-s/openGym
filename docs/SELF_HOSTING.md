@@ -938,6 +938,11 @@ docker compose up -d --build
 The app shell is versioned (`?v=N`) so clients pick up changes on next load. Your `./data` is
 untouched; the exercise media come with the new image.
 
+If you update the images one at a time, update the api before the web. An older api treats new
+data it does not know as one whole setting: body notes (`bodyNotes`), for example, are merged day
+by day only by an api that knows them, so with an older one two devices editing notes at once can
+lose one device's notes.
+
 ## Passkeys fail even though `RP_ID` looks right
 
 The most common support question, and the values are usually *nearly* correct. Work through

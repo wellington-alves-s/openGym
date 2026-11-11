@@ -79,6 +79,10 @@ flowchart TB
   settings. It is saved to `localStorage`, mirrored to a file on the phones (WebView storage can be
   evicted), and pushed to the server when signed in. `useUI.js` is everything that should not
   survive a reload.
+- **Body.** `views/Body.jsx` (`/body`) gathers progress photos, weight, measurements and a BMI card
+  (`S.heightCm`). One Register sheet per date writes all of it plus a note through the pure
+  `lib/body-checkin.js`. Body notes live in `S.bodyNotes`, a map stamped per day, not in `dayNotes`,
+  where a note would excuse a missed training day.
 - **Logic in `lib/`.** Anything that decides what you lift next, or reads a logged session back, is
   a pure function with a test beside it. Views stay thin.
 - **Platform switches.** `lib/mobile.js` (`MOBILE`), `lib/channel.js` (APK or store build) and the

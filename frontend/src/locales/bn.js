@@ -93,7 +93,7 @@ export default {
   'Weeks go from 1 to 52': 'সপ্তাহ ১ থেকে ৫২ হতে পারে',
   'Check-in': 'চেক-ইন',
   'Edit check-in': 'চেক-ইন সম্পাদনা',
-  'Fill in at least one item': 'অন্তত একটি ঘর পূরণ করো',
+  'Fill in at least one item': 'অন্তত একটি ঘর পূরণ করুন',
   'Check-in saved': 'চেক-ইন সংরক্ষিত হয়েছে',
   'Body': 'শরীর',
   'See all': 'সব দেখুন',

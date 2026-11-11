@@ -110,6 +110,11 @@ machine, never in CI (see "Exercise media" below and docs/APP_STORES.md).
   Once values exist, the unit selector permits cm/in or kg/lb conversions within the recorded
   type; a different type needs a new field. The body CSV names a custom column with its unit,
   "Muscle ratio (%)", and the importer reads those columns back (only from our own header).
+  Measurements live in the Body screen (`views/Body.jsx`, `/body`; `/measurements` redirects to its
+  tab), beside progress photos, weight and a BMI card from `S.heightCm` (cm, 50 to 260). One
+  Register sheet per date (`components/BodyCheckinSheet.jsx`) writes weight, photos, measurements
+  and a note through the pure `lib/body-checkin.js`. The note goes in `S.bodyNotes`, a map stamped
+  per day, never in `dayNotes` (a day note excuses the missed-day nudge).
 - **`views/`**: one file per screen, routed by `react-router-dom` from `App.jsx`.
 - **`sheets.jsx`**: the bottom sheets (exercise picker, exercise config, workout detail, plan
   import...). It is large; a new sheet can go into `components/` as its own file.
@@ -157,7 +162,8 @@ and per field, so the newest edit of each wins and deletions stay deleted.
 ### Code that exists twice on purpose
 
 The API image cannot import the frontend, so some rules are hand-copied. Change both sides
-together: `lib/sync-merge.js` and `api/sync-stamps.js` (parity test), `lib/glyphs.js` and
+together: `lib/sync-merge.js` and `api/sync-stamps.js` (parity test; both list the stamped maps
+such as `bodyNotes`), `lib/glyphs.js` and
 `api/coach/core/glyphs.js` (parity test), `lib/nudge.js` and `api/nudge.js`, `lib/queue.js` and
 `api/queue.js` (mirrored test cases only, nothing compares the code). The other way round,
 `lib/coach-local.js` imports `api/coach/core/` directly so the phones run the same coach pipeline.
