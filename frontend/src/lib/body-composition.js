@@ -28,13 +28,16 @@ export function rochaBone(heightCm, wristCm, femurCm) {
 
 const WURCH = { m: 0.241, f: 0.209 } // residual mass share of the weight
 
-/** { fat, bone, residual, muscle } in kg (Rocha bone, Wurch residual, muscle is the rest); null if anything is missing or muscle is negative. */
-export function advancedComposition(weightKg, fatPct, { heightCm, wristCm, femurCm, sex } = {}) {
+/** { fat, bone, residual, muscle } in kg, one decimal, adding up to the weight (Rocha bone, Wurch residual, muscle is the rest); null if anything is missing or muscle is negative. */
+export function advancedComposition(weightKg, fatPct, opts) {
+  const { heightCm, wristCm, femurCm, sex } = opts ?? {}
   const share = WURCH[sex]
   const bone = boneKg(heightCm, wristCm, femurCm)
   if (!share || bone === null || !validInputs(weightKg, fatPct)) return null
-  const fat = weightKg * fatPct / 100, residual = weightKg * share
-  const muscle = weightKg - fat - bone - residual
+  // Round each part first so the four shown parts add up to the (rounded) weight.
+  const w = r1(weightKg), b = r1(bone)
+  const fat = r1(w * fatPct / 100), residual = r1(w * share)
+  const muscle = r1(w - fat - b - residual)
   if (muscle < 0) return null
-  return { fat: r1(fat), bone: r1(bone), residual: r1(residual), muscle: r1(muscle) }
+  return { fat, bone: b, residual, muscle }
 }

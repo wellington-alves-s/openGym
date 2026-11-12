@@ -53,7 +53,8 @@ export function siri(d) {
 }
 
 /** { jp7, jp3 } in %, each null unless its own full skinfold set, a valid sex and an age of 18 to 61 are there. */
-export function bodyFatOf(m, { age, sex } = {}) {
+export function bodyFatOf(m, opts) {
+  const { age, sex } = opts ?? {}
   const none = { jp7: null, jp3: null }
   const keys3 = jp3Keys(sex)
   if (!keys3 || !num(age) || age < AGE_MIN || age > AGE_MAX) return none

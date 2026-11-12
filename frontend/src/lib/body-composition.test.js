@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { simpleComposition, rochaBone, advancedComposition } from './body-composition.js'
 
 const D = { heightCm: 175, wristCm: 5.6, femurCm: 9.5, sex: 'm' }
+const sum = r => Math.round((r.fat + r.bone + r.residual + r.muscle) * 10) / 10
 const near = (a, b, tol) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol + 1e-9)
 
 describe('simpleComposition', () => {
@@ -35,16 +36,21 @@ describe('rochaBone', () => {
 describe('advancedComposition', () => {
   it('man: fat, bone, residual (24.1%) and the muscle that is left', () => {
     const r = advancedComposition(80, 14.6, D)
-    expect(r.fat).toBe(11.7)
-    near(r.bone, 11.5, 0.05)
-    expect(r.residual).toBe(19.3)
-    near(r.muscle, 37.5, 0.1)
-    near(r.fat + r.bone + r.residual + r.muscle, 80, 0.1)
+    expect(r).toEqual({ fat: 11.7, bone: 11.5, residual: 19.3, muscle: 37.5 })
+    expect(sum(r)).toBe(80)
   })
   it('woman: residual is 20.9%', () => {
     const r = advancedComposition(80, 14.6, { ...D, sex: 'f' })
-    expect(r.residual).toBe(16.7)
-    near(r.fat + r.bone + r.residual + r.muscle, 80, 0.1)
+    expect(r).toEqual({ fat: 11.7, bone: 11.5, residual: 16.7, muscle: 40.1 })
+    expect(sum(r)).toBe(80)
+  })
+  it('parts add up to a weight that came from pounds', () => {
+    const r = advancedComposition(80.04, 14.6, D)
+    expect(sum(r)).toBe(80)
+  })
+  it('a null options argument gives null', () => {
+    expect(advancedComposition(80, 14.6, null)).toBeNull()
+    expect(advancedComposition(80, 14.6)).toBeNull()
   })
   it('is null without sex, wrist or femur', () => {
     expect(advancedComposition(80, 14.6, { ...D, sex: null })).toBeNull()

@@ -32,24 +32,24 @@ describe('Jackson and Pollock density and Siri', () => {
   it('seven skinfolds, man', () => {
     const d = jacksonPollock7(100, 30, 'm')
     expect(d).toBeCloseTo(1.065353, 6)
-    expect(Math.abs(siri(d) - 14.6)).toBeLessThan(0.1 + 1e-9)
+    expect(siri(d)).toBe(14.6)
   })
   it('seven skinfolds, woman', () => {
     const d = jacksonPollock7(100, 30, 'f')
     expect(d).toBeCloseTo(1.051781, 6)
-    expect(Math.abs(siri(d) - 20.6)).toBeLessThan(0.1 + 1e-9)
+    expect(siri(d)).toBe(20.6)
   })
   it('three skinfolds, man', () => {
     const d = jacksonPollock3(60, 30, 'm')
     expect(d).toBeCloseTo(1.057816, 6)
-    expect(Math.abs(siri(d) - 18.0)).toBeLessThan(0.1 + 1e-9)
+    expect(siri(d)).toBe(17.9)
     expect(jacksonPollock3(50, 30, 'm')).toBeCloseTo(1.064323, 6)
-    expect(Math.abs(siri(jacksonPollock3(50, 30, 'm')) - 15.1)).toBeLessThan(0.1 + 1e-9)
+    expect(siri(jacksonPollock3(50, 30, 'm'))).toBe(15.1)
   })
   it('three skinfolds, woman', () => {
     const d = jacksonPollock3(60, 30, 'f')
     expect(d).toBeCloseTo(1.044022, 6)
-    expect(Math.abs(siri(d) - 24.1)).toBeLessThan(0.1 + 1e-9)
+    expect(siri(d)).toBe(24.1)
   })
   it('null for a bad sex, sum or age', () => {
     expect(jacksonPollock7(100, 30, null)).toBeNull()
@@ -69,14 +69,13 @@ describe('Jackson and Pollock density and Siri', () => {
 describe('bodyFatOf', () => {
   it('gives both protocols from the full skinfold sets', () => {
     const r = bodyFatOf(SEVEN, { age: 30, sex: 'm' })
-    expect(Math.abs(r.jp7 - 14.6)).toBeLessThan(0.1 + 1e-9)
-    expect(Math.abs(r.jp3 - 15.1)).toBeLessThan(0.1 + 1e-9)
+    expect(r).toEqual({ jp7: 14.6, jp3: 15.1 })
   })
   it('each protocol needs its whole set', () => {
     const { skMidaxillary, ...six } = SEVEN
     const r = bodyFatOf(six, { age: 30, sex: 'm' })
     expect(r.jp7).toBeNull()
-    expect(Math.abs(r.jp3 - 15.1)).toBeLessThan(0.1 + 1e-9)
+    expect(r.jp3).toBe(15.1)
   })
   it('a zero or negative skinfold in the set gives null', () => {
     expect(bodyFatOf({ ...SEVEN, skChest: 0 }, { age: 30, sex: 'm' })).toEqual({ jp7: null, jp3: null })
@@ -85,11 +84,16 @@ describe('bodyFatOf', () => {
   it('no sex gives both null', () => {
     expect(bodyFatOf(SEVEN, { age: 30, sex: null })).toEqual({ jp7: null, jp3: null })
   })
+  it('a null options argument gives both null', () => {
+    expect(bodyFatOf(SEVEN, null)).toEqual({ jp7: null, jp3: null })
+    expect(bodyFatOf(SEVEN)).toEqual({ jp7: null, jp3: null })
+  })
   it('age edges: 17 and 62 are out, 18 and 61 calculate', () => {
     expect(bodyFatOf(SEVEN, { age: 17, sex: 'm' })).toEqual({ jp7: null, jp3: null })
     expect(bodyFatOf(SEVEN, { age: 62, sex: 'm' })).toEqual({ jp7: null, jp3: null })
     expect(bodyFatOf(SEVEN, { age: null, sex: 'm' })).toEqual({ jp7: null, jp3: null })
-    expect(bodyFatOf(SEVEN, { age: 18, sex: 'm' }).jp7).not.toBeNull()
-    expect(bodyFatOf(SEVEN, { age: 61, sex: 'm' }).jp7).not.toBeNull()
+    // man, sum 100: density 1.112 - 0.043499 + 0.0055 - 0.00028826 * age
+    expect(bodyFatOf(SEVEN, { age: 18, sex: 'm' }).jp7).toBe(13.1)
+    expect(bodyFatOf(SEVEN, { age: 61, sex: 'm' }).jp7).toBe(18.6)
   })
 })
