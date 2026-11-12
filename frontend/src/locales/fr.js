@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Indique ton sexe dans la carte Diagnostic',
   'Enter your birth date in the Diagnosis card': 'Indique ta date de naissance dans la carte Diagnostic',
   'Skinfold formulas need an age from 18 to 61': 'Les formules des plis demandent un âge de 18 à 61 ans',
-  'Log your skinfolds in Measurements': 'Enregistre tes plis dans Mesures',
+  'Log your skinfolds in Measurements': 'Enregistre tes plis dans Measurements',
   'Log your wrist and femur diameters for the advanced composition': 'Enregistre les diamètres du poignet et du fémur pour la composition avancée',
   'Turn on skinfolds and bones': 'Activer les plis et les os',
   'Log your skinfolds to estimate your body fat and body composition.': 'Enregistre tes plis cutanés pour estimer ta masse grasse et ta composition corporelle.',

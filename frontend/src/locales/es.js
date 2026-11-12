@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Indica tu sexo en la tarjeta Diagnóstico',
   'Enter your birth date in the Diagnosis card': 'Indica tu fecha de nacimiento en la tarjeta Diagnóstico',
   'Skinfold formulas need an age from 18 to 61': 'Las fórmulas de pliegues necesitan una edad de 18 a 61 años',
-  'Log your skinfolds in Measurements': 'Registra tus pliegues en Medidas',
+  'Log your skinfolds in Measurements': 'Registra tus pliegues en Measurements',
   'Log your wrist and femur diameters for the advanced composition': 'Registra los diámetros de muñeca y fémur para la composición avanzada',
   'Turn on skinfolds and bones': 'Activar pliegues y huesos',
   'Log your skinfolds to estimate your body fat and body composition.': 'Registra tus pliegues cutáneos para estimar tu grasa y composición corporal.',

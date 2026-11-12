@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Укажите пол в карточке «Диагностика»',
   'Enter your birth date in the Diagnosis card': 'Укажите дату рождения в карточке «Диагностика»',
   'Skinfold formulas need an age from 18 to 61': 'Формулам складок нужен возраст от 18 до 61 года',
-  'Log your skinfolds in Measurements': 'Запишите кожные складки в разделе «Замеры»',
+  'Log your skinfolds in Measurements': 'Запишите кожные складки в разделе «Measurements»',
   'Log your wrist and femur diameters for the advanced composition': 'Запишите диаметры запястья и бедренной кости для расширенного состава',
   'Turn on skinfolds and bones': 'Включить складки и кости',
   'Log your skinfolds to estimate your body fat and body composition.': 'Запишите кожные складки, чтобы оценить процент жира и состав тела.',

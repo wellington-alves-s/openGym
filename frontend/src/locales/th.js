@@ -146,7 +146,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'ใส่เพศของคุณในการ์ดการประเมิน',
   'Enter your birth date in the Diagnosis card': 'ใส่วันเกิดของคุณในการ์ดการประเมิน',
   'Skinfold formulas need an age from 18 to 61': 'สูตรรอยพับผิวหนังต้องใช้อายุ 18 ถึง 61 ปี',
-  'Log your skinfolds in Measurements': 'บันทึกรอยพับผิวหนังในส่วนการวัดสัดส่วน',
+  'Log your skinfolds in Measurements': 'บันทึกรอยพับผิวหนังในส่วน Measurements',
   'Log your wrist and femur diameters for the advanced composition': 'บันทึกเส้นผ่านศูนย์กลางข้อมือและกระดูกต้นขาเพื่อดูองค์ประกอบแบบละเอียด',
   'Turn on skinfolds and bones': 'เปิดรอยพับผิวหนังและกระดูก',
   'Log your skinfolds to estimate your body fat and body composition.': 'บันทึกรอยพับผิวหนังเพื่อประเมินไขมันและองค์ประกอบของร่างกาย',

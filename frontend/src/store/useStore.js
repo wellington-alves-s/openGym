@@ -101,7 +101,8 @@ export const DEF = {
   // from dayNotes on purpose, which excuses the missed-day nudge.
   bodyNotes: {},
   // Body measurements (#82, #699): one check-in per day; canonical cm, kg or % according to
-  // the field's unit (lib/measurements.js); merged like weigh-ins (lib/sync-merge.js).
+  // the field's unit, skinfolds in mm and bone diameters in cm, fixed (lib/measurements.js);
+  // merged like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],
   queue: null,   // a planner's floating week (lib/queue.js) — via the API, or by this rotation feature (below)
   // The in-app rotation's reusable definition — { id, sequence, label } (lib/rotation.js). Never

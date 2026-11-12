@@ -145,7 +145,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Gib dein Geschlecht in der Karte Diagnose ein',
   'Enter your birth date in the Diagnosis card': 'Gib dein Geburtsdatum in der Karte Diagnose ein',
   'Skinfold formulas need an age from 18 to 61': 'Die Hautfaltenformeln brauchen ein Alter von 18 bis 61 Jahren',
-  'Log your skinfolds in Measurements': 'Trage deine Hautfalten unter Maße ein',
+  'Log your skinfolds in Measurements': 'Trage deine Hautfalten unter Measurements ein',
   'Log your wrist and femur diameters for the advanced composition': 'Trage Handgelenks- und Femurdurchmesser für die erweiterte Zusammensetzung ein',
   'Turn on skinfolds and bones': 'Hautfalten und Knochen einschalten',
   'Log your skinfolds to estimate your body fat and body composition.': 'Trage deine Hautfalten ein, um Körperfett und Körperzusammensetzung zu schätzen.',

@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': '请在诊断卡片中填写性别',
   'Enter your birth date in the Diagnosis card': '请在诊断卡片中填写出生日期',
   'Skinfold formulas need an age from 18 to 61': '皮褶公式需要 18 至 61 岁的年龄',
-  'Log your skinfolds in Measurements': '请在测量中记录皮褶',
+  'Log your skinfolds in Measurements': '请在 Measurements 中记录皮褶',
   'Log your wrist and femur diameters for the advanced composition': '请记录手腕和股骨直径以查看进阶成分',
   'Turn on skinfolds and bones': '开启皮褶和骨骼',
   'Log your skinfolds to estimate your body fat and body composition.': '记录皮褶以估算体脂和身体成分。',

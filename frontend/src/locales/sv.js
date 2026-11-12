@@ -145,7 +145,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Ange ditt kön i kortet Diagnos',
   'Enter your birth date in the Diagnosis card': 'Ange ditt födelsedatum i kortet Diagnos',
   'Skinfold formulas need an age from 18 to 61': 'Hudveckformlerna kräver en ålder från 18 till 61 år',
-  'Log your skinfolds in Measurements': 'Logga dina hudveck under Mått',
+  'Log your skinfolds in Measurements': 'Logga dina hudveck under Measurements',
   'Log your wrist and femur diameters for the advanced composition': 'Logga handledens och lårbenets diameter för den utökade sammansättningen',
   'Turn on skinfolds and bones': 'Slå på hudveck och skelett',
   'Log your skinfolds to estimate your body fat and body composition.': 'Logga dina hudveck för att uppskatta kroppsfett och kroppssammansättning.',

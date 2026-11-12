@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': '진단 카드에서 성별을 입력하세요',
   'Enter your birth date in the Diagnosis card': '진단 카드에서 생년월일을 입력하세요',
   'Skinfold formulas need an age from 18 to 61': '피부두겹 공식은 18세에서 61세 사이의 나이가 필요합니다',
-  'Log your skinfolds in Measurements': '측정에서 피부두겹을 기록하세요',
+  'Log your skinfolds in Measurements': 'Measurements에서 피부두겹을 기록하세요',
   'Log your wrist and femur diameters for the advanced composition': '고급 체성분을 보려면 손목과 넙다리뼈 직경을 기록하세요',
   'Turn on skinfolds and bones': '피부두겹과 뼈 켜기',
   'Log your skinfolds to estimate your body fat and body composition.': '피부두겹을 기록하면 체지방과 체성분을 추정할 수 있습니다.',

@@ -146,7 +146,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Add meg a nemed a Diagnózis kártyán',
   'Enter your birth date in the Diagnosis card': 'Add meg a születési dátumod a Diagnózis kártyán',
   'Skinfold formulas need an age from 18 to 61': 'A bőrredő-képletekhez 18 és 61 év közötti életkor kell',
-  'Log your skinfolds in Measurements': 'Rögzítsd a bőrredőidet a Méretek között',
+  'Log your skinfolds in Measurements': 'Rögzítsd a bőrredőidet a Measurements részben',
   'Log your wrist and femur diameters for the advanced composition': 'Rögzítsd a csukló és a combcsont átmérőjét a részletes összetételhez',
   'Turn on skinfolds and bones': 'Bőrredők és csontok bekapcsolása',
   'Log your skinfolds to estimate your body fat and body composition.': 'Rögzítsd a bőrredőidet, hogy megbecsüld a testzsírod és a testösszetételed.',

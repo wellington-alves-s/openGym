@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'निदान कार्ड में अपना लिंग दर्ज करें',
   'Enter your birth date in the Diagnosis card': 'निदान कार्ड में अपनी जन्म तिथि दर्ज करें',
   'Skinfold formulas need an age from 18 to 61': 'त्वचा परत के सूत्रों के लिए 18 से 61 वर्ष की आयु चाहिए',
-  'Log your skinfolds in Measurements': 'माप में अपनी त्वचा परतें दर्ज करें',
+  'Log your skinfolds in Measurements': 'Measurements में अपनी त्वचा परतें दर्ज करें',
   'Log your wrist and femur diameters for the advanced composition': 'उन्नत संरचना के लिए कलाई और जाँघ की हड्डी का व्यास दर्ज करें',
   'Turn on skinfolds and bones': 'त्वचा परतें और हड्डियाँ चालू करें',
   'Log your skinfolds to estimate your body fat and body composition.': 'अपनी बॉडी फैट और शरीर की संरचना का अनुमान लगाने के लिए त्वचा परतें दर्ज करें।',

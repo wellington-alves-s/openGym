@@ -220,6 +220,19 @@ describe('the Advanced tab', () => {
     expect(host.textContent).not.toMatch(/NaN|null|undefined/)
   })
 
+  it('compares the newest weigh-in by date, whatever the stored order', () => {
+    seed(assessed({ bodyweight: [{ d: D, w: 80, t: 2 }, { d: '2026-10-01', w: 60, t: 1 }] }))
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('Your latest weight is above this range')
+  })
+
+  it('in lb, a weigh-in equal to the shown minimum (125 lb for 175 cm) is within the range', () => {
+    seed(assessed({ unit: 'lb', bodyweight: [{ d: D, w: 125, t: 1 }] }))
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('125 lb')
+    expect(host.textContent).toContain('Your latest weight is within this range')
+  })
+
   it('switching to it writes ?tab=advanced', () => {
     seed()
     const host = render(<Body />)

@@ -943,6 +943,12 @@ previous app version (a phone not yet updated, a cached PWA) treats them as one 
 merges a conflict it keeps one copy of all the notes, so a note added or removed on an updated
 device can be lost or come back. Update every device before relying on body notes across devices.
 
+Skinfolds and bone diameters (stage 3b) are new measurement fields. A device still on the app
+version before them rebuilds each measurement entry from the keys it knows, so skinfold and
+bone-diameter readings logged on an updated device can be dropped when an old device saves a
+measurement for the same or any day. Update every device (web, Android, iPhone) before logging
+skinfolds.
+
 ## Passkeys fail even though `RP_ID` looks right
 
 The most common support question, and the values are usually *nearly* correct. Work through

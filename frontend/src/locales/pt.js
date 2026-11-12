@@ -106,7 +106,7 @@ export default {
   'Thigh skinfold': 'Prega da coxa',
   'Biceps skinfold': 'Prega bicipital',
   'Medial calf skinfold': 'Prega geminal medial',
-  'Humerus diameter': 'Diâmetro do úmero',
+  'Humerus diameter': 'Diâmetro do húmero',
   'Wrist diameter': 'Diâmetro do punho',
   'Femur diameter': 'Diâmetro do fémur',
   'Ankle diameter': 'Diâmetro do tornozelo',

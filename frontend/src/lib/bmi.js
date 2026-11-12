@@ -24,12 +24,18 @@ export function bmiBand(value) {
   return value < 18.5 ? 'under' : value < 25 ? 'normal' : value < 30 ? 'over' : 'obese'
 }
 
-/** { value, band } from the newest valid weigh-in (by date, not stored order) and S.heightCm; null if either is missing. */
-export function bmiOf(S) {
+/** The newest valid weigh-in by date (not stored order), in the profile unit; null if none. */
+export function latestWeighIn(S) {
   let last = null
   for (const b of Array.isArray(S?.bodyweight) ? S.bodyweight : []) {
     if (b?.d && Number(b.w) > 0 && (!last || b.d > last.d)) last = b
   }
+  return last
+}
+
+/** { value, band } from the newest valid weigh-in (by date, not stored order) and S.heightCm; null if either is missing. */
+export function bmiOf(S) {
+  const last = latestWeighIn(S)
   if (!last) return null
   const value = bmi(S.unit === 'lb' ? Number(last.w) / LB_PER_KG : Number(last.w), S.heightCm)
   return value === null ? null : { value, band: bmiBand(value) }

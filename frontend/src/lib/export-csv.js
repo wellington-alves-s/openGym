@@ -125,8 +125,9 @@ export const workoutsCSV = (S, range) => csvText(WORKOUT_COLUMNS, workoutRows(S,
 /**
  * Body weight and measurements, one row per day. Weight in the profile's unit (the header says
  * which, so the importer needs no unit column), measurements in centimetres the way they are
- * stored, body fat in percent. Custom measurement fields get a column each, under their own name
- * with their unit in brackets and their values in it (#718; lib/measurements.js customCsvColumn).
+ * stored, body fat in percent, skinfolds in mm and bone diameters in cm whatever the profile
+ * (fixed units, columns sk_*_mm and bn_*_cm). Custom measurement fields get a column each,
+ * under their own name with their unit in brackets and their values in it (#718; lib/measurements.js customCsvColumn).
  */
 export function bodyCSV(S, { from = null, to = null } = {}) {
   const unit = S.unit === 'lb' ? 'lb' : 'kg'

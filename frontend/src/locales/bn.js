@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'মূল্যায়ন কার্ডে আপনার লিঙ্গ লিখুন',
   'Enter your birth date in the Diagnosis card': 'মূল্যায়ন কার্ডে আপনার জন্ম তারিখ লিখুন',
   'Skinfold formulas need an age from 18 to 61': 'ত্বকের ভাঁজের সূত্রের জন্য 18 থেকে 61 বছর বয়স দরকার',
-  'Log your skinfolds in Measurements': 'মাপজোখে আপনার ত্বকের ভাঁজ লিখে রাখুন',
+  'Log your skinfolds in Measurements': 'Measurements-এ আপনার ত্বকের ভাঁজ লিখে রাখুন',
   'Log your wrist and femur diameters for the advanced composition': 'উন্নত গঠনের জন্য কব্জি ও উরুর হাড়ের ব্যাস লিখে রাখুন',
   'Turn on skinfolds and bones': 'ত্বকের ভাঁজ ও হাড় চালু করুন',
   'Log your skinfolds to estimate your body fat and body composition.': 'শরীরের চর্বি ও গঠন অনুমান করতে আপনার ত্বকের ভাঁজ লিখে রাখুন।',

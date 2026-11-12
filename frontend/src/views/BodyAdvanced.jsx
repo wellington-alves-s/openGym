@@ -6,6 +6,7 @@ import { t } from '../lib/i18n.js'
 import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { assessmentSeries, latestAssessment } from '../lib/body-assessment.js'
 import { ADVANCED_MEASUREMENT_KEYS, normalizeMeasurementsState } from '../lib/measurements.js'
+import { latestWeighIn } from '../lib/bmi.js'
 import LineChart from '../components/LineChart.jsx'
 import { Button } from '../components/ui.jsx'
 
@@ -18,7 +19,8 @@ const MISSING = {
   'needs-weight': () => t('Log your weight'),
   'needs-bones': () => t('Log your wrist and femur diameters for the advanced composition'),
 }
-const COLORS = ['var(--acc)', 'var(--blue)']
+// Indigo is no preset accent's --acc, so the two lines never share a colour.
+const COLORS = ['var(--acc)', 'var(--indigo)']
 
 function Row({ label, value, extra }) {
   return <div className="row between" style={{ padding: '4px 0' }}>
@@ -55,7 +57,9 @@ export default function BodyAdvanced({ S }) {
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Log your skinfolds to estimate your body fat and body composition.')}</div>
     {switchButton}
   </div>
-  const last = S.bodyweight.at(-1)
+  const last = latestWeighIn(S)
+  // Compared with the bounds as shown: 175 cm gives 125.002 lb, shown as 125, and 125 is within.
+  const shownBound = kgv => Math.round(inUnit(kgv) * 10) / 10
   return <>
     {hasFat && <div className="card">
       <div className="row between"><h2 style={{ margin: 0 }}>{t('Body fat')}</h2><span className="muted small">{fmtDate(a.d, true)}</span></div>
@@ -78,8 +82,8 @@ export default function BodyAdvanced({ S }) {
     {a.ideal && <div className="card">
       <h2>{t('Ideal weight')}</h2>
       <div style={{ fontSize: 22, fontWeight: 700 }}>{kg(a.ideal.minKg) + ' – ' + kg(a.ideal.maxKg)}</div>
-      {last && <div className="muted small" style={{ marginTop: 4 }}>{last.w < inUnit(a.ideal.minKg) ? t('Your latest weight is below this range')
-        : last.w > inUnit(a.ideal.maxKg) ? t('Your latest weight is above this range') : t('Your latest weight is within this range')}</div>}
+      {last && <div className="muted small" style={{ marginTop: 4 }}>{Number(last.w) < shownBound(a.ideal.minKg) ? t('Your latest weight is below this range')
+        : Number(last.w) > shownBound(a.ideal.maxKg) ? t('Your latest weight is above this range') : t('Your latest weight is within this range')}</div>}
     </div>}
     {(a.missing.length > 0 || switchButton) && <div className="card">
       {a.missing.map(m => <div key={m} className="muted small" style={{ marginBottom: 6 }}>{MISSING[m]()}</div>)}

@@ -144,7 +144,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'Cinsiyetini Değerlendirme kartına gir',
   'Enter your birth date in the Diagnosis card': 'Doğum tarihini Değerlendirme kartına gir',
   'Skinfold formulas need an age from 18 to 61': 'Deri kıvrımı formülleri 18 ile 61 arası bir yaş ister',
-  'Log your skinfolds in Measurements': 'Deri kıvrımlarını Ölçüler bölümüne kaydet',
+  'Log your skinfolds in Measurements': 'Deri kıvrımlarını Measurements bölümüne kaydet',
   'Log your wrist and femur diameters for the advanced composition': 'Gelişmiş kompozisyon için bilek ve femur çaplarını kaydet',
   'Turn on skinfolds and bones': 'Deri kıvrımlarını ve kemikleri aç',
   'Log your skinfolds to estimate your body fat and body composition.': 'Vücut yağını ve kompozisyonunu tahmin etmek için deri kıvrımlarını kaydet.',

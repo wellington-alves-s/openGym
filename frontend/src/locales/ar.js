@@ -1260,7 +1260,7 @@ export default {
   'Enter your sex in the Diagnosis card': 'أدخل جنسك في بطاقة التشخيص',
   'Enter your birth date in the Diagnosis card': 'أدخل تاريخ ميلادك في بطاقة التشخيص',
   'Skinfold formulas need an age from 18 to 61': 'تحتاج معادلات الثنيات الجلدية إلى عمر من 18 إلى 61 عامًا',
-  'Log your skinfolds in Measurements': 'سجّل ثنياتك الجلدية في القياسات',
+  'Log your skinfolds in Measurements': 'سجّل ثنياتك الجلدية في Measurements',
   'Log your wrist and femur diameters for the advanced composition': 'سجّل قطر الرسغ وعظم الفخذ للحصول على التكوين المتقدم',
   'Turn on skinfolds and bones': 'تفعيل الثنيات الجلدية والعظام',
   'Log your skinfolds to estimate your body fat and body composition.': 'سجّل ثنياتك الجلدية لتقدير دهون جسمك وتكوينه.',
