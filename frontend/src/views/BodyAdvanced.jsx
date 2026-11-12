@@ -50,7 +50,8 @@ export default function BodyAdvanced({ S }) {
   const switchButton = offKeys.length > 0 && <Button size="sm" variant="tinted" onClick={turnOn}>{t('Turn on skinfolds and bones')}</Button>
   const { jp7, jp3 } = a.fat
   const hasFat = jp7 !== null || jp3 !== null
-  if (!hasFat && !a.simple && !a.ideal) return <div className="card">
+  // The invitation only when nothing is logged; logged skinfolds get the list of what is missing.
+  if (a.missing.includes('needs-skinfolds') && !hasFat && !a.simple && !a.ideal) return <div className="card">
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Log your skinfolds to estimate your body fat and body composition.')}</div>
     {switchButton}
   </div>

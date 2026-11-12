@@ -204,6 +204,14 @@ describe('the Advanced tab', () => {
     expect(host.textContent).not.toContain('Jackson and Pollock 7 skinfolds')
   })
 
+  it('with skinfolds logged but no sex and no height it says what is missing, not the invitation', () => {
+    seed(assessed({ sex: null, heightCm: null }))
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('Enter your sex in the Diagnosis card')
+    expect(host.textContent).toContain('Enter your height')
+    expect(host.textContent).not.toContain('Log your skinfolds to estimate your body fat and body composition.')
+  })
+
   it('on an lb profile the ideal weight is in lb', () => {
     seed(assessed({ unit: 'lb', bodyweight: [{ d: D, w: 176.4, t: 1 }] }))
     const host = render(<Body />, '/body?tab=advanced')
