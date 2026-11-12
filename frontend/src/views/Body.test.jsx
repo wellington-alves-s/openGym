@@ -10,6 +10,9 @@ vi.mock('../lib/api.js', async importOriginal => ({ ...(await importOriginal()),
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import Body from './Body.jsx'
+import { ADVANCED_MEASUREMENT_KEYS } from '../lib/measurements.js'
+import { assessmentOf } from '../lib/body-assessment.js'
+import { fmtNum } from '../lib/format.js'
 
 const clone = v => JSON.parse(JSON.stringify(v))
 const mounted = []
@@ -144,5 +147,115 @@ describe('the Body screen', () => {
     expect(items[0].textContent).not.toContain('kg')
     act(() => { items[0].click() })
     expect(useUI.getState().sheets.at(-1).kind).toBe('viewer')
+  })
+})
+
+const D = '2026-11-01'
+const FOLDS = { skChest: 20, skMidaxillary: 15, skTriceps: 10, skSubscapular: 15, skAbdominal: 20, skSuprailiac: 10, skThigh: 10 }
+const assessed = (over = {}) => ({
+  sex: 'm', birthDate: '1996-03-10', heightCm: 175,
+  bodyweight: [{ d: D, w: 80, t: 1 }],
+  measurements: [{ d: D, t: 1, ...FOLDS, bnWrist: 5.6, bnFemur: 9.5 }],
+  ...over,
+})
+const rowOf = (host, selector) => host.querySelector(selector).closest('.row')
+const clickIn = (el, text) => act(() => { [...el.querySelectorAll('button')].find(b => b.textContent.trim() === text).click() })
+
+describe('the Advanced tab', () => {
+  it('empty: the invitation and the switch, nothing broken', () => {
+    seed()
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('Log your skinfolds to estimate your body fat and body composition.')
+    expect(button(host, 'Turn on skinfolds and bones')).toBeTruthy()
+    expect(host.textContent).not.toMatch(/NaN|null|undefined/)
+  })
+
+  it('the switch turns on the 13 fields without touching the others, then goes away', () => {
+    seed({ measurementEnabled: ['waist', 'skChest'] })
+    const host = render(<Body />, '/body?tab=advanced')
+    click(host, 'Turn on skinfolds and bones')
+    const on = S().measurementEnabled
+    expect(on).toContain('waist')
+    for (const k of ADVANCED_MEASUREMENT_KEYS) expect(on).toContain(k)
+    expect(on).toHaveLength(14)
+    expect(button(host, 'Turn on skinfolds and bones')).toBeFalsy()
+  })
+
+  it('shows both body fats, the advanced composition and the ideal range', () => {
+    seed(assessed())
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('14.6')
+    expect(host.textContent).toContain('15.1')
+    expect(host.querySelector('.chart svg')).not.toBeNull()
+    const a = assessmentOf(S(), D)
+    for (const part of ['fat', 'bone', 'residual', 'muscle']) expect(host.textContent).toContain(fmtNum(a.advanced[part]) + ' kg')
+    expect(host.textContent).toContain('Muscle mass')
+    expect(host.textContent).toContain('56.7 kg')
+    expect(host.textContent).toContain('76.3 kg')
+    expect(host.textContent).toContain('Your latest weight is above this range')
+    expect(host.textContent).not.toMatch(/NaN|null|undefined/)
+  })
+
+  it('without a sex says so and shows no body fat', () => {
+    seed(assessed({ sex: null }))
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('Enter your sex in the Diagnosis card')
+    expect(host.textContent).not.toContain('14.6')
+    expect(host.textContent).not.toContain('Jackson and Pollock 7 skinfolds')
+  })
+
+  it('on an lb profile the ideal weight is in lb', () => {
+    seed(assessed({ unit: 'lb', bodyweight: [{ d: D, w: 176.4, t: 1 }] }))
+    const host = render(<Body />, '/body?tab=advanced')
+    expect(host.textContent).toContain('125 lb')
+    expect(host.textContent).toContain('168.2 lb')
+    expect(host.textContent).not.toMatch(/NaN|null|undefined/)
+  })
+
+  it('switching to it writes ?tab=advanced', () => {
+    seed()
+    const host = render(<Body />)
+    click(host, 'Advanced')
+    expect(where.search).toBe('?tab=advanced')
+  })
+})
+
+describe('the Diagnosis card: sex and birth date', () => {
+  it('Female writes sex f; tapping it again writes nothing', () => {
+    seed()
+    const host = render(<Body />)
+    expect(button(host, 'Female').getAttribute('aria-pressed')).toBe('false')
+    click(host, 'Female')
+    expect(S().sex).toBe('f')
+    expect(button(host, 'Female').getAttribute('aria-pressed')).toBe('true')
+    const before = S()
+    click(host, 'Female')
+    expect(S()).toBe(before)
+  })
+
+  it('saves a birth date and refuses a future one', () => {
+    seed()
+    let host = render(<Body />)
+    setValue(host.querySelector('input[type=date]'), '1996-03-10')
+    clickIn(rowOf(host, 'input[type=date]'), 'Save')
+    expect(S().birthDate).toBe('1996-03-10')
+
+    seed()
+    host = render(<Body />)
+    setValue(host.querySelector('input[type=date]'), '2999-01-01')
+    clickIn(rowOf(host, 'input[type=date]'), 'Save')
+    expect(toast()).toBe('Enter a valid birth date')
+    expect(S().birthDate).toBe(null)
+  })
+
+  it('Edit then Save with the same birth date writes nothing', () => {
+    seed({ heightCm: 180, birthDate: '1996-03-10' })
+    const host = render(<Body />)
+    const before = S()
+    act(() => { [...host.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Edit').at(-1).click() })
+    expect(host.querySelector('input[type=date]').value).toBe('1996-03-10')
+    clickIn(rowOf(host, 'input[type=date]'), 'Save')
+    expect(S()).toBe(before)
+    expect(host.querySelector('input[type=date]')).toBeNull()
   })
 })

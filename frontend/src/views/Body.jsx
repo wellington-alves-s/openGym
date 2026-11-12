@@ -1,11 +1,12 @@
-// The Body screen: the latest progress photos, then Weight and Measurements tabs (the tab kept in
-// ?tab=, so /measurements can land on its tab), and the BMI card under both.
+// The Body screen: the latest progress photos, then Weight, Measurements and Advanced tabs (the tab
+// kept in ?tab=, so /measurements can land on its tab), and the Diagnosis card under all three.
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
-import { fmtDate, fmtNum } from '../lib/format.js'
+import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
+import { normalizeBirthDate } from '../lib/body-profile.js'
 import { weighInAt } from '../lib/bodyweight.js'
 import { bmiOf, normalizeHeightCm } from '../lib/bmi.js'
 import { goalGap } from '../lib/body-goal.js'
@@ -20,6 +21,7 @@ import { Button, NumberField, Segmented } from '../components/ui.jsx'
 import { progressPhotosOf, openPhotoView } from './ProgressPhotos.jsx'
 import { rangeOptions } from './Stats.jsx'
 import MeasurementsTab from './Measurements.jsx'
+import BodyAdvanced from './BodyAdvanced.jsx'
 
 const BAND = { under: () => t('Underweight'), normal: () => t('Normal weight'), over: () => t('Overweight'), obese: () => t('Obesity') }
 
@@ -95,6 +97,16 @@ function Diagnosis({ S }) {
     useStore.getState().update(s => { s.heightCm = cm })
     setEditing(false)
   }
+  const [editingBirth, setEditingBirth] = useState(false)
+  const [birthDraft, setBirthDraft] = useState(S.birthDate || '')
+  const saveBirth = () => {
+    if (S.birthDate != null && birthDraft === S.birthDate) { setEditingBirth(false); return }
+    const d = normalizeBirthDate(birthDraft)
+    if (d === null) { useUI.getState().toast(t('Enter a valid birth date')); return }
+    useStore.getState().update(s => { s.birthDate = d })
+    setEditingBirth(false)
+  }
+  const setSex = v => { if (S.sex !== v) useStore.getState().update(s => { s.sex = v }) }
   return <div className="card">
     <h2>{t('Diagnosis')}</h2>
     {S.heightCm == null || editing ? <>
@@ -109,6 +121,24 @@ function Diagnosis({ S }) {
       <span>{t('Height')} {fmtNum(shown) + ' ' + unit}</span>
       <Button size="sm" variant="ghost" onClick={() => { setDraft(shown); setEditing(true) }}>{t('Edit')}</Button>
     </div>}
+    <div className="row between" style={{ alignItems: 'center', marginTop: 8 }}>
+      <span>{t('Sex')}</span>
+      <div className="row" style={{ gap: 6 }}>
+        {[['m', t('Male')], ['f', t('Female')]].map(([v, label]) =>
+          <Button key={v} size="sm" variant={S.sex === v ? 'tinted' : 'ghost'} aria-pressed={S.sex === v} onClick={() => setSex(v)}>{label}</Button>)}
+      </div>
+    </div>
+    {S.birthDate == null || editingBirth
+      ? <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>
+        <span>{t('Birth date')}</span>
+        <input type="date" className="timef" value={birthDraft} max={todayISO()} aria-label={t('Birth date')} onChange={e => setBirthDraft(e.target.value)} />
+        <Button size="sm" variant="tinted" onClick={saveBirth}>{t('Save')}</Button>
+        {editingBirth && S.birthDate != null && <Button size="sm" variant="ghost" onClick={() => setEditingBirth(false)}>{t('Cancel')}</Button>}
+      </div>
+      : <div className="row between" style={{ alignItems: 'center', marginTop: 8 }}>
+        <span>{t('Birth date')} {fmtDate(S.birthDate, true, true)}</span>
+        <Button size="sm" variant="ghost" onClick={() => { setBirthDraft(S.birthDate); setEditingBirth(true) }}>{t('Edit')}</Button>
+      </div>}
     {S.heightCm != null && (b ? <div style={{ marginTop: 12 }}>
       <div><span className="muted">{t('BMI')} </span><b style={{ fontSize: 22 }}>{fmtNum(b.value)}</b> <span>{BAND[b.band]()}</span></div>
       <div className="muted small" style={{ marginTop: 4 }}>{t('BMI is only a reference. It does not tell muscle from fat.')}</div>
@@ -120,7 +150,7 @@ export default function Body() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'measurements' ? 'measurements' : 'weight'
+  const tab = ['measurements', 'advanced'].includes(params.get('tab')) ? params.get('tab') : 'weight'
   return <>
     <div className="hdr"><button className="iconbtn" data-back="/stats" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('Body')}</h1></div>
@@ -128,9 +158,9 @@ export default function Body() {
     </div>
     <Photos S={S} />
     <Segmented value={tab} onChange={v => setParams({ tab: v }, { replace: true })}
-      options={[{ value: 'weight', label: t('Weight') }, { value: 'measurements', label: t('Measurements') }]} />
+      options={[{ value: 'weight', label: t('Weight') }, { value: 'measurements', label: t('Measurements') }, { value: 'advanced', label: t('Advanced') }]} />
     <div style={{ height: 12 }} />
-    {tab === 'weight' ? <WeightTab S={S} /> : <MeasurementsTab />}
+    {tab === 'weight' ? <WeightTab S={S} /> : tab === 'advanced' ? <BodyAdvanced S={S} /> : <MeasurementsTab />}
     <Diagnosis S={S} />
   </>
 }
