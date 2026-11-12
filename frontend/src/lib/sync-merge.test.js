@@ -1016,4 +1016,21 @@ describe('body notes and height across devices', () => {
     const a = edit(172, 500), b = edit(175, 900)
     for (const m of [mergeStates(a, b), mergeStates(b, a)]) expect(m.heightCm).toBe(175)
   })
+  it('sex and birthDate are plain settings: the copy that changed them last wins', () => {
+    const start = base({ _ts: 100, sex: null, birthDate: null })
+    const edit = (patch, ts) => { const n = { ...clone(start), ...patch, _ts: ts }; return stampEdits(start, n, ts) }
+    const a = edit({ sex: 'm', birthDate: '1990-05-20' }, 500), b = edit({ sex: 'f', birthDate: '1991-06-21' }, 900)
+    for (const m of [mergeStates(a, b), mergeStates(b, a)]) {
+      expect(m.sex).toBe('f')
+      expect(m.birthDate).toBe('1991-06-21')
+    }
+  })
+  it('an older profile without sex and birthDate does not wipe them', () => {
+    const old = base({ _ts: 100 })
+    const set = base({ _ts: 200, sex: 'f', birthDate: '1990-05-20' })
+    for (const m of [mergeStates(old, set), mergeStates(set, old)]) {
+      expect(m.sex).toBe('f')
+      expect(m.birthDate).toBe('1990-05-20')
+    }
+  })
 })
