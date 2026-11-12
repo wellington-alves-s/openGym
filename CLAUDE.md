@@ -116,6 +116,19 @@ machine, never in CI (see "Exercise media" below and docs/APP_STORES.md).
   note through the pure `lib/body-checkin.js`, and files its photos with `fileProgressPhotos`
   (`views/ProgressPhotos.jsx`). The note goes in `S.bodyNotes`, a map stamped
   per day, never in `dayNotes` (a day note excuses the missed-day nudge).
+  Nine skinfolds (`skChest`, `skMidaxillary`, `skTriceps`, `skSubscapular`, `skAbdominal`,
+  `skSuprailiac`, `skThigh`, `skBiceps`, `skCalf`, 1 to 80 mm) and four bone diameters
+  (`bnHumerus`, `bnWrist`, `bnFemur`, `bnAnkle`, 2 to 20 cm) are built-in measurements, off by
+  default, with a fixed unit that ignores the profile's cm/in and kg/lb; the Register sheet
+  refuses an out-of-range value (reason `range`) and the body CSV has `sk_*_mm` and `bn_*_cm`
+  columns. `S.sex` (`'m'`, `'f'`, `null`) and `S.birthDate` (`'YYYY-MM-DD'` or `null`) are
+  profile settings, edited in the Diagnosis card of the Body screen, and are not `S.body` (the
+  silhouette of the muscle map). The Advanced tab (`views/BodyAdvanced.jsx`, `?tab=advanced`)
+  only reads: `lib/body-assessment.js` (`assessmentOf`, `assessmentSeries`, `latestAssessment`)
+  joins `lib/body-fat.js` (Jackson and Pollock with 7 or 3 skinfolds, then Siri; valid from 18
+  to 61 years, and the sex is needed), `lib/body-composition.js` (fat and lean; the advanced
+  split adds Rocha bone and Wurch residual and needs wrist and femur) and `lib/ideal-weight.js`
+  (the weight range for a BMI of 18.5 to 24.9). They take kg and cm; the screen converts.
 - **`views/`**: one file per screen, routed by `react-router-dom` from `App.jsx`.
 - **`sheets.jsx`**: the bottom sheets (exercise picker, exercise config, workout detail, plan
   import...). It is large; a new sheet can go into `components/` as its own file.

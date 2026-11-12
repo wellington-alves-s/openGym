@@ -83,7 +83,10 @@ flowchart TB
   (`S.heightCm`). One Register sheet per date writes weight, measurements and a note through the
   pure `lib/body-checkin.js`, and files its photos with `fileProgressPhotos`
   (`views/ProgressPhotos.jsx`). Body notes live in `S.bodyNotes`, a map stamped per day, not in `dayNotes`,
-  where a note would excuse a missed training day.
+  where a note would excuse a missed training day. Its Advanced tab (`views/BodyAdvanced.jsx`) only
+  reads: skinfold and bone readings (fixed mm and cm) plus `S.sex` and `S.birthDate` go through the
+  pure `lib/body-assessment.js`, which joins body fat (Jackson and Pollock, 18 to 61 years),
+  body composition and the ideal weight range.
 - **Logic in `lib/`.** Anything that decides what you lift next, or reads a logged session back, is
   a pure function with a test beside it. Views stay thin.
 - **Platform switches.** `lib/mobile.js` (`MOBILE`), `lib/channel.js` (APK or store build) and the
