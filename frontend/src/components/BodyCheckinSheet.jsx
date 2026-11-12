@@ -82,6 +82,10 @@ function BodyCheckin({ start, close }) {
         const f = fields.find(x => x.key === res.field)
         return t('{0} must be between 0 and 100%.', f ? t(f.label) : res.field)
       }
+      case 'range': {
+        const f = MEASUREMENT_FIELDS.find(x => x.key === res.field)
+        return t('{0} must be between {1} and {2}', t(f.label), fmtNum(f.min), fmtNum(f.max))
+      }
       default: return t('Choose a valid date')
     }
   }

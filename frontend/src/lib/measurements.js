@@ -22,15 +22,30 @@ export const MEASUREMENT_FIELDS = [
   { key: 'ankleLeft', label: 'Left ankle', group: 'Legs', optional: true },
   { key: 'ankleRight', label: 'Right ankle', group: 'Legs', optional: true },
   { key: 'bodyFat', label: 'Body fat', group: 'Other', kind: 'percent', optional: true },
+  // Calliper and bone readings: a fixed unit and range, whatever the profile's cm/in choice.
+  ...[['skChest', 'Chest skinfold'], ['skMidaxillary', 'Midaxillary skinfold'], ['skTriceps', 'Triceps skinfold'],
+    ['skSubscapular', 'Subscapular skinfold'], ['skAbdominal', 'Abdominal skinfold'], ['skSuprailiac', 'Suprailiac skinfold'],
+    ['skThigh', 'Thigh skinfold'], ['skBiceps', 'Biceps skinfold'], ['skCalf', 'Medial calf skinfold'],
+  ].map(([key, label]) => ({ key, label, group: 'Skinfolds', optional: true, fixed: 'mm', min: 1, max: 80 })),
+  ...[['bnHumerus', 'Humerus diameter'], ['bnWrist', 'Wrist diameter'], ['bnFemur', 'Femur diameter'], ['bnAnkle', 'Ankle diameter']]
+    .map(([key, label]) => ({ key, label, group: 'Bones', optional: true, fixed: 'cm', min: 2, max: 20 })),
 ]
 
 export const MEASUREMENT_KEYS = MEASUREMENT_FIELDS.map(f => f.key)
 export const DEFAULT_MEASUREMENT_KEYS = MEASUREMENT_FIELDS.filter(f => !f.optional).map(f => f.key)
+export const ADVANCED_MEASUREMENT_KEYS = MEASUREMENT_FIELDS.filter(f => f.fixed).map(f => f.key)
+const BUILTIN = new Map(MEASUREMENT_FIELDS.map(f => [f.key, f]))
 
 const round = n => Math.round(n * 10) / 10
 const valid = (v, unit) => v != null && v !== '' && Number.isFinite(+v) &&
   (unit === '%' ? +v >= 0 && +v <= 100 : unit === 'none' ? +v >= 0 : +v > 0)
   ? (unit === 'kg' || unit === 'lb' ? Math.round(+v * 1000) / 1000 : round(+v)) : null
+const inRange = (x, f) => x != null && f?.fixed && (x < f.min || x > f.max) ? null : x
+// A built-in reading by key: body fat in percent, a fixed field inside its range, else a length.
+const validBuiltin = (v, key) => {
+  const f = BUILTIN.get(key)
+  return inRange(valid(v, f?.kind === 'percent' ? '%' : f?.fixed), f)
+}
 const LB_PER_KG = 2.2046226218
 export const CUSTOM_MEASUREMENT_UNITS = ['cm', 'in', '%', 'kg', 'lb', 'none']
 const unitOf = field => CUSTOM_MEASUREMENT_UNITS.includes(field?.unit) ? field.unit : null
@@ -41,7 +56,10 @@ export const measurementUnitLabel = unit => unit === 'none' ? '' : unit
 // A unit where 0 is a reading, not an empty field: 0 % or a score of 0.
 export const zeroIsReading = unit => unit === '%' || unit === 'none'
 
-export const measurementUnit = (unit, field) => field?.key === 'bodyFat' ? '%' : unitOf(field) || (unit === 'lb' ? 'in' : 'cm')
+export const measurementUnit = (unit, field) => {
+  const builtin = BUILTIN.get(field?.key)
+  return builtin?.kind === 'percent' ? '%' : builtin?.fixed || unitOf(field) || (unit === 'lb' ? 'in' : 'cm')
+}
 export const toMeasurementDisplay = (value, unit, field) => {
   if (value == null) return null
   const display = measurementUnit(unit, field)
@@ -49,7 +67,7 @@ export const toMeasurementDisplay = (value, unit, field) => {
 }
 export const fromMeasurementDisplay = (value, unit, field) => {
   const display = measurementUnit(unit, field)
-  return valid(display === 'in' && value != null ? +value * 2.54 : display === 'lb' && value != null ? +value / LB_PER_KG : value, display)
+  return inRange(valid(display === 'in' && value != null ? +value * 2.54 : display === 'lb' && value != null ? +value / LB_PER_KG : value, display), BUILTIN.get(field?.key))
 }
 
 // A unit change can convert cm/in or kg/lb, but cannot turn recorded lengths into percentages.
@@ -73,7 +91,7 @@ export function emptyMeasurement(date, custom = []) {
 export function normalizeMeasurementEntry(raw = {}, custom = []) {
   const entry = emptyMeasurement(raw.d || '', custom)
   entry.t = Number.isFinite(+raw.t) ? +raw.t : entry.t
-  for (const key of MEASUREMENT_KEYS) entry[key] = valid(raw[key], key === 'bodyFat' ? '%' : null)
+  for (const key of MEASUREMENT_KEYS) entry[key] = validBuiltin(raw[key], key)
 
   const known = new Map(custom.map(c => [c.id, c]))
   const seen = new Set()
@@ -136,7 +154,7 @@ export function normalizeMeasurementsState(state) {
 
 export function measurementValue(entry, key) {
   if (!entry) return null
-  if (!key.startsWith('other:')) return valid(entry[key], key === 'bodyFat' ? '%' : null)
+  if (!key.startsWith('other:')) return validBuiltin(entry[key], key)
   const row = (entry.other || []).find(o => o.id === key.slice(6))
   return valid(row?.value, unitOf(row))
 }
@@ -179,15 +197,16 @@ export function latestMeasurement(state, key) {
 }
 
 export function measurementEntryHasValues(entry) {
-  return MEASUREMENT_KEYS.some(k => valid(entry?.[k], k === 'bodyFat' ? '%' : null) != null) ||
+  return MEASUREMENT_KEYS.some(k => validBuiltin(entry?.[k], k) != null) ||
     (entry?.other || []).some(o => valid(o?.value, unitOf(o)) != null)
 }
 
 // ---- CSV columns (lib/export-csv.js bodyCSV, read back by lib/import-csv.js parseBodyweight) ----
-// A built-in field is a fixed snake_case column in cm (body fat in percent). A custom field's
-// column is its name with its unit in brackets, "Muscle ratio (%)", its values in that unit; a
-// legacy field without a unit stores cm, so its column says cm. A unitless field is its bare name.
-export const builtinCsvColumn = f => f.kind === 'percent' ? 'body_fat_percent' : f.key.replace(/[A-Z]/g, c => '_' + c.toLowerCase()) + '_cm'
+// A built-in field is a fixed snake_case column in cm (body fat in percent, a fixed-unit field in
+// its own unit, `sk_chest_mm`). A custom field's column is its name with its unit in brackets,
+// "Muscle ratio (%)", its values in that unit; a legacy field without a unit stores cm, so its
+// column says cm. A unitless field is its bare name.
+export const builtinCsvColumn = f => f.kind === 'percent' ? 'body_fat_percent' : f.key.replace(/[A-Z]/g, c => '_' + c.toLowerCase()) + '_' + (f.fixed || 'cm')
 export const customCsvColumn = (name, unit) => unit === 'none' ? name : `${name} (${unitOf({ unit }) || 'cm'})`
 export function parseCustomCsvColumn(header) {
   const h = String(header ?? '').trim()

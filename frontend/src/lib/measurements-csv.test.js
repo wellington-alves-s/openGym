@@ -94,6 +94,29 @@ describe('the body CSV with custom units (#718)', () => {
   })
 })
 
+describe('skinfolds and bone diameters in the body CSV', () => {
+  const S = normalizeMeasurementsState({ unit: 'lb', bodyweight: [], measurements: [{ d: '2026-10-01', waist: 84.5, skChest: 18, bnWrist: 5.6 }] })
+  const text = bodyCSV(S)
+
+  it('have columns named with their fixed unit', () => {
+    expect(parseCSV(text)[0]).toEqual(['date', 'weight_lb', 'waist_cm', 'sk_chest_mm', 'bn_wrist_cm'])
+  })
+
+  it('come back unchanged in a kg or an lb profile', () => {
+    for (const unit of ['kg', 'lb']) {
+      const fresh = normalizeMeasurementsState({ unit, bodyweight: [] })
+      expect(mergeImport(fresh, parseImport(text, { unit })).measurements).toBe(1)
+      expect(fresh.measurements[0]).toMatchObject({ waist: 84.5, skChest: 18, bnWrist: 5.6 })
+    }
+  })
+
+  it('an old CSV without them imports as before', () => {
+    const fresh = normalizeMeasurementsState({ unit: 'kg', bodyweight: [] })
+    mergeImport(fresh, parseBodyweight('date,weight_kg,waist_cm\n2026-10-01,,90\n', { unit: 'kg' }))
+    expect(fresh.measurements[0]).toMatchObject({ waist: 90, skChest: null, bnWrist: null })
+  })
+})
+
 describe('importing measurements that make no sense', () => {
   it('skips a day whose only values no field can hold', () => {
     const S = state()

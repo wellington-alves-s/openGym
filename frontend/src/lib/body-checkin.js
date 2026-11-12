@@ -69,12 +69,13 @@ export function applyCheckin(state, input, now = Date.now()) {
     const shown = measurementUnit(state.unit, field)
     const value = raw == null || (raw === 0 && !zeroIsReading(shown)) ? null : round(+raw)
     if (shown === '%' && value != null && (value < 0 || value > 100)) return { ok: false, reason: 'percent-range', field: key }
+    if (field.fixed && value != null && (value < field.min || value > field.max)) return { ok: false, reason: 'range', field: key }
     const before = measurementValue(entry, key)
     if (item) {
       item.value = fromMeasurementDisplay(value, state.unit, field)
       if (field.unit) item.unit = field.unit
     } else if (key === 'bodyFat') entry.bodyFat = value
-    else entry[key] = value == null ? null : fromMeasurementDisplay(value, state.unit)
+    else entry[key] = value == null ? null : fromMeasurementDisplay(value, state.unit, field)
     if (before != null || measurementValue(entry, key) != null) touched = true
   }
 

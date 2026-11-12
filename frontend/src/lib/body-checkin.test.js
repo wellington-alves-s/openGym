@@ -126,6 +126,35 @@ describe('applyCheckin: measurements', () => {
   })
 })
 
+describe('applyCheckin: skinfolds and bone diameters', () => {
+  it('stores mm and cm as typed in an lb profile and reads them back', () => {
+    const s = base({ unit: 'lb' })
+    expect(applyCheckin(s, { d: D, measurements: { skChest: 18, bnWrist: 5.6 } }, NOW).ok).toBe(true)
+    expect(s.measurements[0]).toMatchObject({ skChest: 18, bnWrist: 5.6 })
+    expect(checkinOf(s, D).measurements).toEqual({ skChest: 18, bnWrist: 5.6 })
+  })
+
+  it('refuses a value outside the range without touching the state', () => {
+    const s = base({ measurements: [entry(D, { skChest: 10 })] })
+    refuses(s, { d: D, measurements: { skChest: 81 } }, 'range', 'skChest')
+    refuses(s, { d: D, measurements: { bnWrist: 1.9 } }, 'range', 'bnWrist')
+  })
+
+  it('0 clears a stored value, and on an empty date 0 or null is empty', () => {
+    const s = base({ measurements: [entry(D, { skChest: 10, waist: 80 })] })
+    expect(applyCheckin(s, { d: D, measurements: { skChest: 0 } }, NOW).ok).toBe(true)
+    expect(s.measurements[0]).toMatchObject({ skChest: null, waist: 80 })
+    refuses(base(), { d: D, measurements: { skChest: null } }, 'empty')
+    refuses(base(), { d: D, measurements: { skChest: 0 } }, 'empty')
+  })
+
+  it('touching only a skinfold leaves a waist stored in inches without drift', () => {
+    const s = base({ unit: 'lb', measurements: [entry(D, { waist: 80.1 })] })
+    expect(applyCheckin(s, { d: D, measurements: { skChest: 12 } }, NOW).ok).toBe(true)
+    expect(s.measurements[0]).toMatchObject({ waist: 80.1, skChest: 12 })
+  })
+})
+
 describe('applyCheckin: note', () => {
   it('writes into bodyNotes, not dayNotes', () => {
     const s = base()

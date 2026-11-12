@@ -20,6 +20,7 @@ vi.mock('./CustomMediaField.jsx', () => ({
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { todayISO } from '../lib/format.js'
+import { ADVANCED_MEASUREMENT_KEYS } from '../lib/measurements.js'
 import { syncMedia } from '../lib/media-sync.js'
 import { bodyCheckinSheet } from './BodyCheckinSheet.jsx'
 
@@ -167,6 +168,26 @@ describe('the Register sheet', () => {
     await save(form)
     expect(S().bodyweight).toMatchObject([{ d: todayISO(), w: 180 }])
     expect(S().measurements[0].waist).toBe(80.1)
+  })
+
+  it('skinfolds show mm and bone diameters cm even in lb, and a skinfold out of range is refused', async () => {
+    seed({ unit: 'lb', measurementEnabled: ADVANCED_MEASUREMENT_KEYS })
+    act(() => bodyCheckinSheet())
+    const form = topSheet()
+    click(form, 'Measurements')
+    const unitOf = label => field(form, label).closest('.measure-field').querySelector('i').textContent
+    expect(unitOf('Chest skinfold')).toBe('mm')
+    expect(unitOf('Medial calf skinfold')).toBe('mm')
+    expect(unitOf('Wrist diameter')).toBe('cm')
+    setValue(field(form, 'Chest skinfold'), '81')
+    await save(form)
+    expect(toast()).toBe('Chest skinfold must be between 1 and 80')
+    expect(S().measurements).toEqual([])
+    expect(open()).toBe(1)
+    setValue(field(form, 'Chest skinfold'), '18')
+    await save(form)
+    expect(S().measurements[0].skChest).toBe(18)
+    expect(open()).toBe(0)
   })
 
   it('opens on a date with measurements with the Measurements section already open', () => {

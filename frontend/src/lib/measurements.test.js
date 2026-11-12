@@ -4,6 +4,7 @@ import {
   normalizeMeasurementEntry, normalizeMeasurementsState, measurementSeries,
   toMeasurementDisplay, fromMeasurementDisplay, measurementEntryHasValues,
   measurementUnit, measurementValue, customMeasurementUnits,
+  MEASUREMENT_FIELDS, ADVANCED_MEASUREMENT_KEYS,
 } from './measurements.js'
 
 describe('body measurements', () => {
@@ -165,5 +166,36 @@ describe('custom measurement units (#699)', () => {
       { d: '2026-10-01', t: 2, other: [{ id: 'mass', name: 'Mass', value: null, unit: '%' }] },
     ] })
     expect(s.measurements[0].other[0]).toEqual({ id: 'mass', name: 'Mass', value: 60, unit: 'kg' })
+  })
+})
+
+describe('skinfolds and bone diameters (stage 3b)', () => {
+  const KEYS = ['skChest', 'skMidaxillary', 'skTriceps', 'skSubscapular', 'skAbdominal', 'skSuprailiac',
+    'skThigh', 'skBiceps', 'skCalf', 'bnHumerus', 'bnWrist', 'bnFemur', 'bnAnkle']
+
+  it('are optional built-in fields, listed in the spec order', () => {
+    expect(ADVANCED_MEASUREMENT_KEYS).toEqual(KEYS)
+    for (const key of KEYS) {
+      const f = MEASUREMENT_FIELDS.find(x => x.key === key)
+      expect(f).toMatchObject({ optional: true, group: key.startsWith('sk') ? 'Skinfolds' : 'Bones', fixed: key.startsWith('sk') ? 'mm' : 'cm' })
+      expect(DEFAULT_MEASUREMENT_KEYS).not.toContain(key)
+    }
+  })
+
+  it('keep their own unit whatever the profile, without converting', () => {
+    expect(measurementUnit('lb', { key: 'skChest' })).toBe('mm')
+    expect(measurementUnit('lb', { key: 'bnWrist' })).toBe('cm')
+    expect(toMeasurementDisplay(12.5, 'lb', { key: 'skChest' })).toBe(12.5)
+    expect(fromMeasurementDisplay(5.6, 'lb', { key: 'bnWrist' })).toBe(5.6)
+    expect(fromMeasurementDisplay(81, 'kg', { key: 'skChest' })).toBeNull()
+  })
+
+  it('normalize to one decimal inside their range, null outside', () => {
+    const e = normalizeMeasurementEntry({ d: '2026-11-01', skChest: 12.34, skThigh: 0, skBiceps: 81, bnWrist: 1.9, bnFemur: 9.56, skCalf: '15' })
+    expect(e).toMatchObject({ skChest: 12.3, skThigh: null, skBiceps: null, bnWrist: null, bnFemur: 9.6, skCalf: 15 })
+    expect(measurementValue({ skBiceps: 81 }, 'skBiceps')).toBeNull()
+    expect(measurementEntryHasValues({ skBiceps: 81, bnWrist: 1.9 })).toBe(false)
+    const old = normalizeMeasurementEntry({ d: '2026-01-01', waist: 80 })
+    expect(KEYS.every(k => old[k] === null)).toBe(true)
   })
 })
